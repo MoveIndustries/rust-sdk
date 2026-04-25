@@ -168,12 +168,15 @@ cargo build -p movement-sdk --release          # Release build
 ### Testing
 
 ```bash
-cargo test -p movement-sdk                     # Unit tests (default features)
-cargo test -p movement-sdk --all-features      # Unit tests (all features)
+cargo test -p movement-sdk                    # Unit tests (default features)
+cargo test -p movement-sdk --all-features     # Unit tests (all features)
 
-# E2E tests (requires a running localnet)
-movement node run-localnet --with-faucet
-cargo test -p movement-sdk --features "e2e" -- --ignored
+# E2E tests — easiest path: spins up a localnet, runs all e2e tests, tears down
+./scripts/run-e2e.sh
+
+# Or manually, against an already-running localnet:
+movement node run-localnet --force-restart --with-faucet --do-not-delegate
+cargo test -p movement-sdk --features "e2e,full" -- --ignored
 ```
 
 ### Linting & Formatting
