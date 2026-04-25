@@ -3,9 +3,9 @@
 use crate::types::HashValue;
 use serde::{Deserialize, Serialize};
 
-/// A response from the Aptos API with headers metadata.
+/// A response from the Movement API with headers metadata.
 #[derive(Debug, Clone)]
-pub struct AptosResponse<T> {
+pub struct MovementResponse<T> {
     /// The response body.
     pub data: T,
     /// The ledger version at the time of the request.
@@ -22,7 +22,7 @@ pub struct AptosResponse<T> {
     pub cursor: Option<String>,
 }
 
-impl<T> AptosResponse<T> {
+impl<T> MovementResponse<T> {
     /// Creates a new response with data only.
     pub fn new(data: T) -> Self {
         Self {
@@ -42,8 +42,8 @@ impl<T> AptosResponse<T> {
     }
 
     /// Maps the inner data using a function.
-    pub fn map<U, F: FnOnce(T) -> U>(self, f: F) -> AptosResponse<U> {
-        AptosResponse {
+    pub fn map<U, F: FnOnce(T) -> U>(self, f: F) -> MovementResponse<U> {
+        MovementResponse {
             data: f(self.data),
             ledger_version: self.ledger_version,
             ledger_timestamp: self.ledger_timestamp,
@@ -285,20 +285,20 @@ mod tests {
 
     #[test]
     fn test_aptos_response() {
-        let response = AptosResponse::new(42);
+        let response = MovementResponse::new(42);
         assert_eq!(response.into_inner(), 42);
     }
 
     #[test]
     fn test_aptos_response_map() {
-        let response = AptosResponse::new(42);
+        let response = MovementResponse::new(42);
         let mapped = response.map(|x| x.to_string());
         assert_eq!(mapped.into_inner(), "42");
     }
 
     #[test]
     fn test_aptos_response_preserves_metadata() {
-        let mut response = AptosResponse::new(42);
+        let mut response = MovementResponse::new(42);
         response.ledger_version = Some(100);
         response.epoch = Some(5);
         response.block_height = Some(1000);

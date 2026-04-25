@@ -8,8 +8,8 @@
 //!
 //! Run with: `cargo run --example advanced_transactions --features "ed25519,secp256k1,faucet"`
 
-use aptos_sdk::{
-    Aptos, AptosConfig,
+use movement_sdk::{
+    Movement, MovementConfig,
     account::{Account, AnyPrivateKey, Ed25519Account, MultiEd25519Account, MultiKeyAccount},
     crypto::{Ed25519PrivateKey, Secp256k1PrivateKey},
     transaction::{
@@ -25,38 +25,38 @@ async fn main() -> anyhow::Result<()> {
     println!("=== Advanced Transaction Combinations ===\n");
 
     // Connect to testnet
-    let aptos = Aptos::new(AptosConfig::testnet())?;
-    println!("Connected to testnet (chain_id: {})", aptos.chain_id());
+    let movement = Movement::new(MovementConfig::testnet())?;
+    println!("Connected to testnet (chain_id: {})", movement.chain_id());
 
     // ==== Part 1: Sponsored + Multi-agent Transaction ====
     println!("\n--- Part 1: Sponsored + Multi-agent Transaction ---");
     println!("Scenario: A swap transaction requiring two signers, with a third party paying gas");
 
-    sponsored_multi_agent_example(&aptos).await?;
+    sponsored_multi_agent_example(&movement).await?;
 
     // ==== Part 2: Sponsored + MultiKey Account ====
     println!("\n--- Part 2: Sponsored + MultiKey Account Transaction ---");
     println!("Scenario: A 2-of-3 multi-key account transaction with sponsored gas");
 
-    sponsored_multikey_example(&aptos).await?;
+    sponsored_multikey_example(&movement).await?;
 
     // ==== Part 3: Sponsored + MultiEd25519 (Multisig) ====
     println!("\n--- Part 3: Sponsored + MultiEd25519 Transaction ---");
     println!("Scenario: A 2-of-3 Ed25519 multisig transaction with sponsored gas");
 
-    sponsored_multisig_example(&aptos).await?;
+    sponsored_multisig_example(&movement).await?;
 
     // ==== Part 4: Batch with Different Account Types ====
     println!("\n--- Part 4: Batch Transactions with Multi-sig Account ---");
     println!("Scenario: Multiple transfers from a multi-sig account");
 
-    batch_multisig_example(&aptos).await?;
+    batch_multisig_example(&movement).await?;
 
     // ==== Part 5: Multi-agent with MultiKey Signers ====
     println!("\n--- Part 5: Multi-agent with MultiKey Secondary Signer ---");
     println!("Scenario: Primary signer is Ed25519, secondary is a MultiKey account");
 
-    multi_agent_multikey_example(&aptos).await?;
+    multi_agent_multikey_example(&movement).await?;
 
     println!("\n=== All Advanced Transaction Examples Completed ===");
     Ok(())
@@ -67,7 +67,7 @@ async fn main() -> anyhow::Result<()> {
 /// This combines:
 /// - Fee payer (sponsor) paying for gas
 /// - Multiple signers required for the transaction
-async fn sponsored_multi_agent_example(aptos: &Aptos) -> anyhow::Result<()> {
+async fn sponsored_multi_agent_example(movement: &Movement) -> anyhow::Result<()> {
     // Create accounts
     let primary_signer = Ed25519Account::generate();
     let secondary_signer = Ed25519Account::generate();
@@ -81,13 +81,13 @@ async fn sponsored_multi_agent_example(aptos: &Aptos) -> anyhow::Result<()> {
 
     // Fund accounts (only fee payer needs gas, but both signers need some balance)
     println!("\nFunding accounts...");
-    aptos
+    movement
         .fund_account(primary_signer.address(), 50_000_000)
         .await?;
-    aptos
+    movement
         .fund_account(secondary_signer.address(), 50_000_000)
         .await?;
-    aptos.fund_account(fee_payer.address(), 100_000_000).await?;
+    movement.fund_account(fee_payer.address(), 100_000_000).await?;
 
     // Build the transaction payload
     // In a real multi-agent scenario, this would be a function requiring multiple signers
@@ -95,14 +95,14 @@ async fn sponsored_multi_agent_example(aptos: &Aptos) -> anyhow::Result<()> {
     let payload = EntryFunction::apt_transfer(recipient.address(), 1_000_000)?;
 
     // Get sequence number for primary signer
-    let sequence_number = aptos.get_sequence_number(primary_signer.address()).await?;
+    let sequence_number = movement.get_sequence_number(primary_signer.address()).await?;
 
     // Build the raw transaction
     let raw_txn = TransactionBuilder::new()
         .sender(primary_signer.address())
         .sequence_number(sequence_number)
         .payload(TransactionPayload::EntryFunction(payload))
-        .chain_id(aptos.chain_id())
+        .chain_id(movement.chain_id())
         .max_gas_amount(100_000)
         .gas_unit_price(100)
         .expiration_from_now(600)
@@ -131,7 +131,7 @@ async fn sponsored_multi_agent_example(aptos: &Aptos) -> anyhow::Result<()> {
 
     // Submit and wait
     println!("\nSubmitting sponsored multi-agent transaction...");
-    let result = aptos.submit_and_wait(&signed_txn, None).await?;
+    let result = movement.submit_and_wait(&signed_txn, None).await?;
 
     let success = result
         .data
@@ -141,7 +141,7 @@ async fn sponsored_multi_agent_example(aptos: &Aptos) -> anyhow::Result<()> {
     println!("Transaction success: {}", success);
 
     // Verify fee payer paid the gas
-    let fee_payer_balance = aptos.get_balance(fee_payer.address()).await?;
+    let fee_payer_balance = movement.get_balance(fee_payer.address()).await?;
     println!(
         "Fee payer balance after: {} APT (paid gas)",
         fee_payer_balance as f64 / 100_000_000.0
@@ -155,7 +155,7 @@ async fn sponsored_multi_agent_example(aptos: &Aptos) -> anyhow::Result<()> {
 /// This combines:
 /// - MultiKey account (mixed key types, threshold signing)
 /// - Fee payer sponsoring gas
-async fn sponsored_multikey_example(aptos: &Aptos) -> anyhow::Result<()> {
+async fn sponsored_multikey_example(movement: &Movement) -> anyhow::Result<()> {
     // Create keys of different types
     let ed_key1 = Ed25519PrivateKey::generate();
     let secp_key = Secp256k1PrivateKey::generate();
@@ -187,10 +187,10 @@ async fn sponsored_multikey_example(aptos: &Aptos) -> anyhow::Result<()> {
 
     // Fund accounts
     println!("\nFunding accounts...");
-    aptos
+    movement
         .fund_account(multi_key_account.address(), 50_000_000)
         .await?;
-    aptos.fund_account(fee_payer.address(), 100_000_000).await?;
+    movement.fund_account(fee_payer.address(), 100_000_000).await?;
 
     // Build payload
     let payload = EntryFunction::apt_transfer(recipient.address(), 5_000_000)?;
@@ -199,13 +199,13 @@ async fn sponsored_multikey_example(aptos: &Aptos) -> anyhow::Result<()> {
     let signed_txn = SponsoredTransactionBuilder::new()
         .sender(multi_key_account.address())
         .sequence_number(
-            aptos
+            movement
                 .get_sequence_number(multi_key_account.address())
                 .await?,
         )
         .fee_payer(fee_payer.address())
         .payload(TransactionPayload::EntryFunction(payload))
-        .chain_id(aptos.chain_id())
+        .chain_id(movement.chain_id())
         .max_gas_amount(100_000)
         .gas_unit_price(100)
         .expiration_from_now(600)
@@ -221,7 +221,7 @@ async fn sponsored_multikey_example(aptos: &Aptos) -> anyhow::Result<()> {
 
     // Submit
     println!("\nSubmitting sponsored MultiKey transaction...");
-    let result = aptos.submit_and_wait(&signed_txn, None).await?;
+    let result = movement.submit_and_wait(&signed_txn, None).await?;
 
     let success = result
         .data
@@ -231,7 +231,7 @@ async fn sponsored_multikey_example(aptos: &Aptos) -> anyhow::Result<()> {
     println!("Transaction success: {}", success);
 
     // Check recipient balance
-    let recipient_balance = aptos.get_balance(recipient.address()).await.unwrap_or(0);
+    let recipient_balance = movement.get_balance(recipient.address()).await.unwrap_or(0);
     println!(
         "Recipient received: {} APT",
         recipient_balance as f64 / 100_000_000.0
@@ -245,7 +245,7 @@ async fn sponsored_multikey_example(aptos: &Aptos) -> anyhow::Result<()> {
 /// This combines:
 /// - MultiEd25519 account (M-of-N Ed25519 threshold)
 /// - Fee payer sponsoring gas
-async fn sponsored_multisig_example(aptos: &Aptos) -> anyhow::Result<()> {
+async fn sponsored_multisig_example(movement: &Movement) -> anyhow::Result<()> {
     // Generate Ed25519 keys
     let key1 = Ed25519PrivateKey::generate();
     let key2 = Ed25519PrivateKey::generate();
@@ -272,10 +272,10 @@ async fn sponsored_multisig_example(aptos: &Aptos) -> anyhow::Result<()> {
 
     // Fund accounts
     println!("\nFunding accounts...");
-    aptos
+    movement
         .fund_account(multi_ed_account.address(), 50_000_000)
         .await?;
-    aptos.fund_account(fee_payer.address(), 100_000_000).await?;
+    movement.fund_account(fee_payer.address(), 100_000_000).await?;
 
     // Build payload
     let payload = EntryFunction::apt_transfer(recipient.address(), 3_000_000)?;
@@ -284,13 +284,13 @@ async fn sponsored_multisig_example(aptos: &Aptos) -> anyhow::Result<()> {
     let signed_txn = SponsoredTransactionBuilder::new()
         .sender(multi_ed_account.address())
         .sequence_number(
-            aptos
+            movement
                 .get_sequence_number(multi_ed_account.address())
                 .await?,
         )
         .fee_payer(fee_payer.address())
         .payload(TransactionPayload::EntryFunction(payload))
-        .chain_id(aptos.chain_id())
+        .chain_id(movement.chain_id())
         .max_gas_amount(100_000)
         .gas_unit_price(100)
         .expiration_from_now(600)
@@ -306,7 +306,7 @@ async fn sponsored_multisig_example(aptos: &Aptos) -> anyhow::Result<()> {
 
     // Submit
     println!("\nSubmitting sponsored MultiEd25519 transaction...");
-    let result = aptos.submit_and_wait(&signed_txn, None).await?;
+    let result = movement.submit_and_wait(&signed_txn, None).await?;
 
     let success = result
         .data
@@ -322,7 +322,7 @@ async fn sponsored_multisig_example(aptos: &Aptos) -> anyhow::Result<()> {
 ///
 /// This demonstrates sending multiple transactions efficiently
 /// from a threshold signature account.
-async fn batch_multisig_example(aptos: &Aptos) -> anyhow::Result<()> {
+async fn batch_multisig_example(movement: &Movement) -> anyhow::Result<()> {
     // Create 2-of-3 MultiEd25519 account
     let key1 = Ed25519PrivateKey::generate();
     let key2 = Ed25519PrivateKey::generate();
@@ -342,7 +342,7 @@ async fn batch_multisig_example(aptos: &Aptos) -> anyhow::Result<()> {
 
     // Fund the multi-sig account
     println!("\nFunding multisig account...");
-    aptos
+    movement
         .fund_account(multi_account.address(), 100_000_000)
         .await?;
 
@@ -363,13 +363,13 @@ async fn batch_multisig_example(aptos: &Aptos) -> anyhow::Result<()> {
     ];
 
     // Get sequence number
-    let starting_seq = aptos.get_sequence_number(multi_account.address()).await?;
+    let starting_seq = movement.get_sequence_number(multi_account.address()).await?;
 
     // Build batch
     let batch = TransactionBatchBuilder::new()
         .sender(multi_account.address())
         .starting_sequence_number(starting_seq)
-        .chain_id(aptos.chain_id())
+        .chain_id(movement.chain_id())
         .gas_unit_price(100)
         .max_gas_amount(100_000)
         .add_payloads(payloads)
@@ -380,7 +380,7 @@ async fn batch_multisig_example(aptos: &Aptos) -> anyhow::Result<()> {
 
     // Submit all in parallel
     println!("\nSubmitting batch in parallel...");
-    let results = batch.submit_and_wait_all(aptos.fullnode(), None).await;
+    let results = batch.submit_and_wait_all(movement.fullnode(), None).await;
 
     // Check results
     let mut succeeded = 0;
@@ -395,9 +395,9 @@ async fn batch_multisig_example(aptos: &Aptos) -> anyhow::Result<()> {
     println!("Batch results: {} succeeded, {} failed", succeeded, failed);
 
     // Verify balances
-    let r1_balance = aptos.get_balance(recipient1.address()).await.unwrap_or(0);
-    let r2_balance = aptos.get_balance(recipient2.address()).await.unwrap_or(0);
-    let r3_balance = aptos.get_balance(recipient3.address()).await.unwrap_or(0);
+    let r1_balance = movement.get_balance(recipient1.address()).await.unwrap_or(0);
+    let r2_balance = movement.get_balance(recipient2.address()).await.unwrap_or(0);
+    let r3_balance = movement.get_balance(recipient3.address()).await.unwrap_or(0);
 
     println!("Recipient balances:");
     println!("  Recipient 1: {} APT", r1_balance as f64 / 100_000_000.0);
@@ -412,7 +412,7 @@ async fn batch_multisig_example(aptos: &Aptos) -> anyhow::Result<()> {
 /// This combines:
 /// - Multi-agent (multiple required signers)
 /// - MultiKey account as one of the signers
-async fn multi_agent_multikey_example(aptos: &Aptos) -> anyhow::Result<()> {
+async fn multi_agent_multikey_example(movement: &Movement) -> anyhow::Result<()> {
     // Primary signer: regular Ed25519
     let primary = Ed25519Account::generate();
 
@@ -441,8 +441,8 @@ async fn multi_agent_multikey_example(aptos: &Aptos) -> anyhow::Result<()> {
 
     // Fund accounts
     println!("\nFunding accounts...");
-    aptos.fund_account(primary.address(), 100_000_000).await?;
-    aptos
+    movement.fund_account(primary.address(), 100_000_000).await?;
+    movement
         .fund_account(secondary_multikey.address(), 50_000_000)
         .await?;
 
@@ -450,14 +450,14 @@ async fn multi_agent_multikey_example(aptos: &Aptos) -> anyhow::Result<()> {
     let payload = EntryFunction::apt_transfer(recipient.address(), 2_000_000)?;
 
     // Get sequence number
-    let seq = aptos.get_sequence_number(primary.address()).await?;
+    let seq = movement.get_sequence_number(primary.address()).await?;
 
     // Build raw transaction
     let raw_txn = TransactionBuilder::new()
         .sender(primary.address())
         .sequence_number(seq)
         .payload(TransactionPayload::EntryFunction(payload))
-        .chain_id(aptos.chain_id())
+        .chain_id(movement.chain_id())
         .max_gas_amount(100_000)
         .gas_unit_price(100)
         .expiration_from_now(600)
@@ -480,7 +480,7 @@ async fn multi_agent_multikey_example(aptos: &Aptos) -> anyhow::Result<()> {
 
     // Submit
     println!("\nSubmitting multi-agent transaction...");
-    let result = aptos.submit_and_wait(&signed_txn, None).await?;
+    let result = movement.submit_and_wait(&signed_txn, None).await?;
 
     let success = result
         .data

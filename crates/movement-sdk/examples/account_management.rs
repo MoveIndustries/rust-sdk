@@ -8,8 +8,8 @@
 //!
 //! Run with: `cargo run --example account_management --features "ed25519,secp256k1,mnemonic,faucet"`
 
-use aptos_sdk::{
-    Aptos, AptosConfig,
+use movement_sdk::{
+    Movement, MovementConfig,
     account::{Ed25519Account, Secp256k1Account},
 };
 
@@ -87,8 +87,8 @@ async fn main() -> anyhow::Result<()> {
     // 7. Demonstrate using an account on testnet
     println!("\n--- 7. Using an Account on Testnet ---");
 
-    let config = AptosConfig::testnet();
-    let aptos = Aptos::new(config)?;
+    let config = MovementConfig::testnet();
+    let movement = Movement::new(config)?;
 
     // Generate fresh account for testnet
     let testnet_account = Ed25519Account::generate();
@@ -96,7 +96,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Fund it
     println!("Funding account...");
-    aptos
+    movement
         .fund_account(testnet_account.address(), 100_000_000)
         .await?;
 
@@ -104,12 +104,12 @@ async fn main() -> anyhow::Result<()> {
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     // Check balance
-    let balance = aptos.get_balance(testnet_account.address()).await?;
+    let balance = movement.get_balance(testnet_account.address()).await?;
     println!("Balance: {} APT", balance as f64 / 100_000_000.0);
 
     // 8. Summary of key concepts
     println!("\n--- Key Concepts Summary ---");
-    println!("• Ed25519: Fast, widely-used signature scheme (default for Aptos)");
+    println!("• Ed25519: Fast, widely-used signature scheme (default for Movement)");
     println!("• Secp256k1: Bitcoin/Ethereum compatible signatures");
     println!("• Mnemonic: Human-readable backup of your keys (BIP-39)");
     println!("• Index: Allows multiple accounts from one mnemonic");

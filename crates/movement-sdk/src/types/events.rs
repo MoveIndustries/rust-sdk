@@ -97,7 +97,7 @@ pub struct VersionedEvent {
     pub transaction_hash: Option<HashValue>,
 }
 
-/// Common event types in the Aptos framework.
+/// Common event types in the Movement framework.
 #[allow(dead_code)] // Public API constants for users
 pub mod framework {
     /// Event type for coin deposits.

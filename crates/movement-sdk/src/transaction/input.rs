@@ -13,7 +13,7 @@
 //! # Example
 //!
 //! ```rust,ignore
-//! use aptos_sdk::transaction::InputEntryFunctionData;
+//! use movement_sdk::transaction::InputEntryFunctionData;
 //!
 //! // Simple transfer
 //! let payload = InputEntryFunctionData::new("0x1::aptos_account::transfer")
@@ -29,7 +29,7 @@
 //!     .build()?;
 //! ```
 
-use crate::error::{AptosError, AptosResult};
+use crate::error::{MovementError, MovementResult};
 use crate::transaction::{EntryFunction, TransactionPayload};
 use crate::types::{AccountAddress, EntryFunctionId, MoveModuleId, TypeTag};
 use serde::Serialize;
@@ -42,8 +42,8 @@ use serde::Serialize;
 /// # Example
 ///
 /// ```rust,ignore
-/// use aptos_sdk::transaction::InputEntryFunctionData;
-/// use aptos_sdk::types::AccountAddress;
+/// use movement_sdk::transaction::InputEntryFunctionData;
+/// use movement_sdk::types::AccountAddress;
 ///
 /// let payload = InputEntryFunctionData::new("0x1::aptos_account::transfer")
 ///     .arg(AccountAddress::from_hex("0x123").unwrap())
@@ -111,7 +111,7 @@ impl InputEntryFunctionData {
     /// # Errors
     ///
     /// Returns an error if the function ID is invalid or if BCS encoding of arguments fails.
-    pub fn transfer_apt(recipient: AccountAddress, amount: u64) -> AptosResult<TransactionPayload> {
+    pub fn transfer_apt(recipient: AccountAddress, amount: u64) -> MovementResult<TransactionPayload> {
         InputEntryFunctionData::new("0x1::aptos_account::transfer")
             .arg(recipient)
             .arg(amount)
@@ -133,7 +133,7 @@ impl InputEntryFunctionData {
         coin_type: &str,
         recipient: AccountAddress,
         amount: u64,
-    ) -> AptosResult<TransactionPayload> {
+    ) -> MovementResult<TransactionPayload> {
         InputEntryFunctionData::new("0x1::coin::transfer")
             .type_arg(coin_type)
             .arg(recipient)
@@ -150,7 +150,7 @@ impl InputEntryFunctionData {
     /// # Errors
     ///
     /// Returns an error if the function ID is invalid or if BCS encoding of arguments fails.
-    pub fn create_account(auth_key: AccountAddress) -> AptosResult<TransactionPayload> {
+    pub fn create_account(auth_key: AccountAddress) -> MovementResult<TransactionPayload> {
         InputEntryFunctionData::new("0x1::aptos_account::create_account")
             .arg(auth_key)
             .build()
@@ -172,7 +172,7 @@ impl InputEntryFunctionData {
         to_public_key_bytes: Vec<u8>,
         cap_rotate_key: Vec<u8>,
         cap_update_table: Vec<u8>,
-    ) -> AptosResult<TransactionPayload> {
+    ) -> MovementResult<TransactionPayload> {
         InputEntryFunctionData::new("0x1::account::rotate_authentication_key")
             .arg(from_scheme)
             .arg(from_public_key_bytes)
@@ -192,7 +192,7 @@ impl InputEntryFunctionData {
     /// # Errors
     ///
     /// Returns an error if the function ID is invalid, the coin type is invalid, or if building the payload fails.
-    pub fn register_coin(coin_type: &str) -> AptosResult<TransactionPayload> {
+    pub fn register_coin(coin_type: &str) -> MovementResult<TransactionPayload> {
         InputEntryFunctionData::new("0x1::managed_coin::register")
             .type_arg(coin_type)
             .build()
@@ -211,7 +211,7 @@ impl InputEntryFunctionData {
     pub fn publish_package(
         metadata_serialized: Vec<u8>,
         code: Vec<Vec<u8>>,
-    ) -> AptosResult<TransactionPayload> {
+    ) -> MovementResult<TransactionPayload> {
         InputEntryFunctionData::new("0x1::code::publish_package_txn")
             .arg(metadata_serialized)
             .arg(code)
@@ -358,13 +358,13 @@ impl InputEntryFunctionDataBuilder {
     /// # Errors
     ///
     /// Returns an error if the function ID is invalid, any type argument is invalid, or if any argument serialization failed.
-    pub fn build(self) -> AptosResult<TransactionPayload> {
+    pub fn build(self) -> MovementResult<TransactionPayload> {
         // Check for module parsing error
-        let module = self.module.map_err(AptosError::Transaction)?;
+        let module = self.module.map_err(MovementError::Transaction)?;
 
         // Check for any accumulated errors
         if !self.errors.is_empty() {
-            return Err(AptosError::Transaction(self.errors.join("; ")));
+            return Err(MovementError::Transaction(self.errors.join("; ")));
         }
 
         Ok(TransactionPayload::EntryFunction(EntryFunction {
@@ -380,11 +380,11 @@ impl InputEntryFunctionDataBuilder {
     /// # Errors
     ///
     /// Returns an error if the function ID is invalid, any type argument is invalid, or if any argument serialization failed.
-    pub fn build_entry_function(self) -> AptosResult<EntryFunction> {
-        let module = self.module.map_err(AptosError::Transaction)?;
+    pub fn build_entry_function(self) -> MovementResult<EntryFunction> {
+        let module = self.module.map_err(MovementError::Transaction)?;
 
         if !self.errors.is_empty() {
-            return Err(AptosError::Transaction(self.errors.join("; ")));
+            return Err(MovementError::Transaction(self.errors.join("; ")));
         }
 
         Ok(EntryFunction {
@@ -405,12 +405,12 @@ pub trait IntoMoveArg {
     /// # Errors
     ///
     /// Returns an error if BCS serialization fails.
-    fn into_move_arg(self) -> AptosResult<Vec<u8>>;
+    fn into_move_arg(self) -> MovementResult<Vec<u8>>;
 }
 
 impl<T: Serialize> IntoMoveArg for T {
-    fn into_move_arg(self) -> AptosResult<Vec<u8>> {
-        aptos_bcs::to_bytes(&self).map_err(AptosError::bcs)
+    fn into_move_arg(self) -> MovementResult<Vec<u8>> {
+        aptos_bcs::to_bytes(&self).map_err(MovementError::bcs)
     }
 }
 
@@ -481,7 +481,7 @@ impl MoveU256 {
     /// # Errors
     ///
     /// Returns an error if the string cannot be parsed as a u256 value.
-    pub fn parse(s: &str) -> AptosResult<Self> {
+    pub fn parse(s: &str) -> MovementResult<Self> {
         // Parse as big integer and convert to little-endian bytes
         let mut bytes = [0u8; 32];
 
@@ -491,7 +491,7 @@ impl MoveU256 {
             return Ok(Self(bytes));
         }
 
-        Err(AptosError::Transaction(format!("Invalid u256: {s}")))
+        Err(MovementError::Transaction(format!("Invalid u256: {s}")))
     }
 
     /// Creates a `MoveU256` from a u128.

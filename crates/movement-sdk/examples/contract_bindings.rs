@@ -1,6 +1,6 @@
 //! Example: Type-safe contract bindings using proc macros
 //!
-//! This example demonstrates how to use the `aptos_contract!` macro to generate
+//! This example demonstrates how to use the `movement_contract!` macro to generate
 //! type-safe bindings for Move contracts at compile time.
 //!
 //! # Run with:
@@ -8,11 +8,11 @@
 //! cargo run --example contract_bindings --features "ed25519,macros"
 //! ```
 
-use aptos_sdk::{aptos_contract, types::AccountAddress};
+use movement_sdk::{movement_contract, types::AccountAddress};
 
 // ANCHOR: define_contract
 // Generate type-safe bindings from inline ABI
-aptos_contract! {
+movement_contract! {
     name: CoinModule,
     abi: r#"{
         "address": "0x1",
@@ -59,7 +59,7 @@ aptos_contract! {
 
 // ANCHOR: define_custom_contract
 // A more complex example with custom token
-aptos_contract! {
+movement_contract! {
     name: MyToken,
     abi: r#"{
         "address": "0xcafe",
@@ -199,14 +199,14 @@ async fn main() -> anyhow::Result<()> {
     // ANCHOR_END: custom_token_operations
 
     // ANCHOR: view_functions
-    // View functions require an Aptos client (async)
+    // View functions require an Movement client (async)
     println!("\n--- View Function Demo (requires network) ---");
-    println!("To call view functions, you need an Aptos client:");
+    println!("To call view functions, you need an Movement client:");
     println!();
-    println!("  let aptos = Aptos::new(AptosConfig::testnet())?;");
+    println!("  let movement = Movement::new(MovementConfig::testnet())?;");
     println!("  let coin = CoinModule::new();");
-    println!("  let balance = coin.view_balance(&aptos, owner, type_args).await?;");
-    println!("  let supply = my_token.view_total_supply(&aptos).await?;");
+    println!("  let balance = coin.view_balance(&movement, owner, type_args).await?;");
+    println!("  let supply = my_token.view_total_supply(&movement).await?;");
     // ANCHOR_END: view_functions
 
     // ANCHOR: generated_structs

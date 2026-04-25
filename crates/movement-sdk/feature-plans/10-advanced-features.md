@@ -27,12 +27,12 @@ impl TransactionBatch {
     pub fn len(&self) -> usize;
 }
 
-impl Aptos {
+impl Movement {
     /// Submit a batch of transactions.
     pub async fn submit_batch(
         &self,
         batch: TransactionBatch,
-    ) -> Result<Vec<PendingTransaction>, AptosError>;
+    ) -> Result<Vec<PendingTransaction>, MovementError>;
 }
 ```
 
@@ -51,18 +51,18 @@ pub struct EventSubscription {
     receiver: mpsc::Receiver<Event>,
 }
 
-impl Aptos {
+impl Movement {
     /// Subscribe to account events.
     pub async fn subscribe_events(
         &self,
         address: AccountAddress,
         event_type: &str,
-    ) -> Result<EventSubscription, AptosError>;
+    ) -> Result<EventSubscription, MovementError>;
     
     /// Subscribe to transaction confirmations.
     pub async fn subscribe_transactions(
         &self,
-    ) -> Result<TransactionSubscription, AptosError>;
+    ) -> Result<TransactionSubscription, MovementError>;
 }
 
 impl EventSubscription {
@@ -91,7 +91,7 @@ impl LocalSimulator {
     pub fn new() -> Self;
     
     /// Load state from network.
-    pub async fn sync_from(&mut self, aptos: &Aptos) -> Result<(), AptosError>;
+    pub async fn sync_from(&mut self, movement: &Movement) -> Result<(), MovementError>;
     
     /// Simulate a transaction.
     pub fn simulate(&self, txn: &SignedTransaction) -> SimulationResult;
@@ -109,7 +109,7 @@ Generate Rust code from Move module ABIs.
 
 ```bash
 # Generate bindings
-aptos-sdk-codegen --module 0x1::coin --output src/generated/coin.rs
+movement-sdk-codegen --module 0x1::coin --output src/generated/coin.rs
 ```
 
 ### Generated Code
@@ -135,10 +135,10 @@ pub mod coin {
     
     /// Get coin balance.
     pub async fn balance<CoinType: MoveType>(
-        aptos: &Aptos,
+        movement: &Movement,
         account: AccountAddress,
-    ) -> Result<u64, AptosError> {
-        let result = aptos.view(
+    ) -> Result<u64, MovementError> {
+        let result = movement.view(
             "0x1::coin::balance",
             vec![CoinType::type_tag().to_string()],
             vec![json!(account.to_hex())],
@@ -167,7 +167,7 @@ pub struct RetryConfig {
     pub exponential_base: f64,
 }
 
-impl AptosConfig {
+impl MovementConfig {
     /// Set retry configuration.
     pub fn with_retry(self, config: RetryConfig) -> Self;
 }
@@ -175,7 +175,7 @@ impl AptosConfig {
 
 ---
 
-## 6. ANS (Aptos Names Service) Integration
+## 6. ANS (Movement Names Service) Integration
 
 ### Goal
 Resolve .apt names to addresses and vice versa.
@@ -183,12 +183,12 @@ Resolve .apt names to addresses and vice versa.
 ### API Design
 
 ```rust
-impl Aptos {
+impl Movement {
     /// Resolve ANS name to address.
-    pub async fn resolve_name(&self, name: &str) -> Result<Option<AccountAddress>, AptosError>;
+    pub async fn resolve_name(&self, name: &str) -> Result<Option<AccountAddress>, MovementError>;
     
     /// Get primary name for address.
-    pub async fn get_primary_name(&self, address: AccountAddress) -> Result<Option<String>, AptosError>;
+    pub async fn get_primary_name(&self, address: AccountAddress) -> Result<Option<String>, MovementError>;
 }
 ```
 
@@ -210,12 +210,12 @@ pub struct GasProfile {
     pub breakdown: Vec<GasBreakdownItem>,
 }
 
-impl Aptos {
+impl Movement {
     /// Simulate with gas profiling.
     pub async fn simulate_with_profile(
         &self,
         txn: &SignedTransaction,
-    ) -> Result<(SimulationResult, GasProfile), AptosError>;
+    ) -> Result<(SimulationResult, GasProfile), MovementError>;
 }
 ```
 

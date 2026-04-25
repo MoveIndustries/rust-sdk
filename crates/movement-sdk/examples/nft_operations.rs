@@ -7,7 +7,7 @@
 //!
 //! Run with: `cargo run --example nft_operations --features "ed25519,indexer"`
 
-use aptos_sdk::{Aptos, AptosConfig, types::AccountAddress};
+use movement_sdk::{Movement, MovementConfig, types::AccountAddress};
 use serde::Deserialize;
 
 /// Token data from Token V2 standard
@@ -35,7 +35,7 @@ struct CollectionData {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Create client for mainnet
-    let aptos = Aptos::new(AptosConfig::mainnet())?;
+    let movement = Movement::new(MovementConfig::mainnet())?;
     println!("Connected to mainnet");
 
     // ==== Part 1: Query Token Objects ====
@@ -52,7 +52,7 @@ async fn main() -> anyhow::Result<()> {
     println!("\n=== Part 2: Query Token Info via View Functions ===");
 
     // Check if the token standard module exists
-    let module_result = aptos
+    let module_result = movement
         .fullnode()
         .get_account_module(AccountAddress::FOUR, "token")
         .await;
@@ -82,7 +82,7 @@ async fn main() -> anyhow::Result<()> {
     // ==== Part 3: Query Collection Info ====
     println!("\n=== Part 3: Collection Module Functions ===");
 
-    let collection_module = aptos
+    let collection_module = movement
         .fullnode()
         .get_account_module(AccountAddress::FOUR, "collection")
         .await;
@@ -114,7 +114,7 @@ async fn main() -> anyhow::Result<()> {
     {
         println!("\n=== Part 4: Query NFTs via Indexer ===");
 
-        if let Some(indexer) = aptos.indexer() {
+        if let Some(indexer) = movement.indexer() {
             // Query a sample address for tokens (use a known NFT holder)
             // Note: This is a placeholder - replace with a real address that holds NFTs
             let sample_addr = AccountAddress::from_hex(
@@ -178,7 +178,7 @@ async fn main() -> anyhow::Result<()> {
     println!("\n=== Part 5: Object Model Overview ===");
 
     // Show object module functions
-    let object_module = aptos
+    let object_module = movement
         .fullnode()
         .get_account_module(AccountAddress::ONE, "object")
         .await;
@@ -219,7 +219,7 @@ async fn main() -> anyhow::Result<()> {
     // ==== Part 6: Reading Primary Fungible Store ====
     println!("\n=== Part 6: Fungible Asset Standard ===");
 
-    let fa_module = aptos
+    let fa_module = movement
         .fullnode()
         .get_account_module(AccountAddress::ONE, "fungible_asset")
         .await;

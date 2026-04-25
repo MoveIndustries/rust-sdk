@@ -1,4 +1,4 @@
-//! Code generation CLI for Aptos Move modules.
+//! Code generation CLI for Movement Move modules.
 //!
 //! This binary generates type-safe Rust bindings from Move module ABIs.
 //!
@@ -6,20 +6,20 @@
 //!
 //! ```bash
 //! # Generate from a local ABI JSON file
-//! aptos-codegen --input module_abi.json --output src/generated/
+//! movement-codegen --input module_abi.json --output src/generated/
 //!
 //! # Generate from an on-chain module
-//! aptos-codegen --module 0x1::coin --network testnet --output src/generated/
+//! movement-codegen --module 0x1::coin --network testnet --output src/generated/
 //!
 //! # Generate with Move source for better parameter names
-//! aptos-codegen --input abi.json --source my_module.move --output src/
+//! movement-codegen --input abi.json --source my_module.move --output src/
 //!
 //! # Generate with custom module name
-//! aptos-codegen --input abi.json --output src/ --module-name my_module
+//! movement-codegen --input abi.json --output src/ --module-name my_module
 //! ```
 
-use aptos_sdk::{
-    Aptos, AptosConfig,
+use movement_sdk::{
+    Movement, MovementConfig,
     api::response::MoveModuleABI,
     codegen::{GeneratorConfig, ModuleGenerator, MoveSourceParser},
 };
@@ -35,19 +35,19 @@ enum Network {
 }
 
 impl Network {
-    fn to_config(&self) -> AptosConfig {
+    fn to_config(&self) -> MovementConfig {
         match self {
-            Network::Mainnet => AptosConfig::mainnet(),
-            Network::Testnet => AptosConfig::testnet(),
-            Network::Devnet => AptosConfig::devnet(),
-            Network::Local => AptosConfig::local(),
+            Network::Mainnet => MovementConfig::mainnet(),
+            Network::Testnet => MovementConfig::testnet(),
+            Network::Devnet => MovementConfig::devnet(),
+            Network::Local => MovementConfig::local(),
         }
     }
 }
 
 /// Generate type-safe Rust bindings from Move module ABIs.
 #[derive(Parser, Debug)]
-#[command(name = "aptos-codegen")]
+#[command(name = "movement-codegen")]
 #[command(author, version, about, long_about = None)]
 struct Args {
     /// Path to a local ABI JSON file
@@ -111,7 +111,7 @@ async fn main() -> anyhow::Result<()> {
         println!("Fetching module {} from {:?}...", module_str, network);
 
         let config = network.to_config();
-        let aptos = Aptos::new(config)?;
+        let movement = Movement::new(config)?;
 
         // Parse module ID
         let parts: Vec<&str> = module_str.split("::").collect();
@@ -122,11 +122,11 @@ async fn main() -> anyhow::Result<()> {
             );
         }
 
-        let address = aptos_sdk::types::AccountAddress::from_hex(parts[0])?;
+        let address = movement_sdk::types::AccountAddress::from_hex(parts[0])?;
         let module_name = parts[1];
 
         // Fetch module
-        let response = aptos
+        let response = movement
             .fullnode()
             .get_account_module(address, module_name)
             .await?;

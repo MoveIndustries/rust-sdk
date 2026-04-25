@@ -1,19 +1,19 @@
 //! Example: Basic APT transfer
 //!
 //! This example demonstrates how to:
-//! 1. Create an Aptos client
+//! 1. Create an Movement client
 //! 2. Generate or load an account
 //! 3. Fund the account using the faucet
 //! 4. Transfer APT to another account
 //!
 //! Run with: `cargo run --example transfer --features "ed25519,faucet"`
 
-use aptos_sdk::{Aptos, AptosConfig, account::Ed25519Account};
+use movement_sdk::{Movement, MovementConfig, account::Ed25519Account};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Create client for testnet
-    let aptos = Aptos::new(AptosConfig::testnet())?;
+    let movement = Movement::new(MovementConfig::testnet())?;
     println!("Connected to testnet");
 
     // Generate sender account
@@ -22,13 +22,13 @@ async fn main() -> anyhow::Result<()> {
 
     // Fund sender using faucet
     println!("Funding sender account...");
-    aptos.fund_account(sender.address(), 100_000_000).await?;
+    movement.fund_account(sender.address(), 100_000_000).await?;
 
     // Wait for funding to complete
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     // Check sender balance
-    let balance = aptos.get_balance(sender.address()).await?;
+    let balance = movement.get_balance(sender.address()).await?;
     println!("Sender balance: {} APT", balance as f64 / 100_000_000.0);
 
     // Generate recipient account
@@ -37,7 +37,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Transfer 0.1 APT (10_000_000 octas)
     println!("Transferring 0.1 APT...");
-    let result = aptos
+    let result = movement
         .transfer_apt(&sender, recipient.address(), 10_000_000)
         .await?;
 
@@ -46,8 +46,8 @@ async fn main() -> anyhow::Result<()> {
         println!("Transfer successful!");
 
         // Check balances
-        let sender_balance = aptos.get_balance(sender.address()).await?;
-        let recipient_balance = aptos.get_balance(recipient.address()).await?;
+        let sender_balance = movement.get_balance(sender.address()).await?;
+        let recipient_balance = movement.get_balance(recipient.address()).await?;
 
         println!(
             "Sender balance: {} APT",

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Secp256r1 (also known as P-256 or prime256v1) is the elliptic curve commonly used in WebAuthn/Passkey implementations for browser-based authentication. This feature provides full support for Secp256r1 accounts in the Aptos SDK.
+Secp256r1 (also known as P-256 or prime256v1) is the elliptic curve commonly used in WebAuthn/Passkey implementations for browser-based authentication. This feature provides full support for Secp256r1 accounts in the Movement SDK.
 
 ## Goals
 
@@ -21,8 +21,8 @@ pub struct Secp256r1PrivateKey { ... }
 
 impl Secp256r1PrivateKey {
     pub fn generate() -> Self;
-    pub fn from_bytes(bytes: &[u8]) -> AptosResult<Self>;
-    pub fn from_hex(hex_str: &str) -> AptosResult<Self>;
+    pub fn from_bytes(bytes: &[u8]) -> MovementResult<Self>;
+    pub fn from_hex(hex_str: &str) -> MovementResult<Self>;
     pub fn to_bytes(&self) -> [u8; 32];
     pub fn to_hex(&self) -> String;
     pub fn public_key(&self) -> Secp256r1PublicKey;
@@ -37,12 +37,12 @@ impl Secp256r1PrivateKey {
 pub struct Secp256r1PublicKey { ... }
 
 impl Secp256r1PublicKey {
-    pub fn from_bytes(bytes: &[u8]) -> AptosResult<Self>;
-    pub fn from_hex(hex_str: &str) -> AptosResult<Self>;
+    pub fn from_bytes(bytes: &[u8]) -> MovementResult<Self>;
+    pub fn from_hex(hex_str: &str) -> MovementResult<Self>;
     pub fn to_bytes(&self) -> Vec<u8>;  // 33 bytes compressed
     pub fn to_uncompressed_bytes(&self) -> Vec<u8>;  // 65 bytes
     pub fn to_hex(&self) -> String;
-    pub fn verify(&self, message: &[u8], signature: &Secp256r1Signature) -> AptosResult<()>;
+    pub fn verify(&self, message: &[u8], signature: &Secp256r1Signature) -> MovementResult<()>;
     pub fn to_address(&self) -> AccountAddress;
 }
 ```
@@ -53,8 +53,8 @@ impl Secp256r1PublicKey {
 pub struct Secp256r1Signature { ... }
 
 impl Secp256r1Signature {
-    pub fn from_bytes(bytes: &[u8]) -> AptosResult<Self>;  // 64 bytes
-    pub fn from_hex(hex_str: &str) -> AptosResult<Self>;
+    pub fn from_bytes(bytes: &[u8]) -> MovementResult<Self>;  // 64 bytes
+    pub fn from_hex(hex_str: &str) -> MovementResult<Self>;
     pub fn to_bytes(&self) -> [u8; 64];
     pub fn to_hex(&self) -> String;
 }
@@ -78,10 +78,10 @@ impl Secp256r1Account {
     pub fn from_private_key(private_key: Secp256r1PrivateKey) -> Self;
 
     /// Creates an account from private key bytes.
-    pub fn from_private_key_bytes(bytes: &[u8]) -> AptosResult<Self>;
+    pub fn from_private_key_bytes(bytes: &[u8]) -> MovementResult<Self>;
 
     /// Creates an account from a private key hex string.
-    pub fn from_private_key_hex(hex_str: &str) -> AptosResult<Self>;
+    pub fn from_private_key_hex(hex_str: &str) -> MovementResult<Self>;
 
     /// Returns the account address.
     pub fn address(&self) -> AccountAddress;
@@ -104,7 +104,7 @@ impl Account for Secp256r1Account { ... }
 ### Basic Account Usage
 
 ```rust
-use aptos_sdk::account::Secp256r1Account;
+use movement_sdk::account::Secp256r1Account;
 
 // Generate new account
 let account = Secp256r1Account::generate();
@@ -117,21 +117,21 @@ let account = Secp256r1Account::from_private_key_hex("0x...")?;
 ### Sign and Submit Transaction
 
 ```rust
-let aptos = Aptos::testnet()?;
+let movement = Movement::testnet()?;
 let account = Secp256r1Account::generate();
 
 // Fund the account first (testnet)
-aptos.fund_account(account.address(), 100_000_000).await?;
+movement.fund_account(account.address(), 100_000_000).await?;
 
 // Sign and submit
 let payload = InputEntryFunctionData::transfer_apt(recipient, 1_000_000)?;
-let result = aptos.sign_submit_and_wait(&account, payload, None).await?;
+let result = movement.sign_submit_and_wait(&account, payload, None).await?;
 ```
 
 ### Multi-Key Account with Secp256r1
 
 ```rust
-use aptos_sdk::account::{MultiKeyAccount, AnyPrivateKey};
+use movement_sdk::account::{MultiKeyAccount, AnyPrivateKey};
 
 let secp256r1_key = Secp256r1PrivateKey::generate();
 let ed25519_key = Ed25519PrivateKey::generate();
@@ -163,7 +163,7 @@ The Secp256r1 support is behind the `secp256r1` feature flag:
 
 ```toml
 [dependencies]
-aptos-sdk = { version = "0.1", features = ["secp256r1"] }
+movement-sdk = { version = "0.1", features = ["secp256r1"] }
 ```
 
 ## Key Differences from Other Curves

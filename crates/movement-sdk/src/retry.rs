@@ -7,7 +7,7 @@
 //! # Example
 //!
 //! ```rust,ignore
-//! use aptos_sdk::retry::{RetryConfig, RetryPolicy};
+//! use movement_sdk::retry::{RetryConfig, RetryPolicy};
 //!
 //! // Create a custom retry policy
 //! let config = RetryConfig::builder()
@@ -18,11 +18,11 @@
 //!     .jitter(true)
 //!     .build();
 //!
-//! // Use with the Aptos client
-//! let aptos = Aptos::new(AptosConfig::testnet().with_retry(config))?;
+//! // Use with the Movement client
+//! let movement = Movement::new(MovementConfig::testnet().with_retry(config))?;
 //! ```
 
-use crate::error::{AptosError, AptosResult};
+use crate::error::{MovementError, MovementResult};
 use std::collections::HashSet;
 use std::future::Future;
 use std::sync::Arc;
@@ -151,12 +151,12 @@ impl RetryConfig {
 
     /// Checks if an error should trigger a retry.
     #[inline]
-    pub fn is_retryable_error(&self, error: &AptosError) -> bool {
+    pub fn is_retryable_error(&self, error: &MovementError) -> bool {
         match error {
             // Network errors are typically transient
-            AptosError::Http(_) | AptosError::RateLimited { .. } => true,
+            MovementError::Http(_) | MovementError::RateLimited { .. } => true,
             // API errors with retryable status codes
-            AptosError::Api { status_code, .. } => self.is_retryable_status(*status_code),
+            MovementError::Api { status_code, .. } => self.is_retryable_status(*status_code),
             // Other errors are not retried
             _ => false,
         }
@@ -286,10 +286,10 @@ impl RetryExecutor {
     /// Returns an error if the operation fails and either the maximum number of
     /// retries has been exhausted or the error is not retryable according to
     /// the retry configuration.
-    pub async fn execute<F, Fut, T>(&self, operation: F) -> AptosResult<T>
+    pub async fn execute<F, Fut, T>(&self, operation: F) -> MovementResult<T>
     where
         F: Fn() -> Fut,
-        Fut: Future<Output = AptosResult<T>>,
+        Fut: Future<Output = MovementResult<T>>,
     {
         let mut attempt = 0;
 
@@ -307,7 +307,7 @@ impl RetryExecutor {
 
                     // SECURITY: Respect Retry-After header for rate limiting
                     // This prevents aggressive retries that could worsen rate limiting
-                    let delay = if let AptosError::RateLimited {
+                    let delay = if let MovementError::RateLimited {
                         retry_after_secs: Some(secs),
                     } = &error
                     {
@@ -336,11 +336,11 @@ impl RetryExecutor {
         &self,
         operation: F,
         should_retry: P,
-    ) -> AptosResult<T>
+    ) -> MovementResult<T>
     where
         F: Fn() -> Fut,
-        Fut: Future<Output = AptosResult<T>>,
-        P: Fn(&AptosError) -> bool,
+        Fut: Future<Output = MovementResult<T>>,
+        P: Fn(&MovementError) -> bool,
     {
         let mut attempt = 0;
 
@@ -355,7 +355,7 @@ impl RetryExecutor {
                     attempt += 1;
 
                     // SECURITY: Respect Retry-After header for rate limiting
-                    let delay = if let AptosError::RateLimited {
+                    let delay = if let MovementError::RateLimited {
                         retry_after_secs: Some(secs),
                     } = &error
                     {
@@ -377,7 +377,7 @@ impl RetryExecutor {
 /// Extension trait for adding retry capability to futures.
 pub trait RetryExt<T> {
     /// Executes this future with the given retry config.
-    fn with_retry(self, config: &RetryConfig) -> impl Future<Output = AptosResult<T>>;
+    fn with_retry(self, config: &RetryConfig) -> impl Future<Output = MovementResult<T>>;
 }
 
 /// Convenience function to retry an operation with default config.
@@ -387,10 +387,10 @@ pub trait RetryExt<T> {
 /// Returns an error if the operation fails and either the maximum number of
 /// retries has been exhausted or the error is not retryable according to
 /// the default retry configuration.
-pub async fn retry<F, Fut, T>(operation: F) -> AptosResult<T>
+pub async fn retry<F, Fut, T>(operation: F) -> MovementResult<T>
 where
     F: Fn() -> Fut,
-    Fut: Future<Output = AptosResult<T>>,
+    Fut: Future<Output = MovementResult<T>>,
 {
     RetryExecutor::with_defaults().execute(operation).await
 }
@@ -402,10 +402,10 @@ where
 /// Returns an error if the operation fails and either the maximum number of
 /// retries has been exhausted or the error is not retryable according to
 /// the provided retry configuration.
-pub async fn retry_with_config<F, Fut, T>(config: &RetryConfig, operation: F) -> AptosResult<T>
+pub async fn retry_with_config<F, Fut, T>(config: &RetryConfig, operation: F) -> MovementResult<T>
 where
     F: Fn() -> Fut,
-    Fut: Future<Output = AptosResult<T>>,
+    Fut: Future<Output = MovementResult<T>>,
 {
     RetryExecutor::new(config.clone()).execute(operation).await
 }
@@ -496,7 +496,7 @@ mod tests {
         let config = RetryConfig::default();
 
         // API errors with retryable status codes
-        let api_error = AptosError::Api {
+        let api_error = MovementError::Api {
             status_code: 503,
             message: "Service Unavailable".to_string(),
             error_code: None,
@@ -505,13 +505,13 @@ mod tests {
         assert!(config.is_retryable_error(&api_error));
 
         // Rate limited error
-        let rate_limited = AptosError::RateLimited {
+        let rate_limited = MovementError::RateLimited {
             retry_after_secs: Some(30),
         };
         assert!(config.is_retryable_error(&rate_limited));
 
         // API errors with non-retryable status codes
-        let api_error_400 = AptosError::Api {
+        let api_error_400 = MovementError::Api {
             status_code: 400,
             message: "Bad Request".to_string(),
             error_code: None,
@@ -520,7 +520,7 @@ mod tests {
         assert!(!config.is_retryable_error(&api_error_400));
 
         // Not found is not retryable
-        let not_found = AptosError::NotFound("resource".to_string());
+        let not_found = MovementError::NotFound("resource".to_string());
         assert!(!config.is_retryable_error(&not_found));
     }
 
@@ -535,7 +535,7 @@ mod tests {
                 let counter = counter_clone.clone();
                 async move {
                     counter.fetch_add(1, Ordering::SeqCst);
-                    Ok::<_, AptosError>(42)
+                    Ok::<_, MovementError>(42)
                 }
             })
             .await;
@@ -561,7 +561,7 @@ mod tests {
                 async move {
                     let count = counter.fetch_add(1, Ordering::SeqCst);
                     if count < 2 {
-                        Err(AptosError::Api {
+                        Err(MovementError::Api {
                             status_code: 503,
                             message: "Service Unavailable".to_string(),
                             error_code: None,
@@ -594,7 +594,7 @@ mod tests {
                 let counter = counter_clone.clone();
                 async move {
                     counter.fetch_add(1, Ordering::SeqCst);
-                    Err::<i32, _>(AptosError::Api {
+                    Err::<i32, _>(MovementError::Api {
                         status_code: 503,
                         message: "Always fails".to_string(),
                         error_code: None,
@@ -623,7 +623,7 @@ mod tests {
                 let counter = counter_clone.clone();
                 async move {
                     counter.fetch_add(1, Ordering::SeqCst);
-                    Err::<i32, _>(AptosError::Api {
+                    Err::<i32, _>(MovementError::Api {
                         status_code: 400, // Bad Request - not retryable
                         message: "Bad Request".to_string(),
                         error_code: None,
@@ -701,7 +701,7 @@ mod tests {
         let config = RetryConfig::default();
 
         // Transaction errors are not retryable
-        let txn_error = AptosError::Transaction("failed".to_string());
+        let txn_error = MovementError::Transaction("failed".to_string());
         assert!(!config.is_retryable_error(&txn_error));
     }
 
@@ -710,7 +710,7 @@ mod tests {
         let config = RetryConfig::default();
 
         // Invalid address errors are not retryable
-        let addr_error = AptosError::InvalidAddress("bad".to_string());
+        let addr_error = MovementError::InvalidAddress("bad".to_string());
         assert!(!config.is_retryable_error(&addr_error));
     }
 
@@ -726,7 +726,7 @@ mod tests {
                 let counter = counter_clone.clone();
                 async move {
                     counter.fetch_add(1, Ordering::SeqCst);
-                    Err::<i32, _>(AptosError::Api {
+                    Err::<i32, _>(MovementError::Api {
                         status_code: 503,
                         message: "Service Unavailable".to_string(),
                         error_code: None,
@@ -825,7 +825,7 @@ mod tests {
                     async move {
                         let count = counter.fetch_add(1, Ordering::SeqCst);
                         if count < 2 {
-                            Err(AptosError::NotFound("test".to_string()))
+                            Err(MovementError::NotFound("test".to_string()))
                         } else {
                             Ok(42)
                         }
@@ -856,7 +856,7 @@ mod tests {
                     let counter = counter_clone.clone();
                     async move {
                         counter.fetch_add(1, Ordering::SeqCst);
-                        Err::<i32, _>(AptosError::Api {
+                        Err::<i32, _>(MovementError::Api {
                             status_code: 503,
                             message: "Fail".to_string(),
                             error_code: None,
@@ -881,7 +881,7 @@ mod tests {
             let counter = counter_clone.clone();
             async move {
                 counter.fetch_add(1, Ordering::SeqCst);
-                Ok::<_, AptosError>(42)
+                Ok::<_, MovementError>(42)
             }
         })
         .await;
@@ -906,7 +906,7 @@ mod tests {
                 let count = counter.fetch_add(1, Ordering::SeqCst);
                 if count < 1 {
                     // Use a retryable API error instead of Http
-                    Err(AptosError::Api {
+                    Err(MovementError::Api {
                         status_code: 503,
                         message: "Service Unavailable".to_string(),
                         error_code: None,
@@ -928,7 +928,7 @@ mod tests {
         let config = RetryConfig::default();
 
         // Test RateLimited which is always retryable
-        let rate_limited = AptosError::RateLimited {
+        let rate_limited = MovementError::RateLimited {
             retry_after_secs: Some(5),
         };
         assert!(config.is_retryable_error(&rate_limited));

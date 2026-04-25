@@ -11,7 +11,7 @@ Support for keyless accounts that use OpenID Connect (OIDC) authentication inste
 1. Support Google, Apple, and other OIDC providers
 2. Enable account recovery via email/social login
 3. Zero-knowledge proof generation for privacy
-4. Integration with Aptos keyless infrastructure
+4. Integration with Movement keyless infrastructure
 
 ## Non-Goals
 
@@ -58,7 +58,7 @@ impl KeylessAccount {
         ephemeral_key: EphemeralKeyPair,
         pepper_service: &PepperService,
         prover_service: &ProverService,
-    ) -> Result<Self, AptosError>;
+    ) -> Result<Self, MovementError>;
     
     /// Get the OIDC provider.
     pub fn provider(&self) -> OidcProvider;
@@ -71,7 +71,7 @@ impl KeylessAccount {
         &mut self,
         jwt: &str,
         prover_service: &ProverService,
-    ) -> Result<(), AptosError>;
+    ) -> Result<(), MovementError>;
 }
 
 impl Account for KeylessAccount {
@@ -138,7 +138,7 @@ pub struct PepperService {
 
 impl PepperService {
     /// Get pepper for a JWT.
-    pub async fn get_pepper(&self, jwt: &str) -> Result<Pepper, AptosError>;
+    pub async fn get_pepper(&self, jwt: &str) -> Result<Pepper, MovementError>;
 }
 
 /// Service for generating ZK proofs.
@@ -154,7 +154,7 @@ impl ProverService {
         jwt: &str,
         ephemeral_key: &EphemeralKeyPair,
         pepper: &Pepper,
-    ) -> Result<ZkProof, AptosError>;
+    ) -> Result<ZkProof, MovementError>;
 }
 ```
 

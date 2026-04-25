@@ -1,6 +1,6 @@
 //! Account trait and common types.
 
-use crate::error::AptosResult;
+use crate::error::MovementResult;
 use crate::types::AccountAddress;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -23,9 +23,9 @@ impl AuthenticationKey {
     /// # Errors
     ///
     /// Returns an error if the byte slice length is not exactly 32 bytes.
-    pub fn from_bytes(bytes: &[u8]) -> AptosResult<Self> {
+    pub fn from_bytes(bytes: &[u8]) -> MovementResult<Self> {
         if bytes.len() != 32 {
-            return Err(crate::error::AptosError::InvalidAddress(format!(
+            return Err(crate::error::MovementError::InvalidAddress(format!(
                 "authentication key must be 32 bytes, got {}",
                 bytes.len()
             )));
@@ -42,7 +42,7 @@ impl AuthenticationKey {
     /// This function will return an error if:
     /// - The hex string is invalid or cannot be decoded
     /// - The decoded bytes are not exactly 32 bytes long
-    pub fn from_hex(hex_str: &str) -> AptosResult<Self> {
+    pub fn from_hex(hex_str: &str) -> MovementResult<Self> {
         let bytes = const_hex::decode(hex_str)?;
         Self::from_bytes(&bytes)
     }
@@ -117,7 +117,7 @@ pub trait Account: Send + Sync {
     ///
     /// May return an error if signing fails (e.g., insufficient signatures
     /// for multi-sig accounts).
-    fn sign(&self, message: &[u8]) -> AptosResult<Vec<u8>>;
+    fn sign(&self, message: &[u8]) -> MovementResult<Vec<u8>>;
 
     /// Returns the public key bytes.
     fn public_key_bytes(&self) -> Vec<u8>;
@@ -178,7 +178,7 @@ impl Account for AnyAccount {
         }
     }
 
-    fn sign(&self, message: &[u8]) -> AptosResult<Vec<u8>> {
+    fn sign(&self, message: &[u8]) -> MovementResult<Vec<u8>> {
         match self {
             #[cfg(feature = "ed25519")]
             AnyAccount::Ed25519(account) => Account::sign(account, message),

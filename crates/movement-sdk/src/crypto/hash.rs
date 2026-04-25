@@ -1,6 +1,6 @@
-//! Hash functions for the Aptos SDK.
+//! Hash functions for the Movement SDK.
 //!
-//! Provides SHA2-256 and SHA3-256 hash functions used throughout Aptos.
+//! Provides SHA2-256 and SHA3-256 hash functions used throughout Movement.
 
 use sha2::Digest as Sha2Digest;
 
@@ -20,7 +20,7 @@ pub enum HashFunction {
 /// # Example
 ///
 /// ```rust
-/// use aptos_sdk::crypto::sha2_256;
+/// use movement_sdk::crypto::sha2_256;
 ///
 /// let hash = sha2_256(b"hello world");
 /// assert_eq!(hash.len(), 32);
@@ -41,7 +41,7 @@ pub fn sha2_256(data: &[u8]) -> [u8; 32] {
 /// # Example
 ///
 /// ```rust
-/// use aptos_sdk::crypto::sha3_256;
+/// use movement_sdk::crypto::sha3_256;
 ///
 /// let hash = sha3_256(b"hello world");
 /// assert_eq!(hash.len(), 32);

@@ -2,7 +2,7 @@
 
 use crate::account::account::{Account, AuthenticationKey};
 use crate::crypto::{Ed25519PrivateKey, Ed25519PublicKey, KEYLESS_SCHEME};
-use crate::error::{AptosError, AptosResult};
+use crate::error::{MovementError, MovementResult};
 use crate::types::AccountAddress;
 use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode, decode_header};
 use rand::RngCore;
@@ -32,8 +32,8 @@ impl KeylessSignature {
     /// # Errors
     ///
     /// Returns an error if BCS serialization fails.
-    pub fn to_bcs(&self) -> AptosResult<Vec<u8>> {
-        aptos_bcs::to_bytes(self).map_err(AptosError::bcs)
+    pub fn to_bcs(&self) -> MovementResult<Vec<u8>> {
+        aptos_bcs::to_bytes(self).map_err(MovementError::bcs)
     }
 }
 
@@ -200,7 +200,7 @@ impl Pepper {
     /// # Errors
     ///
     /// Returns an error if the hex string is invalid or cannot be decoded.
-    pub fn from_hex(hex_str: &str) -> AptosResult<Self> {
+    pub fn from_hex(hex_str: &str) -> MovementResult<Self> {
         Ok(Self(const_hex::decode(hex_str)?))
     }
 
@@ -230,7 +230,7 @@ impl ZkProof {
     /// # Errors
     ///
     /// Returns an error if the hex string is invalid or cannot be decoded.
-    pub fn from_hex(hex_str: &str) -> AptosResult<Self> {
+    pub fn from_hex(hex_str: &str) -> MovementResult<Self> {
         Ok(Self(const_hex::decode(hex_str)?))
     }
 
@@ -246,7 +246,7 @@ pub trait PepperService: Send + Sync {
     fn get_pepper(
         &self,
         jwt: &str,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = AptosResult<Pepper>> + Send + '_>>;
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = MovementResult<Pepper>> + Send + '_>>;
 }
 
 /// Service for generating zero-knowledge proofs.
@@ -257,7 +257,7 @@ pub trait ProverService: Send + Sync {
         jwt: &'a str,
         ephemeral_key: &'a EphemeralKeyPair,
         pepper: &'a Pepper,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = AptosResult<ZkProof>> + Send + 'a>>;
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = MovementResult<ZkProof>> + Send + 'a>>;
 }
 
 /// HTTP pepper service client.
@@ -291,7 +291,7 @@ impl PepperService for HttpPepperService {
     fn get_pepper(
         &self,
         jwt: &str,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = AptosResult<Pepper>> + Send + '_>> {
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = MovementResult<Pepper>> + Send + '_>> {
         let jwt = jwt.to_owned();
         Box::pin(async move {
             let response = self
@@ -306,7 +306,7 @@ impl PepperService for HttpPepperService {
             let bytes =
                 crate::config::read_response_bounded(response, MAX_JWKS_RESPONSE_SIZE).await?;
             let payload: PepperResponse = serde_json::from_slice(&bytes).map_err(|e| {
-                AptosError::InvalidJwt(format!("failed to parse pepper response: {e}"))
+                MovementError::InvalidJwt(format!("failed to parse pepper response: {e}"))
             })?;
             Pepper::from_hex(&payload.pepper)
         })
@@ -349,7 +349,7 @@ impl ProverService for HttpProverService {
         jwt: &'a str,
         ephemeral_key: &'a EphemeralKeyPair,
         pepper: &'a Pepper,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = AptosResult<ZkProof>> + Send + 'a>>
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = MovementResult<ZkProof>> + Send + 'a>>
     {
         Box::pin(async move {
             let request = ProverRequest {
@@ -373,7 +373,7 @@ impl ProverService for HttpProverService {
             let bytes =
                 crate::config::read_response_bounded(response, MAX_JWKS_RESPONSE_SIZE).await?;
             let payload: ProverResponse = serde_json::from_slice(&bytes).map_err(|e| {
-                AptosError::InvalidJwt(format!("failed to parse prover response: {e}"))
+                MovementError::InvalidJwt(format!("failed to parse prover response: {e}"))
             })?;
             ZkProof::from_hex(&payload.proof)
         })
@@ -426,20 +426,20 @@ impl KeylessAccount {
         ephemeral_key: EphemeralKeyPair,
         pepper_service: &dyn PepperService,
         prover_service: &dyn ProverService,
-    ) -> AptosResult<Self> {
+    ) -> MovementResult<Self> {
         // First, decode without verification to get the issuer for JWKS lookup
         let unverified_claims = decode_claims_unverified(jwt)?;
         let issuer = unverified_claims
             .iss
             .as_ref()
-            .ok_or_else(|| AptosError::InvalidJwt("missing iss claim".into()))?;
+            .ok_or_else(|| MovementError::InvalidJwt("missing iss claim".into()))?;
 
         // Determine provider and fetch JWKS
         let provider = OidcProvider::from_issuer(issuer);
         let client = reqwest::Client::builder()
             .timeout(JWKS_FETCH_TIMEOUT)
             .build()
-            .map_err(|e| AptosError::InvalidJwt(format!("failed to create HTTP client: {e}")))?;
+            .map_err(|e| MovementError::InvalidJwt(format!("failed to create HTTP client: {e}")))?;
         let jwks = fetch_jwks(&client, provider.jwks_url()).await?;
 
         // Now verify and decode the JWT properly
@@ -447,7 +447,7 @@ impl KeylessAccount {
         let (issuer, audience, user_id, exp, nonce) = extract_claims(&claims)?;
 
         if nonce != ephemeral_key.nonce() {
-            return Err(AptosError::InvalidJwt("JWT nonce mismatch".into()));
+            return Err(MovementError::InvalidJwt("JWT nonce mismatch".into()));
         }
 
         let pepper = pepper_service.get_pepper(jwt).await?;
@@ -494,13 +494,13 @@ impl KeylessAccount {
         ephemeral_key: EphemeralKeyPair,
         pepper_service: &dyn PepperService,
         prover_service: &dyn ProverService,
-    ) -> AptosResult<Self> {
+    ) -> MovementResult<Self> {
         // Verify and decode the JWT using the provided JWKS
         let claims = decode_and_verify_jwt(jwt, jwks)?;
         let (issuer, audience, user_id, exp, nonce) = extract_claims(&claims)?;
 
         if nonce != ephemeral_key.nonce() {
-            return Err(AptosError::InvalidJwt("JWT nonce mismatch".into()));
+            return Err(MovementError::InvalidJwt("JWT nonce mismatch".into()));
         }
 
         let pepper = pepper_service.get_pepper(jwt).await?;
@@ -584,12 +584,12 @@ impl KeylessAccount {
         &mut self,
         jwt: &str,
         prover_service: &dyn ProverService,
-    ) -> AptosResult<()> {
+    ) -> MovementResult<()> {
         // Fetch JWKS and verify JWT
         let client = reqwest::Client::builder()
             .timeout(JWKS_FETCH_TIMEOUT)
             .build()
-            .map_err(|e| AptosError::InvalidJwt(format!("failed to create HTTP client: {e}")))?;
+            .map_err(|e| MovementError::InvalidJwt(format!("failed to create HTTP client: {e}")))?;
         let jwks = fetch_jwks(&client, self.provider.jwks_url()).await?;
         self.refresh_proof_with_jwks(jwt, &jwks, prover_service)
             .await
@@ -612,16 +612,16 @@ impl KeylessAccount {
         jwt: &str,
         jwks: &JwkSet,
         prover_service: &dyn ProverService,
-    ) -> AptosResult<()> {
+    ) -> MovementResult<()> {
         let claims = decode_and_verify_jwt(jwt, jwks)?;
         let (issuer, audience, user_id, exp, nonce) = extract_claims(&claims)?;
 
         if nonce != self.ephemeral_key.nonce() {
-            return Err(AptosError::InvalidJwt("JWT nonce mismatch".into()));
+            return Err(MovementError::InvalidJwt("JWT nonce mismatch".into()));
         }
 
         if issuer != self.issuer || audience != self.audience || user_id != self.user_id {
-            return Err(AptosError::InvalidJwt(
+            return Err(MovementError::InvalidJwt(
                 "JWT identity does not match account".into(),
             ));
         }
@@ -667,9 +667,9 @@ impl KeylessAccount {
         pepper_service: &dyn PepperService,
         prover_service: &dyn ProverService,
         jwt_for_services: &str,
-    ) -> AptosResult<Self> {
+    ) -> MovementResult<Self> {
         if nonce != ephemeral_key.nonce() {
-            return Err(AptosError::InvalidJwt("nonce mismatch".into()));
+            return Err(MovementError::InvalidJwt("nonce mismatch".into()));
         }
 
         let pepper = pepper_service.get_pepper(jwt_for_services).await?;
@@ -704,11 +704,11 @@ impl Account for KeylessAccount {
         self.auth_key
     }
 
-    fn sign(&self, message: &[u8]) -> crate::error::AptosResult<Vec<u8>> {
+    fn sign(&self, message: &[u8]) -> crate::error::MovementResult<Vec<u8>> {
         let signature = self.sign_keyless(message);
         signature
             .to_bcs()
-            .map_err(|e| crate::error::AptosError::Bcs(e.to_string()))
+            .map_err(|e| crate::error::MovementError::Bcs(e.to_string()))
     }
 
     fn public_key_bytes(&self) -> Vec<u8> {
@@ -772,14 +772,14 @@ const MAX_JWKS_RESPONSE_SIZE: usize = 1024 * 1024;
 ///   TLS/connection errors, or HTTP errors)
 /// - The JWKS endpoint returns a non-success status code
 /// - The response cannot be parsed as valid JWKS JSON
-async fn fetch_jwks(client: &reqwest::Client, jwks_url: &str) -> AptosResult<JwkSet> {
+async fn fetch_jwks(client: &reqwest::Client, jwks_url: &str) -> MovementResult<JwkSet> {
     // SECURITY: Validate the JWKS URL scheme to prevent SSRF.
     // The issuer comes from an untrusted JWT, so the derived JWKS URL could
     // point to internal services (e.g., cloud metadata endpoints).
     let parsed_url = Url::parse(jwks_url)
-        .map_err(|e| AptosError::InvalidJwt(format!("invalid JWKS URL: {e}")))?;
+        .map_err(|e| MovementError::InvalidJwt(format!("invalid JWKS URL: {e}")))?;
     if parsed_url.scheme() != "https" {
-        return Err(AptosError::InvalidJwt(format!(
+        return Err(MovementError::InvalidJwt(format!(
             "JWKS URL must use HTTPS scheme, got: {}",
             parsed_url.scheme()
         )));
@@ -789,7 +789,7 @@ async fn fetch_jwks(client: &reqwest::Client, jwks_url: &str) -> AptosResult<Jwk
     let response = client.get(jwks_url).send().await?;
 
     if !response.status().is_success() {
-        return Err(AptosError::InvalidJwt(format!(
+        return Err(MovementError::InvalidJwt(format!(
             "JWKS endpoint returned status: {}",
             response.status()
         )));
@@ -799,7 +799,7 @@ async fn fetch_jwks(client: &reqwest::Client, jwks_url: &str) -> AptosResult<Jwk
     // compromised or malicious JWKS endpoint (including chunked encoding).
     let bytes = crate::config::read_response_bounded(response, MAX_JWKS_RESPONSE_SIZE).await?;
     let jwks: JwkSet = serde_json::from_slice(&bytes)
-        .map_err(|e| AptosError::InvalidJwt(format!("failed to parse JWKS: {e}")))?;
+        .map_err(|e| MovementError::InvalidJwt(format!("failed to parse JWKS: {e}")))?;
     Ok(jwks)
 }
 
@@ -817,30 +817,30 @@ async fn fetch_jwks(client: &reqwest::Client, jwks_url: &str) -> AptosResult<Jwk
 /// - No matching key is found in the JWKS
 /// - The signature verification fails
 /// - The claims cannot be decoded
-fn decode_and_verify_jwt(jwt: &str, jwks: &JwkSet) -> AptosResult<JwtClaims> {
+fn decode_and_verify_jwt(jwt: &str, jwks: &JwkSet) -> MovementResult<JwtClaims> {
     // Decode header to get the key ID
     let header = decode_header(jwt)
-        .map_err(|e| AptosError::InvalidJwt(format!("failed to decode JWT header: {e}")))?;
+        .map_err(|e| MovementError::InvalidJwt(format!("failed to decode JWT header: {e}")))?;
 
     let kid = header
         .kid
         .as_ref()
-        .ok_or_else(|| AptosError::InvalidJwt("JWT header missing 'kid' field".into()))?;
+        .ok_or_else(|| MovementError::InvalidJwt("JWT header missing 'kid' field".into()))?;
 
     // Find the matching key in the JWKS
     let signing_key = jwks.find(kid).ok_or_else(|| {
-        AptosError::InvalidJwt("no matching key found for provided key identifier".into())
+        MovementError::InvalidJwt("no matching key found for provided key identifier".into())
     })?;
 
     // Create decoding key from JWK
     let decoding_key = DecodingKey::from_jwk(signing_key)
-        .map_err(|e| AptosError::InvalidJwt(format!("failed to create decoding key: {e}")))?;
+        .map_err(|e| MovementError::InvalidJwt(format!("failed to create decoding key: {e}")))?;
 
     // Determine the algorithm strictly from the JWK to prevent algorithm substitution attacks
     let jwk_alg = signing_key
         .common
         .key_algorithm
-        .ok_or_else(|| AptosError::InvalidJwt("JWK missing 'alg' (key_algorithm) field".into()))?;
+        .ok_or_else(|| MovementError::InvalidJwt("JWK missing 'alg' (key_algorithm) field".into()))?;
 
     let algorithm = match jwk_alg {
         // RSA algorithms
@@ -857,7 +857,7 @@ fn decode_and_verify_jwt(jwt: &str, jwks: &JwkSet) -> AptosResult<JwtClaims> {
         // EdDSA algorithm
         jsonwebtoken::jwk::KeyAlgorithm::EdDSA => Algorithm::EdDSA,
         _ => {
-            return Err(AptosError::InvalidJwt(format!(
+            return Err(MovementError::InvalidJwt(format!(
                 "unsupported JWK algorithm: {jwk_alg:?}"
             )));
         }
@@ -865,7 +865,7 @@ fn decode_and_verify_jwt(jwt: &str, jwks: &JwkSet) -> AptosResult<JwtClaims> {
 
     // Ensure the JWT header algorithm matches the JWK algorithm to prevent substitution
     if header.alg != algorithm {
-        return Err(AptosError::InvalidJwt(format!(
+        return Err(MovementError::InvalidJwt(format!(
             "JWT header algorithm ({:?}) does not match JWK algorithm ({:?})",
             header.alg, algorithm
         )));
@@ -878,7 +878,7 @@ fn decode_and_verify_jwt(jwt: &str, jwks: &JwkSet) -> AptosResult<JwtClaims> {
     validation.set_required_spec_claims::<String>(&[]);
 
     let data = decode::<JwtClaims>(jwt, &decoding_key, &validation)
-        .map_err(|e| AptosError::InvalidJwt(format!("JWT verification failed: {e}")))?;
+        .map_err(|e| MovementError::InvalidJwt(format!("JWT verification failed: {e}")))?;
 
     Ok(data.claims)
 }
@@ -890,45 +890,45 @@ fn decode_and_verify_jwt(jwt: &str, jwks: &JwkSet) -> AptosResult<JwtClaims> {
 /// 1. The extracted issuer is only used to determine which JWKS endpoint to fetch.
 /// 2. The JWT is fully verified immediately afterwards using `decode_and_verify_jwt`.
 /// 3. No security decisions are made based on these unverified claims.
-fn decode_claims_unverified(jwt: &str) -> AptosResult<JwtClaims> {
+fn decode_claims_unverified(jwt: &str) -> MovementResult<JwtClaims> {
     // Use dangerous decode only for initial issuer extraction to select the JWKS.
     // The JWT is not trusted at this point: no authorization decisions are made
     // based on these unverified claims, and the token is fully verified (including
     // signature and claims validation) in `decode_and_verify_jwt` right after the
     // appropriate JWKS has been fetched.
     let data = jsonwebtoken::dangerous::insecure_decode::<JwtClaims>(jwt)
-        .map_err(|e| AptosError::InvalidJwt(format!("failed to decode JWT claims: {e}")))?;
+        .map_err(|e| MovementError::InvalidJwt(format!("failed to decode JWT claims: {e}")))?;
     Ok(data.claims)
 }
 
 fn extract_claims(
     claims: &JwtClaims,
-) -> AptosResult<(String, String, String, Option<SystemTime>, String)> {
+) -> MovementResult<(String, String, String, Option<SystemTime>, String)> {
     let issuer = claims
         .iss
         .clone()
-        .ok_or_else(|| AptosError::InvalidJwt("missing iss claim".into()))?;
+        .ok_or_else(|| MovementError::InvalidJwt("missing iss claim".into()))?;
     let audience = claims
         .aud
         .as_ref()
         .and_then(|aud| aud.first())
         .map(std::string::ToString::to_string)
-        .ok_or_else(|| AptosError::InvalidJwt("missing aud claim".into()))?;
+        .ok_or_else(|| MovementError::InvalidJwt("missing aud claim".into()))?;
     let user_id = claims
         .sub
         .clone()
-        .ok_or_else(|| AptosError::InvalidJwt("missing sub claim".into()))?;
+        .ok_or_else(|| MovementError::InvalidJwt("missing sub claim".into()))?;
     let nonce = claims
         .nonce
         .clone()
-        .ok_or_else(|| AptosError::InvalidJwt("missing nonce claim".into()))?;
+        .ok_or_else(|| MovementError::InvalidJwt("missing nonce claim".into()))?;
 
     let exp_time = claims.exp.map(|exp| UNIX_EPOCH + Duration::from_secs(exp));
     if let Some(exp) = exp_time
         && SystemTime::now() >= exp
     {
         let exp_secs = claims.exp.unwrap_or(0);
-        return Err(AptosError::InvalidJwt(format!(
+        return Err(MovementError::InvalidJwt(format!(
             "JWT is expired (exp: {exp_secs} seconds since UNIX_EPOCH)"
         )));
     }
@@ -981,7 +981,7 @@ mod tests {
         fn get_pepper(
             &self,
             _jwt: &str,
-        ) -> std::pin::Pin<Box<dyn std::future::Future<Output = AptosResult<Pepper>> + Send + '_>>
+        ) -> std::pin::Pin<Box<dyn std::future::Future<Output = MovementResult<Pepper>> + Send + '_>>
         {
             Box::pin(async move { Ok(self.pepper.clone()) })
         }
@@ -997,7 +997,7 @@ mod tests {
             _jwt: &'a str,
             _ephemeral_key: &'a EphemeralKeyPair,
             _pepper: &'a Pepper,
-        ) -> std::pin::Pin<Box<dyn std::future::Future<Output = AptosResult<ZkProof>> + Send + 'a>>
+        ) -> std::pin::Pin<Box<dyn std::future::Future<Output = MovementResult<ZkProof>> + Send + 'a>>
         {
             Box::pin(async move { Ok(self.proof.clone()) })
         }
@@ -1111,7 +1111,7 @@ mod tests {
         .await;
 
         assert!(result.is_err());
-        assert!(matches!(result, Err(AptosError::InvalidJwt(_))));
+        assert!(matches!(result, Err(MovementError::InvalidJwt(_))));
     }
 
     #[test]
@@ -1189,7 +1189,7 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert!(
-            matches!(&err, AptosError::InvalidJwt(msg) if msg.contains("kid")),
+            matches!(&err, MovementError::InvalidJwt(msg) if msg.contains("kid")),
             "Expected error about missing kid, got: {err:?}"
         );
     }
@@ -1222,7 +1222,7 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert!(
-            matches!(&err, AptosError::InvalidJwt(msg) if msg.contains("no matching key")),
+            matches!(&err, MovementError::InvalidJwt(msg) if msg.contains("no matching key")),
             "Expected error about no matching key, got: {err:?}"
         );
     }

@@ -1,4 +1,4 @@
-//! Procedural macros for type-safe Aptos contract bindings.
+//! Procedural macros for type-safe Movement contract bindings.
 //!
 //! This crate provides macros for generating Rust bindings from Move module ABIs
 //! at compile time.
@@ -6,9 +6,9 @@
 //! # Example
 //!
 //! ```rust,ignore
-//! use aptos_sdk_macros::aptos_contract;
+//! use movement_sdk_macros::movement_contract;
 //!
-//! aptos_contract! {
+//! movement_contract! {
 //!     name: CoinModule,
 //!     abi: r#"{"address": "0x1", "name": "coin", ...}"#
 //! }
@@ -16,8 +16,8 @@
 //! // Generated:
 //! // pub struct CoinModule;
 //! // impl CoinModule {
-//! //     pub fn transfer(...) -> AptosResult<TransactionPayload> { ... }
-//! //     pub async fn view_balance(...) -> AptosResult<Vec<Value>> { ... }
+//! //     pub fn transfer(...) -> MovementResult<TransactionPayload> { ... }
+//! //     pub async fn view_balance(...) -> MovementResult<Vec<Value>> { ... }
 //! // }
 //! ```
 
@@ -38,7 +38,7 @@ use codegen::generate_contract_impl;
 /// # Syntax
 ///
 /// ```rust,ignore
-/// aptos_contract! {
+/// movement_contract! {
 ///     name: StructName,
 ///     abi: "{ ... JSON ABI ... }",
 ///     // Optional: Move source for better parameter names
@@ -49,9 +49,9 @@ use codegen::generate_contract_impl;
 /// # Example
 ///
 /// ```rust,ignore
-/// use aptos_sdk_macros::aptos_contract;
+/// use movement_sdk_macros::movement_contract;
 ///
-/// aptos_contract! {
+/// movement_contract! {
 ///     name: AptosCoin,
 ///     abi: r#"{
 ///         "address": "0x1",
@@ -75,7 +75,7 @@ use codegen::generate_contract_impl;
 /// let payload = AptosCoin::transfer(recipient_addr, 1000)?;
 /// ```
 #[proc_macro]
-pub fn aptos_contract(input: TokenStream) -> TokenStream {
+pub fn movement_contract(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as parser::ContractInput);
 
     // Parse ABI - use the name's span for error reporting since that's a known token
@@ -102,12 +102,12 @@ pub fn aptos_contract(input: TokenStream) -> TokenStream {
 /// # Example
 ///
 /// ```rust,ignore
-/// use aptos_sdk_macros::aptos_contract_file;
+/// use movement_sdk_macros::movement_contract_file;
 ///
-/// aptos_contract_file!("abi/my_module.json", MyModule);
+/// movement_contract_file!("abi/my_module.json", MyModule);
 /// ```
 #[proc_macro]
-pub fn aptos_contract_file(input: TokenStream) -> TokenStream {
+pub fn movement_contract_file(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as parser::FileInput);
 
     // Read the file content at compile time
@@ -215,7 +215,7 @@ pub fn aptos_contract_file(input: TokenStream) -> TokenStream {
 /// # Example
 ///
 /// ```rust,ignore
-/// use aptos_sdk_macros::MoveStruct;
+/// use movement_sdk_macros::MoveStruct;
 ///
 /// #[derive(MoveStruct)]
 /// #[move_struct(address = "0x1", module = "coin", name = "CoinStore")]
@@ -290,15 +290,15 @@ pub fn derive_move_struct(input: TokenStream) -> TokenStream {
             }
 
             /// Serializes this struct to BCS bytes.
-            pub fn to_bcs(&self) -> ::aptos_sdk::error::AptosResult<Vec<u8>> {
-                ::aptos_sdk::aptos_bcs::to_bytes(self)
-                    .map_err(|e| ::aptos_sdk::error::AptosError::Bcs(e.to_string()))
+            pub fn to_bcs(&self) -> ::movement_sdk::error::MovementResult<Vec<u8>> {
+                ::movement_sdk::aptos_bcs::to_bytes(self)
+                    .map_err(|e| ::movement_sdk::error::MovementError::Bcs(e.to_string()))
             }
 
             /// Deserializes this struct from BCS bytes.
-            pub fn from_bcs(bytes: &[u8]) -> ::aptos_sdk::error::AptosResult<Self> {
-                ::aptos_sdk::aptos_bcs::from_bytes(bytes)
-                    .map_err(|e| ::aptos_sdk::error::AptosError::Bcs(e.to_string()))
+            pub fn from_bcs(bytes: &[u8]) -> ::movement_sdk::error::MovementResult<Self> {
+                ::movement_sdk::aptos_bcs::from_bytes(bytes)
+                    .map_err(|e| ::movement_sdk::error::MovementError::Bcs(e.to_string()))
             }
         }
     };

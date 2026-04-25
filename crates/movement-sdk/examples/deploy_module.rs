@@ -5,12 +5,12 @@
 //!
 //! Run with: `cargo run --example deploy_module --features "ed25519,faucet"`
 
-use aptos_sdk::{Aptos, AptosConfig, account::Ed25519Account};
+use movement_sdk::{Movement, MovementConfig, account::Ed25519Account};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Create client for testnet
-    let aptos = Aptos::new(AptosConfig::testnet())?;
+    let movement = Movement::new(MovementConfig::testnet())?;
     println!("Connected to testnet");
 
     // Generate an account to deploy from
@@ -19,18 +19,18 @@ async fn main() -> anyhow::Result<()> {
 
     // Fund the deployer account
     println!("\nFunding deployer account...");
-    aptos.fund_account(deployer.address(), 100_000_000).await?;
+    movement.fund_account(deployer.address(), 100_000_000).await?;
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     // In a real deployment, you would:
-    // 1. Compile your Move module using `aptos move compile`
+    // 1. Compile your Move module using `movement move compile`
     // 2. Read the compiled bytecode
     // 3. Create a publish transaction
 
     println!("\n=== Module Deployment Guide ===");
     println!("\nTo deploy a Move module:");
     println!("1. Create your Move module in a directory with Move.toml");
-    println!("2. Compile with: aptos move compile --save-metadata");
+    println!("2. Compile with: movement move compile --save-metadata");
     println!("3. Read the .mv bytecode file");
     println!("4. Use the code::publish_package_txn entry function");
     println!();
@@ -41,8 +41,8 @@ async fn main() -> anyhow::Result<()> {
     println!(
         r#"
     use std::fs;
-    use aptos_sdk::transaction::{{EntryFunction, TransactionBuilder}};
-    use aptos_sdk::types::MoveModuleId;
+    use movement_sdk::transaction::{{EntryFunction, TransactionBuilder}};
+    use movement_sdk::types::MoveModuleId;
     
     // Read compiled module bytecode
     let module_bytecode = fs::read("build/MyModule/bytecode_modules/my_module.mv")?;
@@ -62,7 +62,7 @@ async fn main() -> anyhow::Result<()> {
     );
     
     // Submit the transaction
-    let result = aptos.sign_submit_and_wait(&deployer, payload.into(), None).await?;
+    let result = movement.sign_submit_and_wait(&deployer, payload.into(), None).await?;
     "#
     );
     println!();
@@ -70,7 +70,7 @@ async fn main() -> anyhow::Result<()> {
     // For now, just demonstrate querying account modules
     println!("=== Checking Modules ===");
     println!("Checking modules at deployer address...");
-    let response = aptos
+    let response = movement
         .fullnode()
         .get_account_modules(deployer.address())
         .await;
@@ -94,7 +94,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Show modules on the framework address as an example
     println!("\nExample: Framework modules at 0x1:");
-    let framework_modules = aptos.fullnode().get_account_modules("0x1".parse()?).await?;
+    let framework_modules = movement.fullnode().get_account_modules("0x1".parse()?).await?;
 
     println!("Found {} framework modules", framework_modules.data.len());
     for module in framework_modules.data.iter().take(10) {

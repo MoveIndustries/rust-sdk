@@ -5,7 +5,7 @@
 //!
 //! # Security: Signature Malleability
 //!
-//! This implementation enforces **low-S only** signatures to match the Aptos
+//! This implementation enforces **low-S only** signatures to match the Movement
 //! blockchain's on-chain verification, which rejects high-S signatures to
 //! prevent signature malleability attacks.
 //!
@@ -16,7 +16,7 @@
 //!   measure.
 
 use crate::crypto::traits::{PublicKey, Signature, Signer, Verifier};
-use crate::error::{AptosError, AptosResult};
+use crate::error::{MovementError, MovementResult};
 use p256::ecdsa::{
     Signature as P256Signature, SigningKey, VerifyingKey, signature::Signer as P256Signer,
     signature::Verifier as P256Verifier,
@@ -54,19 +54,19 @@ impl Secp256r1PrivateKey {
     ///
     /// # Errors
     ///
-    /// Returns [`AptosError::InvalidPrivateKey`] if:
+    /// Returns [`MovementError::InvalidPrivateKey`] if:
     /// - The byte slice length is not exactly 32 bytes
     /// - The bytes do not represent a valid Secp256r1 private key
-    pub fn from_bytes(bytes: &[u8]) -> AptosResult<Self> {
+    pub fn from_bytes(bytes: &[u8]) -> MovementResult<Self> {
         if bytes.len() != SECP256R1_PRIVATE_KEY_LENGTH {
-            return Err(AptosError::InvalidPrivateKey(format!(
+            return Err(MovementError::InvalidPrivateKey(format!(
                 "expected {} bytes, got {}",
                 SECP256R1_PRIVATE_KEY_LENGTH,
                 bytes.len()
             )));
         }
         let signing_key = SigningKey::from_slice(bytes)
-            .map_err(|e| AptosError::InvalidPrivateKey(e.to_string()))?;
+            .map_err(|e| MovementError::InvalidPrivateKey(e.to_string()))?;
         Ok(Self { inner: signing_key })
     }
 
@@ -74,9 +74,9 @@ impl Secp256r1PrivateKey {
     ///
     /// # Errors
     ///
-    /// Returns [`AptosError::Hex`] if the hex string is invalid.
-    /// Returns [`AptosError::InvalidPrivateKey`] if the decoded bytes are not exactly 32 bytes or do not represent a valid Secp256r1 private key.
-    pub fn from_hex(hex_str: &str) -> AptosResult<Self> {
+    /// Returns [`MovementError::Hex`] if the hex string is invalid.
+    /// Returns [`MovementError::InvalidPrivateKey`] if the decoded bytes are not exactly 32 bytes or do not represent a valid Secp256r1 private key.
+    pub fn from_hex(hex_str: &str) -> MovementResult<Self> {
         let bytes = const_hex::decode(hex_str)?;
         Self::from_bytes(&bytes)
     }
@@ -88,12 +88,12 @@ impl Secp256r1PrivateKey {
     /// # Errors
     ///
     /// Returns an error if the format is invalid or the key bytes are invalid.
-    pub fn from_aip80(s: &str) -> AptosResult<Self> {
+    pub fn from_aip80(s: &str) -> MovementResult<Self> {
         const PREFIX: &str = "secp256r1-priv-";
         if let Some(hex_part) = s.strip_prefix(PREFIX) {
             Self::from_hex(hex_part)
         } else {
-            Err(AptosError::InvalidPrivateKey(format!(
+            Err(MovementError::InvalidPrivateKey(format!(
                 "invalid AIP-80 format: expected prefix '{PREFIX}'"
             )))
         }
@@ -125,12 +125,12 @@ impl Secp256r1PrivateKey {
 
     /// Signs a message (pre-hashed with SHA256) and returns a low-S signature.
     ///
-    /// The signature is normalized to low-S form to match Aptos on-chain
+    /// The signature is normalized to low-S form to match Movement on-chain
     /// verification requirements.
     pub fn sign(&self, message: &[u8]) -> Secp256r1Signature {
         let hash = crate::crypto::sha2_256(message);
         let signature: P256Signature = self.inner.sign(&hash);
-        // SECURITY: Normalize to low-S to match Aptos on-chain verification.
+        // SECURITY: Normalize to low-S to match Movement on-chain verification.
         // The p256 crate does not guarantee low-S output from signing.
         let normalized = signature.normalize_s().unwrap_or(signature);
         Secp256r1Signature { inner: normalized }
@@ -138,11 +138,11 @@ impl Secp256r1PrivateKey {
 
     /// Signs a pre-hashed message directly and returns a low-S signature.
     ///
-    /// The signature is normalized to low-S form to match Aptos on-chain
+    /// The signature is normalized to low-S form to match Movement on-chain
     /// verification requirements.
     pub fn sign_prehashed(&self, hash: &[u8; 32]) -> Secp256r1Signature {
         let signature: P256Signature = self.inner.sign(hash);
-        // SECURITY: Normalize to low-S to match Aptos on-chain verification.
+        // SECURITY: Normalize to low-S to match Movement on-chain verification.
         let normalized = signature.normalize_s().unwrap_or(signature);
         Secp256r1Signature { inner: normalized }
     }
@@ -177,10 +177,10 @@ impl Secp256r1PublicKey {
     ///
     /// # Errors
     ///
-    /// Returns [`AptosError::InvalidPublicKey`] if the bytes do not represent a valid Secp256r1 compressed public key.
-    pub fn from_bytes(bytes: &[u8]) -> AptosResult<Self> {
+    /// Returns [`MovementError::InvalidPublicKey`] if the bytes do not represent a valid Secp256r1 compressed public key.
+    pub fn from_bytes(bytes: &[u8]) -> MovementResult<Self> {
         let verifying_key = VerifyingKey::from_sec1_bytes(bytes)
-            .map_err(|e| AptosError::InvalidPublicKey(e.to_string()))?;
+            .map_err(|e| MovementError::InvalidPublicKey(e.to_string()))?;
         Ok(Self {
             inner: verifying_key,
         })
@@ -190,9 +190,9 @@ impl Secp256r1PublicKey {
     ///
     /// # Errors
     ///
-    /// Returns [`AptosError::Hex`] if the hex string is invalid.
-    /// Returns [`AptosError::InvalidPublicKey`] if the decoded bytes do not represent a valid Secp256r1 compressed public key.
-    pub fn from_hex(hex_str: &str) -> AptosResult<Self> {
+    /// Returns [`MovementError::Hex`] if the hex string is invalid.
+    /// Returns [`MovementError::InvalidPublicKey`] if the decoded bytes do not represent a valid Secp256r1 compressed public key.
+    pub fn from_hex(hex_str: &str) -> MovementResult<Self> {
         let bytes = const_hex::decode(hex_str)?;
         Self::from_bytes(&bytes)
     }
@@ -204,12 +204,12 @@ impl Secp256r1PublicKey {
     /// # Errors
     ///
     /// Returns an error if the format is invalid or the key bytes are invalid.
-    pub fn from_aip80(s: &str) -> AptosResult<Self> {
+    pub fn from_aip80(s: &str) -> MovementResult<Self> {
         const PREFIX: &str = "secp256r1-pub-";
         if let Some(hex_part) = s.strip_prefix(PREFIX) {
             Self::from_hex(hex_part)
         } else {
-            Err(AptosError::InvalidPublicKey(format!(
+            Err(MovementError::InvalidPublicKey(format!(
                 "invalid AIP-80 format: expected prefix '{PREFIX}'"
             )))
         }
@@ -245,48 +245,48 @@ impl Secp256r1PublicKey {
     ///
     /// # Security
     ///
-    /// Rejects high-S signatures before verification, matching Aptos on-chain
+    /// Rejects high-S signatures before verification, matching Movement on-chain
     /// behavior. This is a defense-in-depth check; signatures created through
     /// this SDK's `from_bytes` are already guaranteed to be low-S.
     ///
     /// # Errors
     ///
-    /// Returns [`AptosError::SignatureVerificationFailed`] if the signature has
+    /// Returns [`MovementError::SignatureVerificationFailed`] if the signature has
     /// a high-S value, is invalid, or does not match the message.
-    pub fn verify(&self, message: &[u8], signature: &Secp256r1Signature) -> AptosResult<()> {
+    pub fn verify(&self, message: &[u8], signature: &Secp256r1Signature) -> MovementResult<()> {
         // SECURITY: Reject high-S signatures (matches aptos-core behavior)
         if signature.inner.normalize_s().is_some() {
-            return Err(AptosError::SignatureVerificationFailed);
+            return Err(MovementError::SignatureVerificationFailed);
         }
         let hash = crate::crypto::sha2_256(message);
         self.inner
             .verify(&hash, &signature.inner)
-            .map_err(|_| AptosError::SignatureVerificationFailed)
+            .map_err(|_| MovementError::SignatureVerificationFailed)
     }
 
     /// Verifies a signature against a pre-hashed message.
     ///
     /// # Security
     ///
-    /// Rejects high-S signatures before verification, matching Aptos on-chain
+    /// Rejects high-S signatures before verification, matching Movement on-chain
     /// behavior.
     ///
     /// # Errors
     ///
-    /// Returns [`AptosError::SignatureVerificationFailed`] if the signature has
+    /// Returns [`MovementError::SignatureVerificationFailed`] if the signature has
     /// a high-S value, is invalid, or does not match the hash.
     pub fn verify_prehashed(
         &self,
         hash: &[u8; 32],
         signature: &Secp256r1Signature,
-    ) -> AptosResult<()> {
+    ) -> MovementResult<()> {
         // SECURITY: Reject high-S signatures (matches aptos-core behavior)
         if signature.inner.normalize_s().is_some() {
-            return Err(AptosError::SignatureVerificationFailed);
+            return Err(MovementError::SignatureVerificationFailed);
         }
         self.inner
             .verify(hash, &signature.inner)
-            .map_err(|_| AptosError::SignatureVerificationFailed)
+            .map_err(|_| MovementError::SignatureVerificationFailed)
     }
 
     /// Derives the account address for this public key.
@@ -309,7 +309,7 @@ impl Secp256r1PublicKey {
 impl PublicKey for Secp256r1PublicKey {
     const LENGTH: usize = SECP256R1_PUBLIC_KEY_LENGTH;
 
-    fn from_bytes(bytes: &[u8]) -> AptosResult<Self> {
+    fn from_bytes(bytes: &[u8]) -> MovementResult<Self> {
         Secp256r1PublicKey::from_bytes(bytes)
     }
 
@@ -321,7 +321,7 @@ impl PublicKey for Secp256r1PublicKey {
 impl Verifier for Secp256r1PublicKey {
     type Signature = Secp256r1Signature;
 
-    fn verify(&self, message: &[u8], signature: &Secp256r1Signature) -> AptosResult<()> {
+    fn verify(&self, message: &[u8], signature: &Secp256r1Signature) -> MovementResult<()> {
         Secp256r1PublicKey::verify(self, message, signature)
     }
 }
@@ -377,32 +377,32 @@ impl Secp256r1Signature {
     ///
     /// # Security
     ///
-    /// Rejects high-S signatures to match Aptos on-chain verification behavior.
-    /// The Aptos VM only accepts low-S (canonical) ECDSA signatures to prevent
+    /// Rejects high-S signatures to match Movement on-chain verification behavior.
+    /// The Movement VM only accepts low-S (canonical) ECDSA signatures to prevent
     /// signature malleability attacks.
     ///
     /// # Errors
     ///
-    /// Returns [`AptosError::InvalidSignature`] if:
+    /// Returns [`MovementError::InvalidSignature`] if:
     /// - The byte slice length is not exactly 64 bytes
     /// - The bytes do not represent a valid Secp256r1 signature
     /// - The signature has a high-S value (not canonical)
-    pub fn from_bytes(bytes: &[u8]) -> AptosResult<Self> {
+    pub fn from_bytes(bytes: &[u8]) -> MovementResult<Self> {
         if bytes.len() != SECP256R1_SIGNATURE_LENGTH {
-            return Err(AptosError::InvalidSignature(format!(
+            return Err(MovementError::InvalidSignature(format!(
                 "expected {} bytes, got {}",
                 SECP256R1_SIGNATURE_LENGTH,
                 bytes.len()
             )));
         }
         let signature = P256Signature::from_slice(bytes)
-            .map_err(|e| AptosError::InvalidSignature(e.to_string()))?;
-        // SECURITY: Reject high-S signatures. Aptos on-chain verification only
+            .map_err(|e| MovementError::InvalidSignature(e.to_string()))?;
+        // SECURITY: Reject high-S signatures. Movement on-chain verification only
         // accepts low-S (canonical) signatures to prevent malleability.
         // normalize_s() returns Some(_) if the signature was high-S.
         if signature.normalize_s().is_some() {
-            return Err(AptosError::InvalidSignature(
-                "high-S signature rejected: Aptos requires low-S (canonical) ECDSA signatures"
+            return Err(MovementError::InvalidSignature(
+                "high-S signature rejected: Movement requires low-S (canonical) ECDSA signatures"
                     .into(),
             ));
         }
@@ -413,9 +413,9 @@ impl Secp256r1Signature {
     ///
     /// # Errors
     ///
-    /// Returns [`AptosError::Hex`] if the hex string is invalid.
-    /// Returns [`AptosError::InvalidSignature`] if the decoded bytes are not exactly 64 bytes or do not represent a valid Secp256r1 signature.
-    pub fn from_hex(hex_str: &str) -> AptosResult<Self> {
+    /// Returns [`MovementError::Hex`] if the hex string is invalid.
+    /// Returns [`MovementError::InvalidSignature`] if the decoded bytes are not exactly 64 bytes or do not represent a valid Secp256r1 signature.
+    pub fn from_hex(hex_str: &str) -> MovementResult<Self> {
         let bytes = const_hex::decode(hex_str)?;
         Self::from_bytes(&bytes)
     }
@@ -435,7 +435,7 @@ impl Signature for Secp256r1Signature {
     type PublicKey = Secp256r1PublicKey;
     const LENGTH: usize = SECP256R1_SIGNATURE_LENGTH;
 
-    fn from_bytes(bytes: &[u8]) -> AptosResult<Self> {
+    fn from_bytes(bytes: &[u8]) -> MovementResult<Self> {
         Secp256r1Signature::from_bytes(bytes)
     }
 

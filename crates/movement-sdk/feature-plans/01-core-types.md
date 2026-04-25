@@ -2,11 +2,11 @@
 
 ## Overview
 
-The core types module provides fundamental data types used throughout the Aptos SDK. These types handle addresses, hashes, chain identifiers, and Move language type representations.
+The core types module provides fundamental data types used throughout the Movement SDK. These types handle addresses, hashes, chain identifiers, and Move language type representations.
 
 ## Goals
 
-1. Provide type-safe representations of Aptos blockchain primitives
+1. Provide type-safe representations of Movement blockchain primitives
 2. Enable efficient serialization/deserialization (BCS and JSON)
 3. Support Display and Debug formatting for developer ergonomics
 4. Maintain compatibility with on-chain data formats
@@ -23,7 +23,7 @@ The core types module provides fundamental data types used throughout the Aptos 
 
 ### AccountAddress
 
-A 32-byte address uniquely identifying an account on Aptos.
+A 32-byte address uniquely identifying an account on Movement.
 
 ```rust
 /// A 32-byte account address.
@@ -47,10 +47,10 @@ impl AccountAddress {
     pub const fn new(bytes: [u8; 32]) -> Self;
     
     /// Create from a byte slice.
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, AptosError>;
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, MovementError>;
     
     /// Parse from hex string (with or without 0x prefix).
-    pub fn from_hex(hex: &str) -> Result<Self, AptosError>;
+    pub fn from_hex(hex: &str) -> Result<Self, MovementError>;
     
     /// Get the underlying bytes.
     pub fn as_bytes(&self) -> &[u8; 32];
@@ -90,13 +90,13 @@ impl HashValue {
     pub fn new(bytes: [u8; 32]) -> Self;
     
     /// Create from byte slice.
-    pub fn from_slice(bytes: &[u8]) -> Result<Self, AptosError>;
+    pub fn from_slice(bytes: &[u8]) -> Result<Self, MovementError>;
     
     /// Compute SHA3-256 hash of data.
     pub fn sha3_256_of(data: &[u8]) -> Self;
     
     /// Parse from hex string.
-    pub fn from_hex(hex: &str) -> Result<Self, AptosError>;
+    pub fn from_hex(hex: &str) -> Result<Self, MovementError>;
     
     /// Get underlying bytes.
     pub fn as_bytes(&self) -> &[u8; 32];
@@ -111,7 +111,7 @@ impl HashValue {
 Network chain identifier.
 
 ```rust
-/// Aptos chain identifier.
+/// Movement chain identifier.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ChainId(u8);
 
@@ -185,7 +185,7 @@ impl TypeTag {
     pub fn aptos_coin() -> Self;
     
     /// Parse from string like "0x1::aptos_coin::AptosCoin".
-    pub fn from_str(s: &str) -> Result<Self, AptosError>;
+    pub fn from_str(s: &str) -> Result<Self, MovementError>;
 }
 ```
 
@@ -205,7 +205,7 @@ impl MoveModuleId {
     pub fn new(address: AccountAddress, name: impl Into<String>) -> Self;
     
     /// Parse from "0x1::module_name" format.
-    pub fn from_str_strict(s: &str) -> Result<Self, AptosError>;
+    pub fn from_str_strict(s: &str) -> Result<Self, MovementError>;
 }
 ```
 
@@ -232,7 +232,7 @@ impl MoveStructTag {
     ) -> Self;
     
     /// Parse from "0x1::module::Struct<T>" format.
-    pub fn from_str(s: &str) -> Result<Self, AptosError>;
+    pub fn from_str(s: &str) -> Result<Self, MovementError>;
 }
 ```
 

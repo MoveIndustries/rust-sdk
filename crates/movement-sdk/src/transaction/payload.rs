@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 /// The payload of a transaction, specifying what action to take.
 ///
-/// Note: Variant indices must match Aptos core for BCS compatibility:
+/// Note: Variant indices must match Movement core for BCS compatibility:
 /// - 0: Script
 /// - 1: `ModuleBundle` (deprecated)
 /// - 2: `EntryFunction`
@@ -102,8 +102,8 @@ pub enum ScriptArgument {
 /// # Example
 ///
 /// ```rust
-/// use aptos_sdk::transaction::EntryFunction;
-/// use aptos_sdk::types::{MoveModuleId, TypeTag, AccountAddress};
+/// use movement_sdk::transaction::EntryFunction;
+/// use movement_sdk::types::{MoveModuleId, TypeTag, AccountAddress};
 ///
 /// // Create a coin transfer payload
 /// let module = MoveModuleId::from_str_strict("0x1::coin").unwrap();
@@ -161,7 +161,7 @@ impl EntryFunction {
         function_id: &str,
         type_args: Vec<TypeTag>,
         args: Vec<Vec<u8>>,
-    ) -> crate::error::AptosResult<Self> {
+    ) -> crate::error::MovementResult<Self> {
         let func_id = crate::types::EntryFunctionId::from_str_strict(function_id)?;
         Ok(Self {
             module: func_id.module,
@@ -184,15 +184,15 @@ impl EntryFunction {
     pub fn apt_transfer(
         recipient: crate::types::AccountAddress,
         amount: u64,
-    ) -> crate::error::AptosResult<Self> {
+    ) -> crate::error::MovementResult<Self> {
         let module = MoveModuleId::from_str_strict("0x1::aptos_account")?;
         Ok(Self {
             module,
             function: "transfer".to_string(),
             type_args: vec![],
             args: vec![
-                aptos_bcs::to_bytes(&recipient).map_err(crate::error::AptosError::bcs)?,
-                aptos_bcs::to_bytes(&amount).map_err(crate::error::AptosError::bcs)?,
+                aptos_bcs::to_bytes(&recipient).map_err(crate::error::MovementError::bcs)?,
+                aptos_bcs::to_bytes(&amount).map_err(crate::error::MovementError::bcs)?,
             ],
         })
     }
@@ -212,15 +212,15 @@ impl EntryFunction {
         coin_type: TypeTag,
         recipient: crate::types::AccountAddress,
         amount: u64,
-    ) -> crate::error::AptosResult<Self> {
+    ) -> crate::error::MovementResult<Self> {
         let module = MoveModuleId::from_str_strict("0x1::coin")?;
         Ok(Self {
             module,
             function: "transfer".to_string(),
             type_args: vec![coin_type],
             args: vec![
-                aptos_bcs::to_bytes(&recipient).map_err(crate::error::AptosError::bcs)?,
-                aptos_bcs::to_bytes(&amount).map_err(crate::error::AptosError::bcs)?,
+                aptos_bcs::to_bytes(&recipient).map_err(crate::error::MovementError::bcs)?,
+                aptos_bcs::to_bytes(&amount).map_err(crate::error::MovementError::bcs)?,
             ],
         })
     }

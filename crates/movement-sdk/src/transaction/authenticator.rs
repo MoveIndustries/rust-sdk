@@ -4,13 +4,13 @@ use crate::types::AccountAddress;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Ed25519 public key (32 bytes).
-/// Serializes WITH a length prefix as required by Aptos BCS format.
+/// Serializes WITH a length prefix as required by Movement BCS format.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Ed25519PublicKey(pub [u8; 32]);
 
 impl Serialize for Ed25519PublicKey {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        // Aptos BCS format requires a length prefix for public keys
+        // Movement BCS format requires a length prefix for public keys
         // Use serde_bytes to serialize with ULEB128 length prefix
         serde_bytes::Bytes::new(&self.0).serialize(serializer)
     }
@@ -56,9 +56,9 @@ impl Ed25519PublicKey {
     /// # Errors
     ///
     /// Returns an error if the input slice is not exactly 32 bytes.
-    pub fn try_from_bytes(bytes: &[u8]) -> crate::error::AptosResult<Self> {
+    pub fn try_from_bytes(bytes: &[u8]) -> crate::error::MovementResult<Self> {
         if bytes.len() != 32 {
-            return Err(crate::error::AptosError::InvalidPublicKey(format!(
+            return Err(crate::error::MovementError::InvalidPublicKey(format!(
                 "Ed25519PublicKey requires exactly 32 bytes, got {}",
                 bytes.len()
             )));
@@ -70,13 +70,13 @@ impl Ed25519PublicKey {
 }
 
 /// Ed25519 signature (64 bytes).
-/// Serializes WITH a length prefix as required by Aptos BCS format.
+/// Serializes WITH a length prefix as required by Movement BCS format.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Ed25519Signature(pub [u8; 64]);
 
 impl Serialize for Ed25519Signature {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        // Aptos BCS format requires a length prefix for signatures
+        // Movement BCS format requires a length prefix for signatures
         // Use serde_bytes to serialize with ULEB128 length prefix
         serde_bytes::Bytes::new(&self.0).serialize(serializer)
     }
@@ -120,9 +120,9 @@ impl Ed25519Signature {
     /// # Errors
     ///
     /// Returns an error if the input is not exactly 64 bytes.
-    pub fn try_from_bytes(bytes: &[u8]) -> crate::error::AptosResult<Self> {
+    pub fn try_from_bytes(bytes: &[u8]) -> crate::error::MovementResult<Self> {
         if bytes.len() != 64 {
-            return Err(crate::error::AptosError::InvalidSignature(format!(
+            return Err(crate::error::MovementError::InvalidSignature(format!(
                 "Ed25519Signature requires exactly 64 bytes, got {}",
                 bytes.len()
             )));
@@ -138,7 +138,7 @@ impl Ed25519Signature {
 /// This contains the signature(s) and public key(s) that prove
 /// the transaction was authorized by the sender.
 ///
-/// Note: Variant indices must match Aptos core for BCS compatibility:
+/// Note: Variant indices must match Movement core for BCS compatibility:
 /// - 0: Ed25519
 /// - 1: `MultiEd25519`
 /// - 2: `MultiAgent`
@@ -408,7 +408,7 @@ mod tests {
 
     #[test]
     fn test_ed25519_bcs_format() {
-        // Test that Ed25519 serializes WITH length prefixes (Aptos BCS format)
+        // Test that Ed25519 serializes WITH length prefixes (Movement BCS format)
         let auth = TransactionAuthenticator::Ed25519 {
             public_key: Ed25519PublicKey([0xab; 32]),
             signature: Ed25519Signature([0xcd; 64]),
@@ -550,7 +550,7 @@ mod tests {
     fn test_ed25519_public_key_bcs_roundtrip() {
         let pk = Ed25519PublicKey([0xef; 32]);
         let serialized = aptos_bcs::to_bytes(&pk).unwrap();
-        // Aptos BCS format: 1 byte length prefix (32) + 32 bytes = 33 bytes
+        // Movement BCS format: 1 byte length prefix (32) + 32 bytes = 33 bytes
         assert_eq!(serialized.len(), 33);
         assert_eq!(serialized[0], 32); // Length prefix
         let deserialized: Ed25519PublicKey = aptos_bcs::from_bytes(&serialized).unwrap();
@@ -694,7 +694,7 @@ mod tests {
 
     #[test]
     fn test_account_authenticator_variant_indices() {
-        // Verify all variant indices match Aptos core
+        // Verify all variant indices match Movement core
         let ed25519 = AccountAuthenticator::ed25519(vec![0; 32], vec![0; 64]);
         let multi_ed25519 = AccountAuthenticator::MultiEd25519 {
             public_key: vec![0; 64],

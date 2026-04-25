@@ -1,16 +1,18 @@
-# Aptos Rust SDK
+# Movement Rust SDK
 
-[![CI](https://github.com/aptos-labs/aptos-rust-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/aptos-labs/aptos-rust-sdk/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/aptos-labs/aptos-rust-sdk/graph/badge.svg)](https://codecov.io/gh/aptos-labs/aptos-rust-sdk)
+[![CI](https://github.com/moveindustries/rust-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/moveindustries/rust-sdk/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/moveindustries/rust-sdk/graph/badge.svg)](https://codecov.io/gh/moveindustries/rust-sdk)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.90%2B-orange.svg)](rust-toolchain.toml)
-[![API Docs](https://img.shields.io/badge/docs-aptos--labs.github.io-blue)](https://aptos-labs.github.io/aptos-rust-sdk/aptos_sdk/index.html)
+[![API Docs](https://img.shields.io/badge/docs-moveindustries.github.io-blue)](https://moveindustries.github.io/rust-sdk/movement_sdk/index.html)
 
-A user-friendly, idiomatic Rust SDK for the [Aptos](https://aptos.dev) blockchain with feature parity to the [TypeScript SDK](https://github.com/aptos-labs/aptos-ts-sdk).
+A user-friendly, idiomatic Rust SDK for [Movement Network](https://docs.movementnetwork.xyz).
+
+> **Note:** This is a modified, rebranded version of the [Aptos Rust SDK](https://github.com/aptos-labs/aptos-rust-sdk) (Apache-2.0), adapted for the Movement Network. See [`NOTICE`](NOTICE) for attribution.
 
 ## Features
 
-- **Full Blockchain Interaction** &mdash; Connect, explore, and transact on the Aptos blockchain
+- **Full Blockchain Interaction** &mdash; Connect, explore, and transact on the Movement blockchain
 - **Multiple Signature Schemes** &mdash; Ed25519, Secp256k1, Secp256r1 (P-256), and BLS12-381
 - **Transaction Building** &mdash; Fluent builder pattern for entry functions, scripts, and multi-agent transactions
 - **Account Management** &mdash; Single-key, multi-key, multi-sig, and keyless (OIDC) accounts
@@ -22,13 +24,13 @@ A user-friendly, idiomatic Rust SDK for the [Aptos](https://aptos.dev) blockchai
 
 | Crate | Description |
 |---|---|
-| [`aptos-sdk`](crates/aptos-sdk/) | Main SDK &mdash; async clients, account management, transaction building, and crypto |
-| [`aptos-sdk-macros`](crates/aptos-sdk-macros/) | Procedural macros for type-safe contract bindings |
+| [`movement-sdk`](crates/movement-sdk/) | Main SDK &mdash; async clients, account management, transaction building, and crypto |
+| [`movement-sdk-macros`](crates/movement-sdk-macros/) | Procedural macros for type-safe contract bindings |
 
 ## Prerequisites
 
 - **Rust** 1.90+ (pinned in [`rust-toolchain.toml`](rust-toolchain.toml))
-- An Aptos fullnode REST endpoint (mainnet / testnet / devnet / localnet)
+- A Movement fullnode REST endpoint (mainnet / testnet / localnet)
 
 ## Quick Start
 
@@ -36,26 +38,26 @@ Add the SDK to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-aptos-sdk = { git = "https://github.com/aptos-labs/aptos-rust-sdk", package = "aptos-sdk" }
+movement-sdk = { git = "https://github.com/moveindustries/rust-sdk", package = "movement-sdk" }
 ```
 
 Then use it:
 
 ```rust
-use aptos_sdk::{Aptos, AptosConfig};
-use aptos_sdk::account::{Account, Ed25519Account};
+use movement_sdk::{Movement, MovementConfig};
+use movement_sdk::account::{Account, Ed25519Account};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Connect to testnet
-    let aptos = Aptos::new(AptosConfig::testnet())?;
+    let movement = Movement::new(MovementConfig::testnet())?;
 
     // Create a new account
     let account = Ed25519Account::generate();
     println!("Address: {}", account.address());
 
     // Check balance
-    let balance = aptos.get_balance(account.address()).await?;
+    let balance = movement.get_balance(account.address()).await?;
     println!("Balance: {} octas", balance);
 
     Ok(())
@@ -83,7 +85,7 @@ Include only the signature scheme you need:
 
 ```toml
 [dependencies]
-aptos-sdk = { git = "https://github.com/aptos-labs/aptos-rust-sdk", package = "aptos-sdk", default-features = false, features = ["ed25519"] }
+movement-sdk = { git = "https://github.com/moveindustries/rust-sdk", package = "movement-sdk", default-features = false, features = ["ed25519"] }
 ```
 
 ### Full Build
@@ -92,65 +94,65 @@ Enable everything:
 
 ```toml
 [dependencies]
-aptos-sdk = { git = "https://github.com/aptos-labs/aptos-rust-sdk", package = "aptos-sdk", features = ["full"] }
+movement-sdk = { git = "https://github.com/moveindustries/rust-sdk", package = "movement-sdk", features = ["full"] }
 ```
 
 ## Examples
 
-Complete, runnable examples live in [`crates/aptos-sdk/examples/`](crates/aptos-sdk/examples/).
+Complete, runnable examples live in [`crates/movement-sdk/examples/`](crates/movement-sdk/examples/).
 
 ### Basic Operations
 
 | Example | Description |
 |---|---|
-| [`transfer.rs`](crates/aptos-sdk/examples/transfer.rs) | Basic APT transfer between accounts |
-| [`view_function.rs`](crates/aptos-sdk/examples/view_function.rs) | Read-only view function calls |
-| [`balance_checker.rs`](crates/aptos-sdk/examples/balance_checker.rs) | Check account balances |
-| [`transaction_data.rs`](crates/aptos-sdk/examples/transaction_data.rs) | Working with transaction data |
-| [`simulation.rs`](crates/aptos-sdk/examples/simulation.rs) | Simulate transactions before submission |
+| [`transfer.rs`](crates/movement-sdk/examples/transfer.rs) | Basic APT transfer between accounts |
+| [`view_function.rs`](crates/movement-sdk/examples/view_function.rs) | Read-only view function calls |
+| [`balance_checker.rs`](crates/movement-sdk/examples/balance_checker.rs) | Check account balances |
+| [`transaction_data.rs`](crates/movement-sdk/examples/transaction_data.rs) | Working with transaction data |
+| [`simulation.rs`](crates/movement-sdk/examples/simulation.rs) | Simulate transactions before submission |
 
 ### Advanced Transactions
 
 | Example | Description |
 |---|---|
-| [`entry_function.rs`](crates/aptos-sdk/examples/entry_function.rs) | Entry function transaction building |
-| [`script_transaction.rs`](crates/aptos-sdk/examples/script_transaction.rs) | Script-based transactions |
-| [`sponsored_transaction.rs`](crates/aptos-sdk/examples/sponsored_transaction.rs) | Fee payer (sponsored) transactions |
-| [`multi_agent.rs`](crates/aptos-sdk/examples/multi_agent.rs) | Multi-signer transactions |
-| [`transaction_waiting.rs`](crates/aptos-sdk/examples/transaction_waiting.rs) | Transaction waiting strategies |
-| [`advanced_transactions.rs`](crates/aptos-sdk/examples/advanced_transactions.rs) | Complex transaction combinations |
+| [`entry_function.rs`](crates/movement-sdk/examples/entry_function.rs) | Entry function transaction building |
+| [`script_transaction.rs`](crates/movement-sdk/examples/script_transaction.rs) | Script-based transactions |
+| [`sponsored_transaction.rs`](crates/movement-sdk/examples/sponsored_transaction.rs) | Fee payer (sponsored) transactions |
+| [`multi_agent.rs`](crates/movement-sdk/examples/multi_agent.rs) | Multi-signer transactions |
+| [`transaction_waiting.rs`](crates/movement-sdk/examples/transaction_waiting.rs) | Transaction waiting strategies |
+| [`advanced_transactions.rs`](crates/movement-sdk/examples/advanced_transactions.rs) | Complex transaction combinations |
 
 ### Account Types
 
 | Example | Description |
 |---|---|
-| [`account_management.rs`](crates/aptos-sdk/examples/account_management.rs) | Account creation and management |
-| [`multi_key_account.rs`](crates/aptos-sdk/examples/multi_key_account.rs) | Multi-key (mixed signature) accounts |
-| [`multi_sig_account.rs`](crates/aptos-sdk/examples/multi_sig_account.rs) | MultiEd25519 threshold accounts |
-| [`multisig_v2.rs`](crates/aptos-sdk/examples/multisig_v2.rs) | On-chain multisig (governance) accounts |
+| [`account_management.rs`](crates/movement-sdk/examples/account_management.rs) | Account creation and management |
+| [`multi_key_account.rs`](crates/movement-sdk/examples/multi_key_account.rs) | Multi-key (mixed signature) accounts |
+| [`multi_sig_account.rs`](crates/movement-sdk/examples/multi_sig_account.rs) | MultiEd25519 threshold accounts |
+| [`multisig_v2.rs`](crates/movement-sdk/examples/multisig_v2.rs) | On-chain multisig (governance) accounts |
 
 ### Smart Contracts
 
 | Example | Description |
 |---|---|
-| [`deploy_module.rs`](crates/aptos-sdk/examples/deploy_module.rs) | Deploy a Move module |
-| [`call_contract.rs`](crates/aptos-sdk/examples/call_contract.rs) | Call contract entry functions |
-| [`read_contract_state.rs`](crates/aptos-sdk/examples/read_contract_state.rs) | Read contract state |
-| [`nft_operations.rs`](crates/aptos-sdk/examples/nft_operations.rs) | NFT / Digital Asset interactions |
-| [`codegen.rs`](crates/aptos-sdk/examples/codegen.rs) | Contract binding generation |
-| [`contract_bindings.rs`](crates/aptos-sdk/examples/contract_bindings.rs) | Using generated type-safe bindings |
+| [`deploy_module.rs`](crates/movement-sdk/examples/deploy_module.rs) | Deploy a Move module |
+| [`call_contract.rs`](crates/movement-sdk/examples/call_contract.rs) | Call contract entry functions |
+| [`read_contract_state.rs`](crates/movement-sdk/examples/read_contract_state.rs) | Read contract state |
+| [`nft_operations.rs`](crates/movement-sdk/examples/nft_operations.rs) | NFT / Digital Asset interactions |
+| [`codegen.rs`](crates/movement-sdk/examples/codegen.rs) | Contract binding generation |
+| [`contract_bindings.rs`](crates/movement-sdk/examples/contract_bindings.rs) | Using generated type-safe bindings |
 
 ### Indexer & Events
 
 | Example | Description |
 |---|---|
-| [`indexer_queries.rs`](crates/aptos-sdk/examples/indexer_queries.rs) | Query the Aptos indexer via GraphQL |
-| [`event_queries.rs`](crates/aptos-sdk/examples/event_queries.rs) | Query on-chain events |
+| [`indexer_queries.rs`](crates/movement-sdk/examples/indexer_queries.rs) | Query the Movement indexer via GraphQL |
+| [`event_queries.rs`](crates/movement-sdk/examples/event_queries.rs) | Query on-chain events |
 
 Run any example with:
 
 ```bash
-cargo run -p aptos-sdk --example transfer --features "ed25519,faucet"
+cargo run -p movement-sdk --example transfer --features "ed25519,faucet"
 ```
 
 ## Development
@@ -158,35 +160,35 @@ cargo run -p aptos-sdk --example transfer --features "ed25519,faucet"
 ### Building
 
 ```bash
-cargo build -p aptos-sdk                    # Default features
-cargo build -p aptos-sdk --all-features     # All features
-cargo build -p aptos-sdk --release          # Release build
+cargo build -p movement-sdk                    # Default features
+cargo build -p movement-sdk --all-features     # All features
+cargo build -p movement-sdk --release          # Release build
 ```
 
 ### Testing
 
 ```bash
-cargo test -p aptos-sdk                     # Unit tests (default features)
-cargo test -p aptos-sdk --all-features      # Unit tests (all features)
+cargo test -p movement-sdk                     # Unit tests (default features)
+cargo test -p movement-sdk --all-features      # Unit tests (all features)
 
 # E2E tests (requires a running localnet)
-aptos node run-localnet --with-faucet
-cargo test -p aptos-sdk --features "e2e" -- --ignored
+movement node run-localnet --with-faucet
+cargo test -p movement-sdk --features "e2e" -- --ignored
 ```
 
 ### Linting & Formatting
 
 ```bash
-cargo clippy -p aptos-sdk --all-features -- -D warnings
+cargo clippy -p movement-sdk --all-features -- -D warnings
 cargo fmt -- --check
 ```
 
 ## Architecture
 
 ```
-crates/aptos-sdk/src/
-├── aptos.rs            # Main entry point – combines all API capabilities
-├── config.rs           # Network configuration (mainnet, testnet, devnet, localnet)
+crates/movement-sdk/src/
+├── movement.rs        # Main entry point – combines all API capabilities
+├── config.rs          # Network configuration (mainnet, testnet, localnet)
 ├── account/            # Account types: Ed25519, Secp256k1, Secp256r1, MultiKey, Keyless
 ├── api/                # REST fullnode, GraphQL indexer, faucet, and ANS clients
 ├── transaction/        # Builder, authenticator, sponsored & batched transactions
@@ -197,10 +199,11 @@ crates/aptos-sdk/src/
 
 ## Resources
 
-- [Aptos Developer Documentation](https://aptos.dev)
-- [API Reference (GitHub Pages)](https://aptos-labs.github.io/aptos-rust-sdk/aptos_sdk/index.html)
-- [TypeScript SDK](https://github.com/aptos-labs/aptos-ts-sdk)
+- [Movement Developer Documentation](https://docs.movementnetwork.xyz)
+- [API Reference (GitHub Pages)](https://moveindustries.github.io/rust-sdk/movement_sdk/index.html)
 
 ## License
 
-Apache-2.0
+Licensed under the [Apache License, Version 2.0](LICENSE).
+
+This project is derived from the [Aptos Rust SDK](https://github.com/aptos-labs/aptos-rust-sdk) (Apache-2.0). See [`NOTICE`](NOTICE) for attribution.

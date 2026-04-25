@@ -1,7 +1,7 @@
-//! Cryptographic primitives for the Aptos SDK.
+//! Cryptographic primitives for the Movement SDK.
 //!
 //! This module provides implementations of the signature schemes supported
-//! by Aptos, including Ed25519, Secp256k1, and Secp256r1 (P-256).
+//! by Movement, including Ed25519, Secp256k1, and Secp256r1 (P-256).
 //!
 //! # Feature Flags
 //!
@@ -35,7 +35,7 @@
 //! # Example
 //!
 //! ```rust,ignore
-//! use aptos_sdk::crypto::{Ed25519PrivateKey, Signer};
+//! use movement_sdk::crypto::{Ed25519PrivateKey, Signer};
 //!
 //! let private_key = Ed25519PrivateKey::generate();
 //! let message = b"hello world";

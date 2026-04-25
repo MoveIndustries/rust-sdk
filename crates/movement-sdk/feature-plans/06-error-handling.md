@@ -20,12 +20,12 @@ Unified error handling across the SDK with rich context and proper error propaga
 
 ## API Design
 
-### AptosError
+### MovementError
 
 ```rust
 /// Main SDK error type.
 #[derive(Debug, thiserror::Error)]
-pub enum AptosError {
+pub enum MovementError {
     /// Network/HTTP error.
     #[error("Network error: {0}")]
     Network(#[from] reqwest::Error),
@@ -63,7 +63,7 @@ pub enum AptosError {
     TransactionFailed(String),
 }
 
-impl AptosError {
+impl MovementError {
     /// Check if error is "not found".
     pub fn is_not_found(&self) -> bool;
     
@@ -75,7 +75,7 @@ impl AptosError {
 }
 
 /// Result type alias.
-pub type AptosResult<T> = Result<T, AptosError>;
+pub type MovementResult<T> = Result<T, MovementError>;
 ```
 
 ---
@@ -98,7 +98,7 @@ pub type AptosResult<T> = Result<T, AptosError>;
 ```rust
 #[test]
 fn test_error_display() {
-    let error = AptosError::NotFound { 
+    let error = MovementError::NotFound { 
         resource: "account 0x1".into() 
     };
     assert_eq!(error.to_string(), "account 0x1 not found");
@@ -106,7 +106,7 @@ fn test_error_display() {
 
 #[test]
 fn test_is_not_found() {
-    let error = AptosError::NotFound { resource: "x".into() };
+    let error = MovementError::NotFound { resource: "x".into() };
     assert!(error.is_not_found());
 }
 ```

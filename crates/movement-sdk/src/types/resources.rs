@@ -1,4 +1,4 @@
-//! Common resource types from the Aptos framework.
+//! Common resource types from the Movement framework.
 //!
 //! These types represent the most commonly accessed on-chain resources.
 

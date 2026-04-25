@@ -8,8 +8,8 @@
 //!
 //! Run with: `cargo run --example multi_sig_account --features "ed25519,faucet"`
 
-use aptos_sdk::{
-    Aptos, AptosConfig,
+use movement_sdk::{
+    Movement, MovementConfig,
     account::MultiEd25519Account,
     crypto::Ed25519PrivateKey,
     transaction::{EntryFunction, TransactionBuilder, TransactionPayload},
@@ -20,8 +20,8 @@ async fn main() -> anyhow::Result<()> {
     println!("=== Multi-Signature Account Example ===\n");
 
     // Connect to testnet
-    let aptos = Aptos::new(AptosConfig::testnet())?;
-    println!("Connected to testnet (chain_id: {})", aptos.chain_id().id());
+    let movement = Movement::new(MovementConfig::testnet())?;
+    println!("Connected to testnet (chain_id: {})", movement.chain_id().id());
 
     // ==== Part 1: Creating a 2-of-3 Multi-Sig Account ====
     println!("\n--- Part 1: Create 2-of-3 Multi-Sig Account ---");
@@ -55,7 +55,7 @@ async fn main() -> anyhow::Result<()> {
     println!("\n--- Part 2: Fund Multi-Sig Account ---");
 
     // Fund the multi-sig account
-    aptos
+    movement
         .fund_account(multi_account.address(), 100_000_000)
         .await?;
     println!("Funded multi-sig account with 1 APT");
@@ -64,7 +64,7 @@ async fn main() -> anyhow::Result<()> {
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     // Check balance
-    let balance = aptos.get_balance(multi_account.address()).await?;
+    let balance = movement.get_balance(multi_account.address()).await?;
     println!("Balance: {} APT", balance as f64 / 100_000_000.0);
 
     // ==== Part 3: Signing with Multi-Sig ====
@@ -75,17 +75,17 @@ async fn main() -> anyhow::Result<()> {
     let payload = EntryFunction::apt_transfer(recipient, 1_000_000)?;
 
     // Get sequence number and build transaction
-    let seq_num = aptos.get_sequence_number(multi_account.address()).await?;
+    let seq_num = movement.get_sequence_number(multi_account.address()).await?;
 
     let raw_txn = TransactionBuilder::new()
         .sender(multi_account.address())
         .sequence_number(seq_num)
         .payload(TransactionPayload::EntryFunction(payload))
-        .chain_id(aptos.chain_id())
+        .chain_id(movement.chain_id())
         .build()?;
 
     // Create signed transaction (signs with the multi-sig account using threshold keys automatically)
-    let signed = aptos_sdk::transaction::builder::sign_transaction(&raw_txn, &multi_account)?;
+    let signed = movement_sdk::transaction::builder::sign_transaction(&raw_txn, &multi_account)?;
 
     println!(
         "Signed with threshold {}-of-{}",
@@ -94,7 +94,7 @@ async fn main() -> anyhow::Result<()> {
     );
 
     // Submit and wait
-    let result = aptos.submit_and_wait(&signed, None).await?;
+    let result = movement.submit_and_wait(&signed, None).await?;
     let success = result.data.get("success").and_then(|v| v.as_bool());
     println!("Transaction success: {:?}", success);
 
@@ -120,13 +120,13 @@ async fn main() -> anyhow::Result<()> {
 
     // Create another transaction for distributed signing demo
     let payload2 = EntryFunction::apt_transfer(recipient, 500_000)?;
-    let seq_num2 = aptos.get_sequence_number(multi_account.address()).await?;
+    let seq_num2 = movement.get_sequence_number(multi_account.address()).await?;
 
     let raw_txn2 = TransactionBuilder::new()
         .sender(multi_account.address())
         .sequence_number(seq_num2)
         .payload(TransactionPayload::EntryFunction(payload2))
-        .chain_id(aptos.chain_id())
+        .chain_id(movement.chain_id())
         .build()?;
 
     let message = raw_txn2.signing_message()?;

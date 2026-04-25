@@ -88,31 +88,31 @@ fn test_transaction_building_workflow() {
 Location: `tests/e2e/`
 
 **Prerequisites:**
-- Aptos CLI installed
+- Movement CLI installed
 - Docker (optional, for containerized localnet)
 
 ```rust
 // tests/e2e/transfer.rs
-use aptos_sdk::testing::LocalNet;
+use movement_sdk::testing::LocalNet;
 
 #[tokio::test]
 async fn test_apt_transfer_e2e() {
     // Start localnet
     let localnet = LocalNet::start().await.unwrap();
-    let aptos = Aptos::new(localnet.config()).await.unwrap();
+    let movement = Movement::new(localnet.config()).await.unwrap();
     
     // Create and fund accounts
-    let sender = aptos.create_funded_account(100_000_000).await.unwrap();
+    let sender = movement.create_funded_account(100_000_000).await.unwrap();
     let recipient = Ed25519Account::generate();
     
     // Transfer
     let payload = EntryFunction::apt_transfer(recipient.address(), 1_000_000).unwrap();
-    let result = aptos.sign_submit_and_wait(&sender, payload.into(), None).await.unwrap();
+    let result = movement.sign_submit_and_wait(&sender, payload.into(), None).await.unwrap();
     
     assert!(result.success());
     
     // Verify balance
-    let balance = aptos.get_balance(recipient.address()).await.unwrap();
+    let balance = movement.get_balance(recipient.address()).await.unwrap();
     assert_eq!(balance, 1_000_000);
 }
 ```
@@ -127,9 +127,9 @@ Location: `tests/integration/`
 #[tokio::test]
 #[ignore = "requires testnet access"]
 async fn test_view_function_on_testnet() {
-    let aptos = Aptos::new(AptosConfig::testnet()).await.unwrap();
+    let movement = Movement::new(MovementConfig::testnet()).await.unwrap();
     
-    let result = aptos.view(
+    let result = movement.view(
         "0x1::coin::supply",
         vec!["0x1::aptos_coin::AptosCoin".to_string()],
         vec![],
@@ -146,17 +146,17 @@ async fn test_view_function_on_testnet() {
 ### LocalNet Helper
 
 ```rust
-/// Manages a local Aptos network for testing.
+/// Manages a local Movement network for testing.
 pub struct LocalNet {
     process: Child,
-    config: AptosConfig,
+    config: MovementConfig,
 }
 
 impl LocalNet {
     /// Start a new localnet instance.
-    pub async fn start() -> Result<Self, AptosError> {
-        // Run: aptos node run-local-testnet --with-faucet
-        let process = Command::new("aptos")
+    pub async fn start() -> Result<Self, MovementError> {
+        // Run: movement node run-local-testnet --with-faucet
+        let process = Command::new("movement")
             .args(["node", "run-local-testnet", "--with-faucet"])
             .spawn()?;
         
@@ -165,12 +165,12 @@ impl LocalNet {
         
         Ok(Self {
             process,
-            config: AptosConfig::localnet(),
+            config: MovementConfig::localnet(),
         })
     }
     
     /// Get configuration for this localnet.
-    pub fn config(&self) -> AptosConfig {
+    pub fn config(&self) -> MovementConfig {
         self.config.clone()
     }
 }
@@ -220,17 +220,17 @@ test:
     # Feature combination tests
     - name: Test feature combinations
       run: |
-        cargo test -p aptos-sdk --no-default-features --features ed25519
-        cargo test -p aptos-sdk --features full
+        cargo test -p movement-sdk --no-default-features --features ed25519
+        cargo test -p movement-sdk --features full
 
 e2e-tests:
   runs-on: ubuntu-latest
   steps:
     - uses: actions/checkout@v4
     
-    - name: Install Aptos CLI
+    - name: Install Movement CLI
       run: |
-        curl -fsSL "https://aptos.dev/scripts/install_cli.py" | python3
+        curl -fsSL "https://docs.movementnetwork.xyz/scripts/install_cli.py" | python3
     
     - name: Run E2E tests
       run: cargo test --test e2e -- --test-threads=1

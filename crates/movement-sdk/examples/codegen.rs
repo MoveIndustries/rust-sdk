@@ -8,7 +8,7 @@
 //! cargo run --example codegen --features ed25519
 //! ```
 
-use aptos_sdk::{
+use movement_sdk::{
     api::response::{MoveFunction, MoveModuleABI, MoveStructDef, MoveStructField},
     codegen::{GeneratorConfig, ModuleGenerator, MoveSourceParser},
 };
@@ -266,19 +266,19 @@ module 0xcafe::my_token {
     // // Import the generated module
     // mod my_token;
     //
-    // use aptos_sdk::{Aptos, AptosConfig};
+    // use movement_sdk::{Movement, MovementConfig};
     // use my_token::*;
     //
     // async fn example() -> anyhow::Result<()> {
-    //     let aptos = Aptos::new(AptosConfig::testnet())?;
-    //     let account = aptos.account().create_ed25519()?;
+    //     let movement = Movement::new(MovementConfig::testnet())?;
+    //     let account = movement.account().create_ed25519()?;
     //
     //     // Use generated entry function with meaningful parameter names
     //     let payload = mint(recipient_address, 1000)?;
-    //     aptos.sign_submit_and_wait(&account, payload, None).await?;
+    //     movement.sign_submit_and_wait(&account, payload, None).await?;
     //
     //     // Use generated view function with proper parameter name
-    //     let balance = view_balance(&aptos, owner_address).await?;
+    //     let balance = view_balance(&movement, owner_address).await?;
     //     println!("Balance: {:?}", balance);
     //
     //     Ok(())
@@ -288,13 +288,13 @@ module 0xcafe::my_token {
 
     println!("\n=== CLI Usage ===\n");
     println!("# Generate from ABI file only:");
-    println!("aptos-codegen --input abi.json --output src/generated/");
+    println!("movement-codegen --input abi.json --output src/generated/");
     println!();
     println!("# Generate with Move source for better names:");
-    println!("aptos-codegen --input abi.json --source my_token.move --output src/generated/");
+    println!("movement-codegen --input abi.json --source my_token.move --output src/generated/");
     println!();
     println!("# Fetch from chain and generate:");
-    println!("aptos-codegen --module 0x1::coin --network testnet --output src/generated/");
+    println!("movement-codegen --module 0x1::coin --network testnet --output src/generated/");
 
     Ok(())
 }

@@ -1,11 +1,11 @@
-//! Main Aptos client entry point.
+//! Main Movement client entry point.
 //!
-//! The [`Aptos`] struct provides a unified interface for all SDK functionality.
+//! The [`Movement`] struct provides a unified interface for all SDK functionality.
 
 use crate::account::Account;
-use crate::api::{AptosResponse, FullnodeClient, PendingTransaction};
-use crate::config::AptosConfig;
-use crate::error::{AptosError, AptosResult};
+use crate::api::{MovementResponse, FullnodeClient, PendingTransaction};
+use crate::config::MovementConfig;
+use crate::error::{MovementError, MovementResult};
 use crate::transaction::{
     RawTransaction, SignedTransaction, TransactionBuilder, TransactionPayload,
 };
@@ -27,31 +27,31 @@ use crate::types::HashValue;
 #[cfg(feature = "indexer")]
 use crate::api::IndexerClient;
 
-/// The main entry point for the Aptos SDK.
+/// The main entry point for the Movement SDK.
 ///
-/// This struct provides a unified interface for interacting with the Aptos blockchain,
+/// This struct provides a unified interface for interacting with the Movement blockchain,
 /// including account management, transaction building and submission, and queries.
 ///
 /// # Example
 ///
 /// ```rust,no_run
-/// use aptos_sdk::{Aptos, AptosConfig};
+/// use movement_sdk::{Movement, MovementConfig};
 ///
 /// #[tokio::main]
 /// async fn main() -> anyhow::Result<()> {
 ///     // Create client for testnet
-///     let aptos = Aptos::new(AptosConfig::testnet())?;
+///     let movement = Movement::new(MovementConfig::testnet())?;
 ///
 ///     // Get ledger info
-///     let ledger = aptos.ledger_info().await?;
+///     let ledger = movement.ledger_info().await?;
 ///     println!("Ledger version: {:?}", ledger.version());
 ///
 ///     Ok(())
 /// }
 /// ```
 #[derive(Debug)]
-pub struct Aptos {
-    config: AptosConfig,
+pub struct Movement {
+    config: MovementConfig,
     fullnode: Arc<FullnodeClient>,
     /// Resolved chain ID. Initialized from config; lazily fetched from node
     /// for custom networks where the chain ID is unknown (0).
@@ -63,13 +63,13 @@ pub struct Aptos {
     indexer: Option<IndexerClient>,
 }
 
-impl Aptos {
-    /// Creates a new Aptos client with the given configuration.
+impl Movement {
+    /// Creates a new Movement client with the given configuration.
     ///
     /// # Errors
     ///
     /// Returns an error if the HTTP client fails to build (e.g., invalid TLS configuration).
-    pub fn new(config: AptosConfig) -> AptosResult<Self> {
+    pub fn new(config: MovementConfig) -> MovementResult<Self> {
         let fullnode = Arc::new(FullnodeClient::new(config.clone())?);
 
         #[cfg(feature = "faucet")]
@@ -96,8 +96,8 @@ impl Aptos {
     /// # Errors
     ///
     /// Returns an error if the HTTP client fails to build (e.g., invalid TLS configuration).
-    pub fn testnet() -> AptosResult<Self> {
-        Self::new(AptosConfig::testnet())
+    pub fn testnet() -> MovementResult<Self> {
+        Self::new(MovementConfig::testnet())
     }
 
     /// Creates a client for devnet with default settings.
@@ -105,8 +105,8 @@ impl Aptos {
     /// # Errors
     ///
     /// Returns an error if the HTTP client fails to build (e.g., invalid TLS configuration).
-    pub fn devnet() -> AptosResult<Self> {
-        Self::new(AptosConfig::devnet())
+    pub fn devnet() -> MovementResult<Self> {
+        Self::new(MovementConfig::devnet())
     }
 
     /// Creates a client for mainnet with default settings.
@@ -114,8 +114,8 @@ impl Aptos {
     /// # Errors
     ///
     /// Returns an error if the HTTP client fails to build (e.g., invalid TLS configuration).
-    pub fn mainnet() -> AptosResult<Self> {
-        Self::new(AptosConfig::mainnet())
+    pub fn mainnet() -> MovementResult<Self> {
+        Self::new(MovementConfig::mainnet())
     }
 
     /// Creates a client for local development network.
@@ -123,12 +123,12 @@ impl Aptos {
     /// # Errors
     ///
     /// Returns an error if the HTTP client fails to build (e.g., invalid TLS configuration).
-    pub fn local() -> AptosResult<Self> {
-        Self::new(AptosConfig::local())
+    pub fn local() -> MovementResult<Self> {
+        Self::new(MovementConfig::local())
     }
 
     /// Returns the configuration.
-    pub fn config(&self) -> &AptosConfig {
+    pub fn config(&self) -> &MovementConfig {
         &self.config
     }
 
@@ -160,7 +160,7 @@ impl Aptos {
     ///
     /// Returns an error if the HTTP request fails, the API returns an error status code,
     /// or the response cannot be parsed.
-    pub async fn ledger_info(&self) -> AptosResult<crate::api::response::LedgerInfo> {
+    pub async fn ledger_info(&self) -> MovementResult<crate::api::response::LedgerInfo> {
         let response = self.fullnode.get_ledger_info().await?;
         let info = response.into_inner();
 
@@ -203,7 +203,7 @@ impl Aptos {
     ///
     /// Returns an error if the HTTP request to fetch ledger info fails.
     ///
-    pub async fn ensure_chain_id(&self) -> AptosResult<ChainId> {
+    pub async fn ensure_chain_id(&self) -> MovementResult<ChainId> {
         let id = self.chain_id.load(Ordering::Relaxed);
         if id > 0 {
             return Ok(ChainId::new(id));
@@ -223,7 +223,7 @@ impl Aptos {
     ///
     /// Returns an error if the HTTP request fails, the API returns an error status code
     /// (e.g., account not found 404), or the response cannot be parsed.
-    pub async fn get_sequence_number(&self, address: AccountAddress) -> AptosResult<u64> {
+    pub async fn get_sequence_number(&self, address: AccountAddress) -> MovementResult<u64> {
         self.fullnode.get_sequence_number(address).await
     }
 
@@ -233,7 +233,7 @@ impl Aptos {
     ///
     /// Returns an error if the HTTP request fails, the API returns an error status code,
     /// or the response cannot be parsed.
-    pub async fn get_balance(&self, address: AccountAddress) -> AptosResult<u64> {
+    pub async fn get_balance(&self, address: AccountAddress) -> MovementResult<u64> {
         self.fullnode.get_account_balance(address).await
     }
 
@@ -243,10 +243,10 @@ impl Aptos {
     ///
     /// Returns an error if the HTTP request fails or the API returns an error status code
     /// other than 404 (not found). A 404 error is handled gracefully and returns `Ok(false)`.
-    pub async fn account_exists(&self, address: AccountAddress) -> AptosResult<bool> {
+    pub async fn account_exists(&self, address: AccountAddress) -> MovementResult<bool> {
         match self.fullnode.get_account(address).await {
             Ok(_) => Ok(true),
-            Err(AptosError::Api {
+            Err(MovementError::Api {
                 status_code: 404, ..
             }) => Ok(false),
             Err(e) => Err(e),
@@ -268,7 +268,7 @@ impl Aptos {
         &self,
         sender: &A,
         payload: TransactionPayload,
-    ) -> AptosResult<RawTransaction> {
+    ) -> MovementResult<RawTransaction> {
         // Fetch sequence number, gas price, and chain ID in parallel
         let (sequence_number, gas_estimation, chain_id) = tokio::join!(
             self.get_sequence_number(sender.address()),
@@ -301,7 +301,7 @@ impl Aptos {
         &self,
         account: &A,
         payload: TransactionPayload,
-    ) -> AptosResult<AptosResponse<PendingTransaction>> {
+    ) -> MovementResult<MovementResponse<PendingTransaction>> {
         let raw_txn = self.build_transaction(account, payload).await?;
         let signed = crate::transaction::builder::sign_transaction(&raw_txn, account)?;
         self.fullnode.submit_transaction(&signed).await
@@ -320,7 +320,7 @@ impl Aptos {
         account: &A,
         payload: TransactionPayload,
         timeout: Option<Duration>,
-    ) -> AptosResult<AptosResponse<serde_json::Value>> {
+    ) -> MovementResult<MovementResponse<serde_json::Value>> {
         let raw_txn = self.build_transaction(account, payload).await?;
         let signed = crate::transaction::builder::sign_transaction(&raw_txn, account)?;
         self.fullnode.submit_and_wait(&signed, timeout).await
@@ -335,7 +335,7 @@ impl Aptos {
     pub async fn submit_transaction(
         &self,
         signed_txn: &SignedTransaction,
-    ) -> AptosResult<AptosResponse<PendingTransaction>> {
+    ) -> MovementResult<MovementResponse<PendingTransaction>> {
         self.fullnode.submit_transaction(signed_txn).await
     }
 
@@ -350,7 +350,7 @@ impl Aptos {
         &self,
         signed_txn: &SignedTransaction,
         timeout: Option<Duration>,
-    ) -> AptosResult<AptosResponse<serde_json::Value>> {
+    ) -> MovementResult<MovementResponse<serde_json::Value>> {
         self.fullnode.submit_and_wait(signed_txn, timeout).await
     }
 
@@ -363,7 +363,7 @@ impl Aptos {
     pub async fn simulate_transaction(
         &self,
         signed_txn: &SignedTransaction,
-    ) -> AptosResult<AptosResponse<Vec<serde_json::Value>>> {
+    ) -> MovementResult<MovementResponse<Vec<serde_json::Value>>> {
         self.fullnode.simulate_transaction(signed_txn).await
     }
 
@@ -375,7 +375,7 @@ impl Aptos {
     /// # Example
     ///
     /// ```rust,ignore
-    /// let result = aptos.simulate(&account, payload).await?;
+    /// let result = movement.simulate(&account, payload).await?;
     /// if result.success() {
     ///     println!("Gas estimate: {}", result.gas_used());
     /// } else {
@@ -392,7 +392,7 @@ impl Aptos {
         &self,
         account: &A,
         payload: TransactionPayload,
-    ) -> AptosResult<crate::transaction::SimulationResult> {
+    ) -> MovementResult<crate::transaction::SimulationResult> {
         let raw_txn = self.build_transaction(account, payload).await?;
         let signed = crate::transaction::builder::sign_transaction(&raw_txn, account)?;
         let response = self.fullnode.simulate_transaction(&signed).await?;
@@ -407,7 +407,7 @@ impl Aptos {
     pub async fn simulate_signed(
         &self,
         signed_txn: &SignedTransaction,
-    ) -> AptosResult<crate::transaction::SimulationResult> {
+    ) -> MovementResult<crate::transaction::SimulationResult> {
         let response = self.fullnode.simulate_transaction(signed_txn).await?;
         crate::transaction::SimulationResult::from_response(response.into_inner())
     }
@@ -419,25 +419,25 @@ impl Aptos {
     /// # Example
     ///
     /// ```rust,ignore
-    /// let gas = aptos.estimate_gas(&account, payload).await?;
+    /// let gas = movement.estimate_gas(&account, payload).await?;
     /// println!("Estimated gas: {}", gas);
     /// ```
     ///
     /// # Errors
     ///
     /// Returns an error if simulation fails or if the simulation indicates the transaction
-    /// would fail (returns [`AptosError::SimulationFailed`]).
+    /// would fail (returns [`MovementError::SimulationFailed`]).
     #[cfg(feature = "ed25519")]
     pub async fn estimate_gas<A: Account>(
         &self,
         account: &A,
         payload: TransactionPayload,
-    ) -> AptosResult<u64> {
+    ) -> MovementResult<u64> {
         let result = self.simulate(account, payload).await?;
         if result.success() {
             Ok(result.safe_gas_estimate())
         } else {
-            Err(AptosError::SimulationFailed(
+            Err(MovementError::SimulationFailed(
                 result
                     .error_message()
                     .unwrap_or_else(|| result.vm_status().to_string()),
@@ -453,21 +453,21 @@ impl Aptos {
     /// # Example
     ///
     /// ```rust,ignore
-    /// let result = aptos.simulate_and_submit(&account, payload).await?;
+    /// let result = movement.simulate_and_submit(&account, payload).await?;
     /// println!("Transaction submitted: {}", result.hash);
     /// ```
     ///
     /// # Errors
     ///
     /// Returns an error if building the transaction fails, signing fails, simulation fails,
-    /// the simulation indicates the transaction would fail (returns [`AptosError::SimulationFailed`]),
+    /// the simulation indicates the transaction would fail (returns [`MovementError::SimulationFailed`]),
     /// or transaction submission fails.
     #[cfg(feature = "ed25519")]
     pub async fn simulate_and_submit<A: Account>(
         &self,
         account: &A,
         payload: TransactionPayload,
-    ) -> AptosResult<AptosResponse<PendingTransaction>> {
+    ) -> MovementResult<MovementResponse<PendingTransaction>> {
         // First simulate
         let raw_txn = self.build_transaction(account, payload).await?;
         let signed = crate::transaction::builder::sign_transaction(&raw_txn, account)?;
@@ -476,7 +476,7 @@ impl Aptos {
             crate::transaction::SimulationResult::from_response(sim_response.into_inner())?;
 
         if sim_result.failed() {
-            return Err(AptosError::SimulationFailed(
+            return Err(MovementError::SimulationFailed(
                 sim_result
                     .error_message()
                     .unwrap_or_else(|| sim_result.vm_status().to_string()),
@@ -494,7 +494,7 @@ impl Aptos {
     /// # Errors
     ///
     /// Returns an error if building the transaction fails, signing fails, simulation fails,
-    /// the simulation indicates the transaction would fail (returns [`AptosError::SimulationFailed`]),
+    /// the simulation indicates the transaction would fail (returns [`MovementError::SimulationFailed`]),
     /// submission fails, the transaction times out waiting for commitment, or the transaction
     /// execution fails.
     #[cfg(feature = "ed25519")]
@@ -503,7 +503,7 @@ impl Aptos {
         account: &A,
         payload: TransactionPayload,
         timeout: Option<Duration>,
-    ) -> AptosResult<AptosResponse<serde_json::Value>> {
+    ) -> MovementResult<MovementResponse<serde_json::Value>> {
         // First simulate
         let raw_txn = self.build_transaction(account, payload).await?;
         let signed = crate::transaction::builder::sign_transaction(&raw_txn, account)?;
@@ -512,7 +512,7 @@ impl Aptos {
             crate::transaction::SimulationResult::from_response(sim_response.into_inner())?;
 
         if sim_result.failed() {
-            return Err(AptosError::SimulationFailed(
+            return Err(MovementError::SimulationFailed(
                 sim_result
                     .error_message()
                     .unwrap_or_else(|| sim_result.vm_status().to_string()),
@@ -538,7 +538,7 @@ impl Aptos {
         sender: &A,
         recipient: AccountAddress,
         amount: u64,
-    ) -> AptosResult<AptosResponse<serde_json::Value>> {
+    ) -> MovementResult<MovementResponse<serde_json::Value>> {
         let payload = EntryFunction::apt_transfer(recipient, amount)?;
         self.sign_submit_and_wait(sender, payload.into(), None)
             .await
@@ -558,7 +558,7 @@ impl Aptos {
         recipient: AccountAddress,
         coin_type: TypeTag,
         amount: u64,
-    ) -> AptosResult<AptosResponse<serde_json::Value>> {
+    ) -> MovementResult<MovementResponse<serde_json::Value>> {
         let payload = EntryFunction::coin_transfer(coin_type, recipient, amount)?;
         self.sign_submit_and_wait(sender, payload.into(), None)
             .await
@@ -579,7 +579,7 @@ impl Aptos {
         function: &str,
         type_args: Vec<String>,
         args: Vec<serde_json::Value>,
-    ) -> AptosResult<Vec<serde_json::Value>> {
+    ) -> MovementResult<Vec<serde_json::Value>> {
         let response = self.fullnode.view(function, type_args, args).await?;
         Ok(response.into_inner())
     }
@@ -603,16 +603,16 @@ impl Aptos {
     /// # Example
     ///
     /// ```rust,ignore
-    /// use aptos_sdk::{Aptos, AptosConfig, AccountAddress};
+    /// use movement_sdk::{Movement, MovementConfig, AccountAddress};
     ///
-    /// let aptos = Aptos::new(AptosConfig::testnet())?;
+    /// let movement = Movement::new(MovementConfig::testnet())?;
     /// let owner = AccountAddress::from_hex("0x1")?;
     ///
     /// // BCS-encode the argument
     /// let args = vec![aptos_bcs::to_bytes(&owner)?];
     ///
     /// // Call view function with typed return
-    /// let balance: u64 = aptos.view_bcs(
+    /// let balance: u64 = movement.view_bcs(
     ///     "0x1::coin::balance",
     ///     vec!["0x1::aptos_coin::AptosCoin".to_string()],
     ///     args,
@@ -628,10 +628,10 @@ impl Aptos {
         function: &str,
         type_args: Vec<String>,
         args: Vec<Vec<u8>>,
-    ) -> AptosResult<T> {
+    ) -> MovementResult<T> {
         let response = self.fullnode.view_bcs(function, type_args, args).await?;
         let bytes = response.into_inner();
-        aptos_bcs::from_bytes(&bytes).map_err(|e| AptosError::Bcs(e.to_string()))
+        aptos_bcs::from_bytes(&bytes).map_err(|e| MovementError::Bcs(e.to_string()))
     }
 
     /// Calls a view function with BCS inputs and returns raw BCS bytes.
@@ -647,7 +647,7 @@ impl Aptos {
         function: &str,
         type_args: Vec<String>,
         args: Vec<Vec<u8>>,
-    ) -> AptosResult<Vec<u8>> {
+    ) -> MovementResult<Vec<u8>> {
         let response = self.fullnode.view_bcs(function, type_args, args).await?;
         Ok(response.into_inner())
     }
@@ -668,11 +668,11 @@ impl Aptos {
         &self,
         address: AccountAddress,
         amount: u64,
-    ) -> AptosResult<Vec<String>> {
+    ) -> MovementResult<Vec<String>> {
         let faucet = self
             .faucet
             .as_ref()
-            .ok_or_else(|| AptosError::FeatureNotEnabled("faucet".into()))?;
+            .ok_or_else(|| MovementError::FeatureNotEnabled("faucet".into()))?;
         let txn_hashes = faucet.fund(address, amount).await?;
 
         // Parse hashes first to own them
@@ -711,7 +711,7 @@ impl Aptos {
     pub async fn create_funded_account(
         &self,
         amount: u64,
-    ) -> AptosResult<crate::account::Ed25519Account> {
+    ) -> MovementResult<crate::account::Ed25519Account> {
         let account = crate::account::Ed25519Account::generate();
         self.fund_account(account.address(), amount).await?;
         Ok(account)
@@ -724,7 +724,7 @@ impl Aptos {
     /// # Example
     ///
     /// ```rust,ignore
-    /// let aptos = Aptos::testnet()?;
+    /// let movement = Movement::testnet()?;
     ///
     /// // Build and submit batch of transfers
     /// let payloads = vec![
@@ -733,7 +733,7 @@ impl Aptos {
     ///     EntryFunction::apt_transfer(addr3, 3000)?.into(),
     /// ];
     ///
-    /// let results = aptos.batch().submit_and_wait(&sender, payloads, None).await?;
+    /// let results = movement.batch().submit_and_wait(&sender, payloads, None).await?;
     /// ```
     pub fn batch(&self) -> crate::transaction::BatchOperations<'_> {
         crate::transaction::BatchOperations::new(&self.fullnode, &self.chain_id)
@@ -762,7 +762,7 @@ impl Aptos {
         &self,
         account: &A,
         payloads: Vec<TransactionPayload>,
-    ) -> AptosResult<Vec<crate::transaction::BatchTransactionResult>> {
+    ) -> MovementResult<Vec<crate::transaction::BatchTransactionResult>> {
         self.batch().submit(account, payloads).await
     }
 
@@ -788,7 +788,7 @@ impl Aptos {
         account: &A,
         payloads: Vec<TransactionPayload>,
         timeout: Option<Duration>,
-    ) -> AptosResult<Vec<crate::transaction::BatchTransactionResult>> {
+    ) -> MovementResult<Vec<crate::transaction::BatchTransactionResult>> {
         self.batch()
             .submit_and_wait(account, payloads, timeout)
             .await
@@ -804,7 +804,7 @@ impl Aptos {
     /// # Example
     ///
     /// ```rust,ignore
-    /// let results = aptos.batch_transfer_apt(&sender, vec![
+    /// let results = movement.batch_transfer_apt(&sender, vec![
     ///     (addr1, 1_000_000),  // 0.01 APT
     ///     (addr2, 2_000_000),  // 0.02 APT
     ///     (addr3, 3_000_000),  // 0.03 APT
@@ -820,7 +820,7 @@ impl Aptos {
         &self,
         sender: &A,
         transfers: Vec<(AccountAddress, u64)>,
-    ) -> AptosResult<Vec<crate::transaction::BatchTransactionResult>> {
+    ) -> MovementResult<Vec<crate::transaction::BatchTransactionResult>> {
         self.batch().transfer_apt(sender, transfers).await
     }
 }
@@ -834,24 +834,24 @@ mod tests {
     };
 
     #[test]
-    fn test_aptos_client_creation() {
-        let aptos = Aptos::testnet();
-        assert!(aptos.is_ok());
+    fn test_movement_client_creation() {
+        let movement = Movement::testnet();
+        assert!(movement.is_ok());
     }
 
     #[test]
     fn test_chain_id() {
-        let aptos = Aptos::testnet().unwrap();
-        assert_eq!(aptos.chain_id(), ChainId::testnet());
+        let movement = Movement::testnet().unwrap();
+        assert_eq!(movement.chain_id(), ChainId::testnet());
 
-        let aptos = Aptos::mainnet().unwrap();
-        assert_eq!(aptos.chain_id(), ChainId::mainnet());
+        let movement = Movement::mainnet().unwrap();
+        assert_eq!(movement.chain_id(), ChainId::mainnet());
     }
 
-    fn create_mock_aptos(server: &MockServer) -> Aptos {
+    fn create_mock_movement(server: &MockServer) -> Movement {
         let url = format!("{}/v1", server.uri());
-        let config = AptosConfig::custom(&url).unwrap().without_retry();
-        Aptos::new(config).unwrap()
+        let config = MovementConfig::custom(&url).unwrap().without_retry();
+        Movement::new(config).unwrap()
     }
 
     #[tokio::test]
@@ -868,8 +868,8 @@ mod tests {
             .mount(&server)
             .await;
 
-        let aptos = create_mock_aptos(&server);
-        let seq = aptos
+        let movement = create_mock_movement(&server);
+        let seq = movement
             .get_sequence_number(AccountAddress::ONE)
             .await
             .unwrap();
@@ -890,8 +890,8 @@ mod tests {
             .mount(&server)
             .await;
 
-        let aptos = create_mock_aptos(&server);
-        let balance = aptos.get_balance(AccountAddress::ONE).await.unwrap();
+        let movement = create_mock_movement(&server);
+        let balance = movement.get_balance(AccountAddress::ONE).await.unwrap();
         assert_eq!(balance, 5_000_000_000);
     }
 
@@ -909,8 +909,8 @@ mod tests {
             .mount(&server)
             .await;
 
-        let aptos = create_mock_aptos(&server);
-        let resources = aptos
+        let movement = create_mock_movement(&server);
+        let resources = movement
             .fullnode()
             .get_account_resources(AccountAddress::ONE)
             .await
@@ -938,26 +938,26 @@ mod tests {
             .mount(&server)
             .await;
 
-        let aptos = create_mock_aptos(&server);
-        let info = aptos.ledger_info().await.unwrap();
+        let movement = create_mock_movement(&server);
+        let info = movement.ledger_info().await.unwrap();
         assert_eq!(info.version().unwrap(), 12345);
     }
 
     #[tokio::test]
     async fn test_config_builder() {
-        let config = AptosConfig::testnet().with_timeout(Duration::from_secs(60));
+        let config = MovementConfig::testnet().with_timeout(Duration::from_secs(60));
 
-        let aptos = Aptos::new(config).unwrap();
-        assert_eq!(aptos.chain_id(), ChainId::testnet());
+        let movement = Movement::new(config).unwrap();
+        assert_eq!(movement.chain_id(), ChainId::testnet());
     }
 
     #[tokio::test]
     async fn test_fullnode_accessor() {
         let server = MockServer::start().await;
-        let aptos = create_mock_aptos(&server);
+        let movement = create_mock_movement(&server);
 
         // Can access fullnode client directly
-        let fullnode = aptos.fullnode();
+        let fullnode = movement.fullnode();
         assert!(fullnode.base_url().as_str().contains(&server.uri()));
     }
 
@@ -1004,12 +1004,12 @@ mod tests {
             .mount(&server)
             .await;
 
-        let aptos = create_mock_aptos(&server);
+        let movement = create_mock_movement(&server);
         let account = crate::account::Ed25519Account::generate();
         let recipient = AccountAddress::from_hex("0x123").unwrap();
         let payload = crate::transaction::EntryFunction::apt_transfer(recipient, 1000).unwrap();
 
-        let raw_txn = aptos
+        let raw_txn = movement
             .build_transaction(&account, payload.into())
             .await
             .unwrap();
@@ -1020,9 +1020,12 @@ mod tests {
     #[cfg(feature = "indexer")]
     #[tokio::test]
     async fn test_indexer_accessor() {
-        let aptos = Aptos::testnet().unwrap();
-        let indexer = aptos.indexer();
-        assert!(indexer.is_some());
+        // testnet preset has no indexer URL by default; opt in via with_indexer_url.
+        let config = MovementConfig::testnet()
+            .with_indexer_url("https://indexer.example.com/graphql")
+            .unwrap();
+        let movement = Movement::new(config).unwrap();
+        assert!(movement.indexer().is_some());
     }
 
     #[tokio::test]
@@ -1039,8 +1042,8 @@ mod tests {
             .mount(&server)
             .await;
 
-        let aptos = create_mock_aptos(&server);
-        let exists = aptos.account_exists(AccountAddress::ONE).await.unwrap();
+        let movement = create_mock_movement(&server);
+        let exists = movement.account_exists(AccountAddress::ONE).await.unwrap();
         assert!(exists);
     }
 
@@ -1058,8 +1061,8 @@ mod tests {
             .mount(&server)
             .await;
 
-        let aptos = create_mock_aptos(&server);
-        let exists = aptos.account_exists(AccountAddress::ONE).await.unwrap();
+        let movement = create_mock_movement(&server);
+        let exists = movement.account_exists(AccountAddress::ONE).await.unwrap();
         assert!(!exists);
     }
 
@@ -1074,8 +1077,8 @@ mod tests {
             .mount(&server)
             .await;
 
-        let aptos = create_mock_aptos(&server);
-        let result: Vec<serde_json::Value> = aptos
+        let movement = create_mock_movement(&server);
+        let result: Vec<serde_json::Value> = movement
             .view(
                 "0x1::coin::balance",
                 vec!["0x1::aptos_coin::AptosCoin".to_string()],
@@ -1090,22 +1093,22 @@ mod tests {
 
     #[tokio::test]
     async fn test_chain_id_from_config() {
-        let aptos = Aptos::mainnet().unwrap();
-        assert_eq!(aptos.chain_id(), ChainId::mainnet());
+        let movement = Movement::mainnet().unwrap();
+        assert_eq!(movement.chain_id(), ChainId::mainnet());
 
-        let aptos = Aptos::devnet().unwrap();
-        // Devnet uses chain_id 165
-        assert_eq!(aptos.chain_id(), ChainId::new(165));
+        // devnet aliases to testnet for Movement.
+        let movement = Movement::devnet().unwrap();
+        assert_eq!(movement.chain_id(), ChainId::testnet());
     }
 
     #[tokio::test]
     async fn test_custom_config() {
         let server = MockServer::start().await;
         let url = format!("{}/v1", server.uri());
-        let config = AptosConfig::custom(&url).unwrap();
-        let aptos = Aptos::new(config).unwrap();
+        let config = MovementConfig::custom(&url).unwrap();
+        let movement = Movement::new(config).unwrap();
 
         // Custom config should have unknown chain ID
-        assert_eq!(aptos.chain_id(), ChainId::new(0));
+        assert_eq!(movement.chain_id(), ChainId::new(0));
     }
 }

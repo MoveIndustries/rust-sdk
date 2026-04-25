@@ -16,7 +16,7 @@
 //! # Example
 //!
 //! ```rust,ignore
-//! use aptos_sdk::transaction::{SponsoredTransactionBuilder, EntryFunction};
+//! use movement_sdk::transaction::{SponsoredTransactionBuilder, EntryFunction};
 //!
 //! // Build a sponsored transaction
 //! let fee_payer_txn = SponsoredTransactionBuilder::new()
@@ -37,7 +37,7 @@
 //! ```
 
 use crate::account::Account;
-use crate::error::{AptosError, AptosResult};
+use crate::error::{MovementError, MovementResult};
 use crate::transaction::authenticator::{AccountAuthenticator, TransactionAuthenticator};
 use crate::transaction::builder::{
     DEFAULT_EXPIRATION_SECONDS, DEFAULT_GAS_UNIT_PRICE, DEFAULT_MAX_GAS_AMOUNT,
@@ -55,7 +55,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 /// # Example
 ///
 /// ```rust,ignore
-/// use aptos_sdk::transaction::{SponsoredTransactionBuilder, EntryFunction};
+/// use movement_sdk::transaction::{SponsoredTransactionBuilder, EntryFunction};
 ///
 /// // Build the fee payer transaction structure
 /// let fee_payer_txn = SponsoredTransactionBuilder::new()
@@ -196,22 +196,22 @@ impl SponsoredTransactionBuilder {
     /// # Errors
     ///
     /// Returns an error if `sender`, `sequence_number`, `payload`, `chain_id`, or `fee_payer` is not set.
-    pub fn build(self) -> AptosResult<FeePayerRawTransaction> {
+    pub fn build(self) -> MovementResult<FeePayerRawTransaction> {
         let sender = self
             .sender_address
-            .ok_or_else(|| AptosError::transaction("sender is required"))?;
+            .ok_or_else(|| MovementError::transaction("sender is required"))?;
         let sequence_number = self
             .sequence_number
-            .ok_or_else(|| AptosError::transaction("sequence_number is required"))?;
+            .ok_or_else(|| MovementError::transaction("sequence_number is required"))?;
         let payload = self
             .payload
-            .ok_or_else(|| AptosError::transaction("payload is required"))?;
+            .ok_or_else(|| MovementError::transaction("payload is required"))?;
         let chain_id = self
             .chain_id
-            .ok_or_else(|| AptosError::transaction("chain_id is required"))?;
+            .ok_or_else(|| MovementError::transaction("chain_id is required"))?;
         let fee_payer_address = self
             .fee_payer_address
-            .ok_or_else(|| AptosError::transaction("fee_payer is required"))?;
+            .ok_or_else(|| MovementError::transaction("fee_payer is required"))?;
 
         // SECURITY: Apply expiration offset only once (was previously doubled)
         let expiration_timestamp_secs = self.expiration_timestamp_secs.unwrap_or_else(|| {
@@ -264,7 +264,7 @@ impl SponsoredTransactionBuilder {
         sender: &S,
         secondary_signers: &[&dyn Account],
         fee_payer: &F,
-    ) -> AptosResult<SignedTransaction>
+    ) -> MovementResult<SignedTransaction>
     where
         S: Account,
         F: Account,
@@ -286,7 +286,7 @@ impl SponsoredTransactionBuilder {
 /// # Example
 ///
 /// ```rust,ignore
-/// use aptos_sdk::transaction::sign_sponsored_transaction;
+/// use movement_sdk::transaction::sign_sponsored_transaction;
 ///
 /// let signed_txn = sign_sponsored_transaction(
 ///     &fee_payer_txn,
@@ -304,7 +304,7 @@ pub fn sign_sponsored_transaction<S, F>(
     sender: &S,
     secondary_signers: &[&dyn Account],
     fee_payer: &F,
-) -> AptosResult<SignedTransaction>
+) -> MovementResult<SignedTransaction>
 where
     S: Account,
     F: Account,
@@ -364,7 +364,7 @@ fn make_account_authenticator(
     scheme: u8,
     public_key: Vec<u8>,
     signature: Vec<u8>,
-) -> AptosResult<AccountAuthenticator> {
+) -> MovementResult<AccountAuthenticator> {
     match scheme {
         crate::crypto::ED25519_SCHEME => Ok(AccountAuthenticator::ed25519(public_key, signature)),
         crate::crypto::MULTI_ED25519_SCHEME => Ok(AccountAuthenticator::MultiEd25519 {
@@ -377,7 +377,7 @@ fn make_account_authenticator(
         crate::crypto::MULTI_KEY_SCHEME => {
             Ok(AccountAuthenticator::multi_key(public_key, signature))
         }
-        _ => Err(AptosError::InvalidSignature(format!(
+        _ => Err(MovementError::InvalidSignature(format!(
             "unknown signature scheme: {scheme}"
         ))),
     }
@@ -418,7 +418,7 @@ impl PartiallySigned {
     ///
     /// Returns an error if generating the signing message fails, if signing fails,
     /// or if the signature scheme is not recognized.
-    pub fn sign_as_sender<A: Account>(&mut self, sender: &A) -> AptosResult<()> {
+    pub fn sign_as_sender<A: Account>(&mut self, sender: &A) -> MovementResult<()> {
         let signing_message = self.fee_payer_txn.signing_message()?;
         let signature = sender.sign(&signing_message)?;
         let public_key = sender.public_key_bytes();
@@ -436,9 +436,9 @@ impl PartiallySigned {
     ///
     /// Returns an error if the index is out of bounds, if generating the signing message fails,
     /// if signing fails, or if the signature scheme is not recognized.
-    pub fn sign_as_secondary<A: Account>(&mut self, index: usize, signer: &A) -> AptosResult<()> {
+    pub fn sign_as_secondary<A: Account>(&mut self, index: usize, signer: &A) -> MovementResult<()> {
         if index >= self.secondary_auths.len() {
-            return Err(AptosError::transaction(format!(
+            return Err(MovementError::transaction(format!(
                 "secondary signer index {} out of bounds (max {})",
                 index,
                 self.secondary_auths.len()
@@ -462,7 +462,7 @@ impl PartiallySigned {
     ///
     /// Returns an error if generating the signing message fails, if signing fails,
     /// or if the signature scheme is not recognized.
-    pub fn sign_as_fee_payer<A: Account>(&mut self, fee_payer: &A) -> AptosResult<()> {
+    pub fn sign_as_fee_payer<A: Account>(&mut self, fee_payer: &A) -> MovementResult<()> {
         let signing_message = self.fee_payer_txn.signing_message()?;
         let signature = fee_payer.sign(&signing_message)?;
         let public_key = fee_payer.public_key_bytes();
@@ -488,13 +488,13 @@ impl PartiallySigned {
     /// # Errors
     ///
     /// Returns an error if the sender signature, fee payer signature, or any secondary signer signature is missing.
-    pub fn finalize(self) -> AptosResult<SignedTransaction> {
+    pub fn finalize(self) -> MovementResult<SignedTransaction> {
         let sender_auth = self
             .sender_auth
-            .ok_or_else(|| AptosError::transaction("missing sender signature"))?;
+            .ok_or_else(|| MovementError::transaction("missing sender signature"))?;
         let fee_payer_auth = self
             .fee_payer_auth
-            .ok_or_else(|| AptosError::transaction("missing fee payer signature"))?;
+            .ok_or_else(|| MovementError::transaction("missing fee payer signature"))?;
 
         let secondary_auths: Result<Vec<_>, _> = self
             .secondary_auths
@@ -502,7 +502,7 @@ impl PartiallySigned {
             .enumerate()
             .map(|(i, auth)| {
                 auth.ok_or_else(|| {
-                    AptosError::transaction(format!("missing secondary signer {i} signature"))
+                    MovementError::transaction(format!("missing secondary signer {i} signature"))
                 })
             })
             .collect();
@@ -542,7 +542,7 @@ pub trait Sponsor: Account + Sized {
     /// # Example
     ///
     /// ```rust,ignore
-    /// use aptos_sdk::transaction::Sponsor;
+    /// use movement_sdk::transaction::Sponsor;
     ///
     /// let signed_txn = sponsor_account.sponsor(
     ///     &user_account,
@@ -561,7 +561,7 @@ pub trait Sponsor: Account + Sized {
         sender_sequence_number: u64,
         payload: TransactionPayload,
         chain_id: ChainId,
-    ) -> AptosResult<SignedTransaction> {
+    ) -> MovementResult<SignedTransaction> {
         SponsoredTransactionBuilder::new()
             .sender(sender.address())
             .sequence_number(sender_sequence_number)
@@ -584,7 +584,7 @@ pub trait Sponsor: Account + Sized {
         chain_id: ChainId,
         max_gas_amount: u64,
         gas_unit_price: u64,
-    ) -> AptosResult<SignedTransaction> {
+    ) -> MovementResult<SignedTransaction> {
         SponsoredTransactionBuilder::new()
             .sender(sender.address())
             .sequence_number(sender_sequence_number)
@@ -608,7 +608,7 @@ impl<A: Account + Sized> Sponsor for A {}
 /// # Example
 ///
 /// ```rust,ignore
-/// use aptos_sdk::transaction::sponsor_transaction;
+/// use movement_sdk::transaction::sponsor_transaction;
 ///
 /// let signed = sponsor_transaction(
 ///     &sender_account,
@@ -628,7 +628,7 @@ pub fn sponsor_transaction<S, F>(
     fee_payer: &F,
     payload: TransactionPayload,
     chain_id: ChainId,
-) -> AptosResult<SignedTransaction>
+) -> MovementResult<SignedTransaction>
 where
     S: Account,
     F: Account,

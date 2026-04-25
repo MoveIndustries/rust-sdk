@@ -1,10 +1,10 @@
 //! BLS12-381 signature scheme implementation.
 //!
 //! BLS signatures support aggregation, which is used for validator
-//! consensus signatures on Aptos.
+//! consensus signatures on Movement.
 
 use crate::crypto::traits::{PublicKey, Signature, Signer, Verifier};
-use crate::error::{AptosError, AptosResult};
+use crate::error::{MovementError, MovementResult};
 use blst::BLST_ERROR;
 use blst::min_pk::{PublicKey as BlstPublicKey, SecretKey, Signature as BlstSignature};
 use rand::RngCore;
@@ -21,7 +21,7 @@ pub const BLS12381_SIGNATURE_LENGTH: usize = 96;
 /// BLS12-381 proof of possession length in bytes.
 pub const BLS12381_POP_LENGTH: usize = 96;
 
-/// The domain separation tag for BLS signatures in Aptos.
+/// The domain separation tag for BLS signatures in Movement.
 const DST: &[u8] = b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_";
 /// The domain separation tag for BLS proof of possession.
 const DST_POP: &[u8] = b"BLS_POP_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_";
@@ -60,14 +60,14 @@ impl Bls12381PrivateKey {
     /// # Errors
     ///
     /// Returns an error if the seed is less than 32 bytes or if key derivation fails.
-    pub fn from_seed(seed: &[u8]) -> AptosResult<Self> {
+    pub fn from_seed(seed: &[u8]) -> MovementResult<Self> {
         if seed.len() < 32 {
-            return Err(AptosError::InvalidPrivateKey(
+            return Err(MovementError::InvalidPrivateKey(
                 "seed must be at least 32 bytes".to_string(),
             ));
         }
         let secret_key = SecretKey::key_gen(seed, &[])
-            .map_err(|e| AptosError::InvalidPrivateKey(format!("{e:?}")))?;
+            .map_err(|e| MovementError::InvalidPrivateKey(format!("{e:?}")))?;
         Ok(Self { inner: secret_key })
     }
 
@@ -76,16 +76,16 @@ impl Bls12381PrivateKey {
     /// # Errors
     ///
     /// Returns an error if the bytes length is not 32 bytes or if the key deserialization fails.
-    pub fn from_bytes(bytes: &[u8]) -> AptosResult<Self> {
+    pub fn from_bytes(bytes: &[u8]) -> MovementResult<Self> {
         if bytes.len() != BLS12381_PRIVATE_KEY_LENGTH {
-            return Err(AptosError::InvalidPrivateKey(format!(
+            return Err(MovementError::InvalidPrivateKey(format!(
                 "expected {} bytes, got {}",
                 BLS12381_PRIVATE_KEY_LENGTH,
                 bytes.len()
             )));
         }
         let secret_key = SecretKey::from_bytes(bytes)
-            .map_err(|e| AptosError::InvalidPrivateKey(format!("{e:?}")))?;
+            .map_err(|e| MovementError::InvalidPrivateKey(format!("{e:?}")))?;
         Ok(Self { inner: secret_key })
     }
 
@@ -94,7 +94,7 @@ impl Bls12381PrivateKey {
     /// # Errors
     ///
     /// Returns an error if hex decoding fails or if the resulting bytes are invalid.
-    pub fn from_hex(hex_str: &str) -> AptosResult<Self> {
+    pub fn from_hex(hex_str: &str) -> MovementResult<Self> {
         let bytes = const_hex::decode(hex_str)?;
         Self::from_bytes(&bytes)
     }
@@ -164,16 +164,16 @@ impl Bls12381PublicKey {
     /// # Errors
     ///
     /// Returns an error if the bytes length is not 48 bytes or if the key deserialization fails.
-    pub fn from_bytes(bytes: &[u8]) -> AptosResult<Self> {
+    pub fn from_bytes(bytes: &[u8]) -> MovementResult<Self> {
         if bytes.len() != BLS12381_PUBLIC_KEY_LENGTH {
-            return Err(AptosError::InvalidPublicKey(format!(
+            return Err(MovementError::InvalidPublicKey(format!(
                 "expected {} bytes, got {}",
                 BLS12381_PUBLIC_KEY_LENGTH,
                 bytes.len()
             )));
         }
         let public_key = BlstPublicKey::from_bytes(bytes)
-            .map_err(|e| AptosError::InvalidPublicKey(format!("{e:?}")))?;
+            .map_err(|e| MovementError::InvalidPublicKey(format!("{e:?}")))?;
         Ok(Self { inner: public_key })
     }
 
@@ -182,7 +182,7 @@ impl Bls12381PublicKey {
     /// # Errors
     ///
     /// Returns an error if hex decoding fails or if the resulting bytes are invalid.
-    pub fn from_hex(hex_str: &str) -> AptosResult<Self> {
+    pub fn from_hex(hex_str: &str) -> MovementResult<Self> {
         let bytes = const_hex::decode(hex_str)?;
         Self::from_bytes(&bytes)
     }
@@ -202,14 +202,14 @@ impl Bls12381PublicKey {
     /// # Errors
     ///
     /// Returns an error if signature verification fails.
-    pub fn verify(&self, message: &[u8], signature: &Bls12381Signature) -> AptosResult<()> {
+    pub fn verify(&self, message: &[u8], signature: &Bls12381Signature) -> MovementResult<()> {
         let result = signature
             .inner
             .verify(true, message, DST, &[], &self.inner, true);
         if result == BLST_ERROR::BLST_SUCCESS {
             Ok(())
         } else {
-            Err(AptosError::SignatureVerificationFailed)
+            Err(MovementError::SignatureVerificationFailed)
         }
     }
 }
@@ -224,15 +224,15 @@ impl Bls12381PublicKey {
     /// # Errors
     ///
     /// Returns an error if the list of public keys is empty or if aggregation fails.
-    pub fn aggregate(public_keys: &[&Bls12381PublicKey]) -> AptosResult<Bls12381PublicKey> {
+    pub fn aggregate(public_keys: &[&Bls12381PublicKey]) -> MovementResult<Bls12381PublicKey> {
         if public_keys.is_empty() {
-            return Err(AptosError::InvalidPublicKey(
+            return Err(MovementError::InvalidPublicKey(
                 "cannot aggregate empty list of public keys".to_string(),
             ));
         }
         let blst_pks: Vec<&BlstPublicKey> = public_keys.iter().map(|pk| &pk.inner).collect();
         let agg_pk = blst::min_pk::AggregatePublicKey::aggregate(&blst_pks, false)
-            .map_err(|e| AptosError::InvalidPublicKey(format!("{e:?}")))?;
+            .map_err(|e| MovementError::InvalidPublicKey(format!("{e:?}")))?;
         Ok(Bls12381PublicKey {
             inner: agg_pk.to_public_key(),
         })
@@ -247,7 +247,7 @@ impl PublicKey for Bls12381PublicKey {
     /// # Errors
     ///
     /// Returns an error if the bytes length is not 48 bytes or if the key deserialization fails.
-    fn from_bytes(bytes: &[u8]) -> AptosResult<Self> {
+    fn from_bytes(bytes: &[u8]) -> MovementResult<Self> {
         Bls12381PublicKey::from_bytes(bytes)
     }
 
@@ -264,7 +264,7 @@ impl Verifier for Bls12381PublicKey {
     /// # Errors
     ///
     /// Returns an error if signature verification fails.
-    fn verify(&self, message: &[u8], signature: &Bls12381Signature) -> AptosResult<()> {
+    fn verify(&self, message: &[u8], signature: &Bls12381Signature) -> MovementResult<()> {
         Bls12381PublicKey::verify(self, message, signature)
     }
 }
@@ -321,16 +321,16 @@ impl Bls12381Signature {
     /// # Errors
     ///
     /// Returns an error if the bytes length is not 96 bytes or if the signature deserialization fails.
-    pub fn from_bytes(bytes: &[u8]) -> AptosResult<Self> {
+    pub fn from_bytes(bytes: &[u8]) -> MovementResult<Self> {
         if bytes.len() != BLS12381_SIGNATURE_LENGTH {
-            return Err(AptosError::InvalidSignature(format!(
+            return Err(MovementError::InvalidSignature(format!(
                 "expected {} bytes, got {}",
                 BLS12381_SIGNATURE_LENGTH,
                 bytes.len()
             )));
         }
         let signature = BlstSignature::from_bytes(bytes)
-            .map_err(|e| AptosError::InvalidSignature(format!("{e:?}")))?;
+            .map_err(|e| MovementError::InvalidSignature(format!("{e:?}")))?;
         Ok(Self { inner: signature })
     }
 
@@ -339,7 +339,7 @@ impl Bls12381Signature {
     /// # Errors
     ///
     /// Returns an error if hex decoding fails or if the resulting bytes are invalid.
-    pub fn from_hex(hex_str: &str) -> AptosResult<Self> {
+    pub fn from_hex(hex_str: &str) -> MovementResult<Self> {
         let bytes = const_hex::decode(hex_str)?;
         Self::from_bytes(&bytes)
     }
@@ -364,15 +364,15 @@ impl Bls12381Signature {
     /// # Errors
     ///
     /// Returns an error if the list of signatures is empty or if aggregation fails.
-    pub fn aggregate(signatures: &[&Bls12381Signature]) -> AptosResult<Bls12381Signature> {
+    pub fn aggregate(signatures: &[&Bls12381Signature]) -> MovementResult<Bls12381Signature> {
         if signatures.is_empty() {
-            return Err(AptosError::InvalidSignature(
+            return Err(MovementError::InvalidSignature(
                 "cannot aggregate empty list of signatures".to_string(),
             ));
         }
         let blst_sigs: Vec<&BlstSignature> = signatures.iter().map(|s| &s.inner).collect();
         let agg_sig = blst::min_pk::AggregateSignature::aggregate(&blst_sigs, false)
-            .map_err(|e| AptosError::InvalidSignature(format!("{e:?}")))?;
+            .map_err(|e| MovementError::InvalidSignature(format!("{e:?}")))?;
         Ok(Bls12381Signature {
             inner: agg_sig.to_signature(),
         })
@@ -388,7 +388,7 @@ impl Signature for Bls12381Signature {
     /// # Errors
     ///
     /// Returns an error if the bytes length is not 96 bytes or if the signature deserialization fails.
-    fn from_bytes(bytes: &[u8]) -> AptosResult<Self> {
+    fn from_bytes(bytes: &[u8]) -> MovementResult<Self> {
         Bls12381Signature::from_bytes(bytes)
     }
 
@@ -452,16 +452,16 @@ impl Bls12381ProofOfPossession {
     /// # Errors
     ///
     /// Returns an error if the bytes length is not 96 bytes or if the proof of possession deserialization fails.
-    pub fn from_bytes(bytes: &[u8]) -> AptosResult<Self> {
+    pub fn from_bytes(bytes: &[u8]) -> MovementResult<Self> {
         if bytes.len() != BLS12381_POP_LENGTH {
-            return Err(AptosError::InvalidSignature(format!(
+            return Err(MovementError::InvalidSignature(format!(
                 "expected {} bytes, got {}",
                 BLS12381_POP_LENGTH,
                 bytes.len()
             )));
         }
         let pop = BlstSignature::from_bytes(bytes)
-            .map_err(|e| AptosError::InvalidSignature(format!("{e:?}")))?;
+            .map_err(|e| MovementError::InvalidSignature(format!("{e:?}")))?;
         Ok(Self { inner: pop })
     }
 
@@ -470,7 +470,7 @@ impl Bls12381ProofOfPossession {
     /// # Errors
     ///
     /// Returns an error if hex decoding fails or if the resulting bytes are invalid.
-    pub fn from_hex(hex_str: &str) -> AptosResult<Self> {
+    pub fn from_hex(hex_str: &str) -> MovementResult<Self> {
         let bytes = const_hex::decode(hex_str)?;
         Self::from_bytes(&bytes)
     }
@@ -492,7 +492,7 @@ impl Bls12381ProofOfPossession {
     /// # Errors
     ///
     /// Returns an error if proof of possession verification fails.
-    pub fn verify(&self, public_key: &Bls12381PublicKey) -> AptosResult<()> {
+    pub fn verify(&self, public_key: &Bls12381PublicKey) -> MovementResult<()> {
         let pk_bytes = public_key.to_bytes();
         let result = self
             .inner
@@ -500,7 +500,7 @@ impl Bls12381ProofOfPossession {
         if result == BLST_ERROR::BLST_SUCCESS {
             Ok(())
         } else {
-            Err(AptosError::SignatureVerificationFailed)
+            Err(MovementError::SignatureVerificationFailed)
         }
     }
 }

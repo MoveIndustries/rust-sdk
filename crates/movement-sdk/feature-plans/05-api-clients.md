@@ -2,11 +2,11 @@
 
 ## Overview
 
-The API clients module provides interfaces for interacting with Aptos network services: the fullnode REST API, the faucet service, and the indexer GraphQL API.
+The API clients module provides interfaces for interacting with Movement network services: the fullnode REST API, the faucet service, and the indexer GraphQL API.
 
 ## Goals
 
-1. Full coverage of Aptos REST API
+1. Full coverage of Movement REST API
 2. Type-safe request/response handling
 3. Proper error handling with context
 4. Support for all network environments
@@ -21,19 +21,19 @@ The API clients module provides interfaces for interacting with Aptos network se
 
 ## API Design
 
-### AptosConfig
+### MovementConfig
 
 ```rust
 /// Network configuration for API clients.
 #[derive(Clone, Debug)]
-pub struct AptosConfig {
+pub struct MovementConfig {
     fullnode_url: Url,
     faucet_url: Option<Url>,
     indexer_url: Option<Url>,
     timeout: Duration,
 }
 
-impl AptosConfig {
+impl MovementConfig {
     /// Create configuration for mainnet.
     pub fn mainnet() -> Self;
     
@@ -60,55 +60,55 @@ impl AptosConfig {
 }
 ```
 
-### Aptos (High-Level Client)
+### Movement (High-Level Client)
 
 ```rust
-/// Unified Aptos client combining all services.
-pub struct Aptos {
-    config: AptosConfig,
-    fullnode: AptosFullnodeClient,
+/// Unified Movement client combining all services.
+pub struct Movement {
+    config: MovementConfig,
+    fullnode: MovementFullnodeClient,
     #[cfg(feature = "faucet")]
-    faucet: Option<AptosFaucetClient>,
+    faucet: Option<MovementFaucetClient>,
     #[cfg(feature = "indexer")]
-    indexer: Option<AptosIndexerClient>,
+    indexer: Option<MovementIndexerClient>,
     chain_id: ChainId,
 }
 
-impl Aptos {
-    /// Create a new Aptos client.
-    pub async fn new(config: AptosConfig) -> Result<Self, AptosError>;
+impl Movement {
+    /// Create a new Movement client.
+    pub async fn new(config: MovementConfig) -> Result<Self, MovementError>;
     
     /// Get the chain ID.
     pub fn chain_id(&self) -> ChainId;
     
     /// Get the fullnode client.
-    pub fn fullnode(&self) -> &AptosFullnodeClient;
+    pub fn fullnode(&self) -> &MovementFullnodeClient;
     
     /// Get the faucet client (if available).
     #[cfg(feature = "faucet")]
-    pub fn faucet(&self) -> Option<&AptosFaucetClient>;
+    pub fn faucet(&self) -> Option<&MovementFaucetClient>;
     
     /// Get the indexer client (if available).
     #[cfg(feature = "indexer")]
-    pub fn indexer(&self) -> Option<&AptosIndexerClient>;
+    pub fn indexer(&self) -> Option<&MovementIndexerClient>;
     
     // Convenience methods
     
     /// Get account balance in APT.
-    pub async fn get_balance(&self, address: AccountAddress) -> Result<u64, AptosError>;
+    pub async fn get_balance(&self, address: AccountAddress) -> Result<u64, MovementError>;
     
     /// Get account sequence number.
-    pub async fn get_sequence_number(&self, address: AccountAddress) -> Result<u64, AptosError>;
+    pub async fn get_sequence_number(&self, address: AccountAddress) -> Result<u64, MovementError>;
     
     /// Get ledger info.
-    pub async fn ledger_info(&self) -> Result<LedgerInfo, AptosError>;
+    pub async fn ledger_info(&self) -> Result<LedgerInfo, MovementError>;
     
     /// Submit a transaction and wait for confirmation.
     pub async fn submit_and_wait(
         &self,
         signed_txn: &SignedTransaction,
         timeout: Option<Duration>,
-    ) -> Result<TransactionResponse, AptosError>;
+    ) -> Result<TransactionResponse, MovementError>;
     
     /// Sign, submit, and wait for a transaction.
     pub async fn sign_submit_and_wait(
@@ -116,7 +116,7 @@ impl Aptos {
         account: &impl Account,
         payload: TransactionPayload,
         options: Option<TransactionOptions>,
-    ) -> Result<TransactionResponse, AptosError>;
+    ) -> Result<TransactionResponse, MovementError>;
     
     /// Call a view function.
     pub async fn view(
@@ -124,7 +124,7 @@ impl Aptos {
         function: &str,
         type_args: Vec<String>,
         args: Vec<serde_json::Value>,
-    ) -> Result<Vec<serde_json::Value>, AptosError>;
+    ) -> Result<Vec<serde_json::Value>, MovementError>;
     
     /// Fund an account (testnet/devnet only).
     #[cfg(feature = "faucet")]
@@ -132,32 +132,32 @@ impl Aptos {
         &self,
         address: AccountAddress,
         amount: u64,
-    ) -> Result<(), AptosError>;
+    ) -> Result<(), MovementError>;
     
     /// Create and fund a new account.
     #[cfg(feature = "faucet")]
-    pub async fn create_funded_account(&self, amount: u64) -> Result<Ed25519Account, AptosError>;
+    pub async fn create_funded_account(&self, amount: u64) -> Result<Ed25519Account, MovementError>;
 }
 ```
 
-### AptosFullnodeClient
+### MovementFullnodeClient
 
 ```rust
-/// Client for Aptos fullnode REST API.
+/// Client for Movement fullnode REST API.
 #[derive(Clone)]
-pub struct AptosFullnodeClient {
+pub struct MovementFullnodeClient {
     base_url: Url,
     http_client: reqwest::Client,
 }
 
-impl AptosFullnodeClient {
+impl MovementFullnodeClient {
     /// Create a new fullnode client.
     pub fn new(base_url: impl Into<Url>) -> Self;
     
     // === Ledger Info ===
     
     /// Get ledger information.
-    pub async fn get_ledger_info(&self) -> Result<Response<LedgerInfo>, AptosError>;
+    pub async fn get_ledger_info(&self) -> Result<Response<LedgerInfo>, MovementError>;
     
     // === Account Queries ===
     
@@ -165,33 +165,33 @@ impl AptosFullnodeClient {
     pub async fn get_account(
         &self,
         address: AccountAddress,
-    ) -> Result<Response<AccountData>, AptosError>;
+    ) -> Result<Response<AccountData>, MovementError>;
     
     /// Get account resources.
     pub async fn get_account_resources(
         &self,
         address: AccountAddress,
-    ) -> Result<Response<Vec<AccountResource>>, AptosError>;
+    ) -> Result<Response<Vec<AccountResource>>, MovementError>;
     
     /// Get a specific resource.
     pub async fn get_account_resource(
         &self,
         address: AccountAddress,
         resource_type: &str,
-    ) -> Result<Response<AccountResource>, AptosError>;
+    ) -> Result<Response<AccountResource>, MovementError>;
     
     /// Get account modules.
     pub async fn get_account_modules(
         &self,
         address: AccountAddress,
-    ) -> Result<Response<Vec<MoveModule>>, AptosError>;
+    ) -> Result<Response<Vec<MoveModule>>, MovementError>;
     
     /// Get a specific module.
     pub async fn get_account_module(
         &self,
         address: AccountAddress,
         module_name: &str,
-    ) -> Result<Response<MoveModule>, AptosError>;
+    ) -> Result<Response<MoveModule>, MovementError>;
     
     // === Transaction Queries ===
     
@@ -199,13 +199,13 @@ impl AptosFullnodeClient {
     pub async fn get_transaction_by_hash(
         &self,
         hash: &str,
-    ) -> Result<Response<serde_json::Value>, AptosError>;
+    ) -> Result<Response<serde_json::Value>, MovementError>;
     
     /// Get transaction by version.
     pub async fn get_transaction_by_version(
         &self,
         version: u64,
-    ) -> Result<Response<serde_json::Value>, AptosError>;
+    ) -> Result<Response<serde_json::Value>, MovementError>;
     
     /// Get account transactions.
     pub async fn get_account_transactions(
@@ -213,7 +213,7 @@ impl AptosFullnodeClient {
         address: AccountAddress,
         start: Option<u64>,
         limit: Option<u64>,
-    ) -> Result<Response<Vec<serde_json::Value>>, AptosError>;
+    ) -> Result<Response<Vec<serde_json::Value>>, MovementError>;
     
     // === Block Queries ===
     
@@ -222,14 +222,14 @@ impl AptosFullnodeClient {
         &self,
         height: u64,
         with_transactions: bool,
-    ) -> Result<Response<Block>, AptosError>;
+    ) -> Result<Response<Block>, MovementError>;
     
     /// Get block by version.
     pub async fn get_block_by_version(
         &self,
         version: u64,
         with_transactions: bool,
-    ) -> Result<Response<Block>, AptosError>;
+    ) -> Result<Response<Block>, MovementError>;
     
     // === Events ===
     
@@ -241,7 +241,7 @@ impl AptosFullnodeClient {
         field_name: &str,
         start: Option<u64>,
         limit: Option<u64>,
-    ) -> Result<Response<Vec<Event>>, AptosError>;
+    ) -> Result<Response<Vec<Event>>, MovementError>;
     
     // === Transaction Submission ===
     
@@ -249,20 +249,20 @@ impl AptosFullnodeClient {
     pub async fn submit_transaction(
         &self,
         signed_txn: &SignedTransaction,
-    ) -> Result<Response<PendingTransaction>, AptosError>;
+    ) -> Result<Response<PendingTransaction>, MovementError>;
     
     /// Simulate a transaction.
     pub async fn simulate_transaction(
         &self,
         signed_txn: &SignedTransaction,
-    ) -> Result<Response<Vec<SimulationResult>>, AptosError>;
+    ) -> Result<Response<Vec<SimulationResult>>, MovementError>;
     
     /// Wait for transaction confirmation.
     pub async fn wait_for_transaction(
         &self,
         hash: &str,
         timeout: Option<Duration>,
-    ) -> Result<Response<serde_json::Value>, AptosError>;
+    ) -> Result<Response<serde_json::Value>, MovementError>;
     
     // === View Functions ===
     
@@ -270,26 +270,26 @@ impl AptosFullnodeClient {
     pub async fn view_function(
         &self,
         request: ViewRequest,
-    ) -> Result<Response<Vec<serde_json::Value>>, AptosError>;
+    ) -> Result<Response<Vec<serde_json::Value>>, MovementError>;
     
     // === Gas Estimation ===
     
     /// Estimate gas price.
-    pub async fn estimate_gas_price(&self) -> Result<Response<GasEstimate>, AptosError>;
+    pub async fn estimate_gas_price(&self) -> Result<Response<GasEstimate>, MovementError>;
 }
 ```
 
-### AptosFaucetClient (Feature: `faucet`)
+### MovementFaucetClient (Feature: `faucet`)
 
 ```rust
-/// Client for Aptos faucet service.
+/// Client for Movement faucet service.
 #[cfg(feature = "faucet")]
-pub struct AptosFaucetClient {
+pub struct MovementFaucetClient {
     base_url: Url,
     http_client: reqwest::Client,
 }
 
-impl AptosFaucetClient {
+impl MovementFaucetClient {
     /// Create a new faucet client.
     pub fn new(base_url: impl Into<Url>) -> Self;
     
@@ -298,21 +298,21 @@ impl AptosFaucetClient {
         &self,
         address: AccountAddress,
         amount: u64,
-    ) -> Result<Vec<String>, AptosError>;
+    ) -> Result<Vec<String>, MovementError>;
 }
 ```
 
-### AptosIndexerClient (Feature: `indexer`)
+### MovementIndexerClient (Feature: `indexer`)
 
 ```rust
-/// Client for Aptos indexer GraphQL API.
+/// Client for Movement indexer GraphQL API.
 #[cfg(feature = "indexer")]
-pub struct AptosIndexerClient {
+pub struct MovementIndexerClient {
     base_url: Url,
     http_client: reqwest::Client,
 }
 
-impl AptosIndexerClient {
+impl MovementIndexerClient {
     /// Create a new indexer client.
     pub fn new(base_url: impl Into<Url>) -> Self;
     
@@ -321,19 +321,19 @@ impl AptosIndexerClient {
         &self,
         query: &str,
         variables: serde_json::Value,
-    ) -> Result<T, AptosError>;
+    ) -> Result<T, MovementError>;
     
     /// Get account tokens (NFTs).
     pub async fn get_account_tokens(
         &self,
         address: AccountAddress,
-    ) -> Result<Vec<TokenData>, AptosError>;
+    ) -> Result<Vec<TokenData>, MovementError>;
     
     /// Get fungible asset balances.
     pub async fn get_fungible_asset_balances(
         &self,
         address: AccountAddress,
-    ) -> Result<Vec<FungibleAssetBalance>, AptosError>;
+    ) -> Result<Vec<FungibleAssetBalance>, MovementError>;
     
     /// Get account transactions.
     pub async fn get_account_transactions(
@@ -341,7 +341,7 @@ impl AptosIndexerClient {
         address: AccountAddress,
         limit: Option<u64>,
         offset: Option<u64>,
-    ) -> Result<Vec<IndexerTransaction>, AptosError>;
+    ) -> Result<Vec<IndexerTransaction>, MovementError>;
 }
 ```
 
@@ -409,8 +409,8 @@ Return Response<T>
 | Endpoint | Request Type | Response Type |
 |----------|-------------|---------------|
 | GET endpoints | N/A | `application/json` |
-| Submit transaction | `application/x.aptos.signed_transaction+bcs` | `application/json` |
-| Simulate transaction | `application/x.aptos.signed_transaction+bcs` | `application/json` |
+| Submit transaction | `application/x.movement.signed_transaction+bcs` | `application/json` |
+| Simulate transaction | `application/x.movement.signed_transaction+bcs` | `application/json` |
 | View function | `application/json` | `application/json` |
 
 ### Error Response Handling
@@ -424,10 +424,10 @@ struct ApiError {
     vm_error_code: Option<u64>,
 }
 
-// Convert to AptosError
-impl From<ApiError> for AptosError {
+// Convert to MovementError
+impl From<ApiError> for MovementError {
     fn from(api_error: ApiError) -> Self {
-        AptosError::Api {
+        MovementError::Api {
             message: api_error.message,
             code: api_error.error_code,
             vm_error: api_error.vm_error_code,
@@ -444,11 +444,11 @@ const MAX_RETRIES: u32 = 3;
 const RETRY_DELAY_MS: u64 = 100;
 
 // Retryable errors
-fn is_retryable(error: &AptosError) -> bool {
+fn is_retryable(error: &MovementError) -> bool {
     matches!(error, 
-        AptosError::Network(_) |
-        AptosError::Timeout |
-        AptosError::Api { code, .. } if code == "rate_limited"
+        MovementError::Network(_) |
+        MovementError::Timeout |
+        MovementError::Api { code, .. } if code == "rate_limited"
     )
 }
 ```
@@ -460,13 +460,13 @@ fn is_retryable(error: &AptosError) -> bool {
 ### Basic Usage
 
 ```rust
-use aptos_sdk::{Aptos, AptosConfig};
+use movement_sdk::{Movement, MovementConfig};
 
 // Connect to testnet
-let aptos = Aptos::new(AptosConfig::testnet()).await?;
+let movement = Movement::new(MovementConfig::testnet()).await?;
 
 // Get balance
-let balance = aptos.get_balance(address).await?;
+let balance = movement.get_balance(address).await?;
 println!("Balance: {} APT", balance as f64 / 100_000_000.0);
 ```
 
@@ -474,7 +474,7 @@ println!("Balance: {} APT", balance as f64 / 100_000_000.0);
 
 ```rust
 // Call 0x1::coin::balance<0x1::aptos_coin::AptosCoin>
-let result = aptos.view(
+let result = movement.view(
     "0x1::coin::balance",
     vec!["0x1::aptos_coin::AptosCoin".to_string()],
     vec![serde_json::json!(address.to_hex())],
@@ -487,7 +487,7 @@ let result = aptos.view(
 let payload = EntryFunction::apt_transfer(recipient, amount)?;
 
 // Sign, submit, and wait
-let result = aptos.sign_submit_and_wait(
+let result = movement.sign_submit_and_wait(
     &account,
     payload.into(),
     None,
@@ -499,7 +499,7 @@ println!("Transaction hash: {}", result.hash);
 ### Using Fullnode Client Directly
 
 ```rust
-let client = aptos.fullnode();
+let client = movement.fullnode();
 
 // Get resources
 let resources = client.get_account_resources(address).await?;
@@ -534,9 +534,9 @@ let events = client.get_events_by_event_handle(
 
 ```rust
 // Errors include context
-match aptos.get_balance(address).await {
+match movement.get_balance(address).await {
     Ok(balance) => println!("Balance: {}", balance),
-    Err(AptosError::NotFound { resource, .. }) => {
+    Err(MovementError::NotFound { resource, .. }) => {
         println!("Account {} not found", address);
     }
     Err(e) => println!("Error: {}", e),
@@ -565,7 +565,7 @@ async fn test_get_balance_parses_response() {
         .mount(&mock_server)
         .await;
     
-    let client = AptosFullnodeClient::new(mock_server.uri());
+    let client = MovementFullnodeClient::new(mock_server.uri());
     let resource = client.get_account_resource(addr, "...").await.unwrap();
     // ... assert
 }
@@ -577,8 +577,8 @@ async fn test_get_balance_parses_response() {
 #[tokio::test]
 #[ignore] // Run with --ignored
 async fn test_real_testnet_connection() {
-    let aptos = Aptos::new(AptosConfig::testnet()).await.unwrap();
-    let info = aptos.ledger_info().await.unwrap();
+    let movement = Movement::new(MovementConfig::testnet()).await.unwrap();
+    let info = movement.ledger_info().await.unwrap();
     assert!(info.ledger_version() > 0);
 }
 ```

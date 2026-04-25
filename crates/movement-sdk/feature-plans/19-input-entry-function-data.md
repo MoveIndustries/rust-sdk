@@ -34,11 +34,11 @@ impl InputEntryFunctionData {
     pub fn from_parts(module: MoveModuleId, function: impl Into<String>) -> InputEntryFunctionDataBuilder;
 
     // Common operation helpers
-    pub fn transfer_apt(recipient: AccountAddress, amount: u64) -> AptosResult<TransactionPayload>;
-    pub fn transfer_coin(coin_type: &str, recipient: AccountAddress, amount: u64) -> AptosResult<TransactionPayload>;
-    pub fn create_account(auth_key: AccountAddress) -> AptosResult<TransactionPayload>;
-    pub fn register_coin(coin_type: &str) -> AptosResult<TransactionPayload>;
-    pub fn publish_package(metadata: Vec<u8>, code: Vec<Vec<u8>>) -> AptosResult<TransactionPayload>;
+    pub fn transfer_apt(recipient: AccountAddress, amount: u64) -> MovementResult<TransactionPayload>;
+    pub fn transfer_coin(coin_type: &str, recipient: AccountAddress, amount: u64) -> MovementResult<TransactionPayload>;
+    pub fn create_account(auth_key: AccountAddress) -> MovementResult<TransactionPayload>;
+    pub fn register_coin(coin_type: &str) -> MovementResult<TransactionPayload>;
+    pub fn publish_package(metadata: Vec<u8>, code: Vec<Vec<u8>>) -> MovementResult<TransactionPayload>;
 }
 ```
 
@@ -71,10 +71,10 @@ impl InputEntryFunctionDataBuilder {
     pub fn arg_raw(self, bytes: Vec<u8>) -> Self;
 
     /// Builds the transaction payload.
-    pub fn build(self) -> AptosResult<TransactionPayload>;
+    pub fn build(self) -> MovementResult<TransactionPayload>;
 
     /// Builds just the entry function.
-    pub fn build_entry_function(self) -> AptosResult<EntryFunction>;
+    pub fn build_entry_function(self) -> MovementResult<EntryFunction>;
 }
 ```
 
@@ -102,7 +102,7 @@ pub fn move_none() -> Vec<u8>;
 pub struct MoveU256(pub [u8; 32]);
 
 impl MoveU256 {
-    pub fn from_str(s: &str) -> AptosResult<Self>;
+    pub fn from_str(s: &str) -> MovementResult<Self>;
     pub fn from_u128(val: u128) -> Self;
     pub fn from_le_bytes(bytes: [u8; 32]) -> Self;
 }
@@ -130,7 +130,7 @@ Added `TypeTag::from_str_strict` to parse type tags from strings:
 
 ```rust
 impl TypeTag {
-    pub fn from_str_strict(s: &str) -> AptosResult<Self>;
+    pub fn from_str_strict(s: &str) -> MovementResult<Self>;
 }
 ```
 
@@ -280,5 +280,5 @@ Type arguments are parsed using the new `TypeTag::from_str_strict` method which 
 1. **Validation** - Validate arguments against ABI at runtime
 2. **Simulation** - Simulate payload before building
 3. **ABI integration** - Load function signatures from on-chain ABI
-4. **Macro support** - Compile-time checked payloads (already in `aptos_contract!`)
+4. **Macro support** - Compile-time checked payloads (already in `movement_contract!`)
 

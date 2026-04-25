@@ -1,7 +1,7 @@
 [package]
-name = "aptos-sdk"
+name = "movement-sdk"
 version = "0.4.1"
-description = "A user-friendly, idiomatic Rust SDK for the Aptos blockchain"
+description = "A user-friendly, idiomatic Rust SDK for the Movement blockchain"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
@@ -10,7 +10,7 @@ publish = true
 repository.workspace = true
 rust-version.workspace = true
 readme = "README.md"
-keywords = ["aptos", "blockchain", "crypto", "sdk", "web3"]
+keywords = ["movement", "blockchain", "crypto", "sdk", "web3"]
 categories = ["cryptography", "api-bindings", "asynchronous"]
 
 [features]
@@ -43,7 +43,7 @@ e2e = ["ed25519", "secp256k1", "faucet"]
 cli = ["dep:clap"]
 
 # Proc macros for contract bindings
-macros = ["dep:aptos-sdk-macros"]
+macros = ["dep:movement-sdk-macros"]
 
 [dependencies]
 # Core dependencies
@@ -97,7 +97,7 @@ proptest-derive = { workspace = true, optional = true }
 clap = { version = "4.5", features = ["derive"], optional = true }
 
 # Proc macro for contract bindings
-aptos-sdk-macros = { workspace = true, optional = true }
+movement-sdk-macros = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["full", "test-util"] }
@@ -220,7 +220,7 @@ path = "examples/transaction_waiting.rs"
 required-features = ["ed25519", "faucet"]
 
 [[bin]]
-name = "aptos-codegen"
+name = "movement-codegen"
 path = "src/bin/codegen.rs"
 required-features = ["cli"]
 

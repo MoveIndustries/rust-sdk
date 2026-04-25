@@ -1,8 +1,8 @@
-//! Cryptographic traits for the Aptos SDK.
+//! Cryptographic traits for the Movement SDK.
 //!
 //! These traits provide a unified interface for different signature schemes.
 
-use crate::error::AptosResult;
+use crate::error::MovementResult;
 
 /// A trait for types that can sign messages.
 pub trait Signer {
@@ -26,7 +26,7 @@ pub trait Verifier {
     /// # Errors
     ///
     /// Returns an error if the signature is invalid for the message.
-    fn verify(&self, message: &[u8], signature: &Self::Signature) -> AptosResult<()>;
+    fn verify(&self, message: &[u8], signature: &Self::Signature) -> MovementResult<()>;
 }
 
 /// A trait for public key types.
@@ -39,7 +39,7 @@ pub trait PublicKey: Clone + Sized {
     /// # Errors
     ///
     /// Returns an error if the bytes have an invalid length or format.
-    fn from_bytes(bytes: &[u8]) -> AptosResult<Self>;
+    fn from_bytes(bytes: &[u8]) -> MovementResult<Self>;
 
     /// Returns the public key as bytes.
     fn to_bytes(&self) -> Vec<u8>;
@@ -63,7 +63,7 @@ pub trait Signature: Clone + Sized {
     /// # Errors
     ///
     /// Returns an error if the bytes have an invalid length or format.
-    fn from_bytes(bytes: &[u8]) -> AptosResult<Self>;
+    fn from_bytes(bytes: &[u8]) -> MovementResult<Self>;
 
     /// Returns the signature as bytes.
     fn to_bytes(&self) -> Vec<u8>;

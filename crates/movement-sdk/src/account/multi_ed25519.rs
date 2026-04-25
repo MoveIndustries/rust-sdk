@@ -8,7 +8,7 @@ use crate::crypto::{
     Ed25519PrivateKey, Ed25519PublicKey, Ed25519Signature, MULTI_ED25519_SCHEME,
     MultiEd25519PublicKey, MultiEd25519Signature,
 };
-use crate::error::{AptosError, AptosResult};
+use crate::error::{MovementError, MovementResult};
 use crate::types::AccountAddress;
 use std::fmt;
 
@@ -20,8 +20,8 @@ use std::fmt;
 /// # Example
 ///
 /// ```rust,ignore
-/// use aptos_sdk::account::MultiEd25519Account;
-/// use aptos_sdk::crypto::Ed25519PrivateKey;
+/// use movement_sdk::account::MultiEd25519Account;
+/// use movement_sdk::crypto::Ed25519PrivateKey;
 ///
 /// // Create a 2-of-3 multisig account
 /// let keys: Vec<_> = (0..3).map(|_| Ed25519PrivateKey::generate()).collect();
@@ -68,14 +68,14 @@ impl MultiEd25519Account {
     /// - No private keys are provided
     /// - The threshold exceeds the number of keys
     /// - The multi-Ed25519 public key creation fails (e.g., too many keys, invalid threshold)
-    pub fn new(private_keys: Vec<Ed25519PrivateKey>, threshold: u8) -> AptosResult<Self> {
+    pub fn new(private_keys: Vec<Ed25519PrivateKey>, threshold: u8) -> MovementResult<Self> {
         if private_keys.is_empty() {
-            return Err(AptosError::InvalidPrivateKey(
+            return Err(MovementError::InvalidPrivateKey(
                 "at least one private key is required".into(),
             ));
         }
         if (threshold as usize) > private_keys.len() {
-            return Err(AptosError::InvalidPrivateKey(format!(
+            return Err(MovementError::InvalidPrivateKey(format!(
                 "threshold {} exceeds number of keys {}",
                 threshold,
                 private_keys.len()
@@ -134,20 +134,20 @@ impl MultiEd25519Account {
         public_keys: Vec<Ed25519PublicKey>,
         private_keys: Vec<(u8, Ed25519PrivateKey)>,
         threshold: u8,
-    ) -> AptosResult<Self> {
+    ) -> MovementResult<Self> {
         let multi_public_key = MultiEd25519PublicKey::new(public_keys, threshold)?;
 
         // Validate private key indices
         for (index, key) in &private_keys {
             if *index as usize >= multi_public_key.num_keys() {
-                return Err(AptosError::InvalidPrivateKey(format!(
+                return Err(MovementError::InvalidPrivateKey(format!(
                     "private key index {index} out of bounds"
                 )));
             }
             // Verify the private key matches the public key at that index
             let expected_pk = &multi_public_key.public_keys()[*index as usize];
             if key.public_key() != *expected_pk {
-                return Err(AptosError::InvalidPrivateKey(format!(
+                return Err(MovementError::InvalidPrivateKey(format!(
                     "private key at index {index} doesn't match public key"
                 )));
             }
@@ -170,7 +170,7 @@ impl MultiEd25519Account {
     /// # Errors
     ///
     /// Returns an error if the multi-Ed25519 public key creation fails (e.g., no keys provided, too many keys, invalid threshold).
-    pub fn view_only(public_keys: Vec<Ed25519PublicKey>, threshold: u8) -> AptosResult<Self> {
+    pub fn view_only(public_keys: Vec<Ed25519PublicKey>, threshold: u8) -> MovementResult<Self> {
         let multi_public_key = MultiEd25519PublicKey::new(public_keys, threshold)?;
         let address = multi_public_key.to_address();
 
@@ -223,10 +223,10 @@ impl MultiEd25519Account {
     /// # Errors
     ///
     /// Returns an error if we don't have enough keys to meet the threshold.
-    fn sign_internal(&self, message: &[u8]) -> AptosResult<MultiEd25519Signature> {
+    fn sign_internal(&self, message: &[u8]) -> MovementResult<MultiEd25519Signature> {
         let threshold = self.threshold() as usize;
         if self.private_keys.len() < threshold {
-            return Err(AptosError::InsufficientSignatures {
+            return Err(MovementError::InsufficientSignatures {
                 required: threshold,
                 provided: self.private_keys.len(),
             });
@@ -257,9 +257,9 @@ impl MultiEd25519Account {
         &self,
         message: &[u8],
         indices: &[u8],
-    ) -> AptosResult<MultiEd25519Signature> {
+    ) -> MovementResult<MultiEd25519Signature> {
         if indices.len() < self.threshold() as usize {
-            return Err(AptosError::InsufficientSignatures {
+            return Err(MovementError::InsufficientSignatures {
                 required: self.threshold() as usize,
                 provided: indices.len(),
             });
@@ -273,7 +273,7 @@ impl MultiEd25519Account {
                 .iter()
                 .find(|(i, _)| *i == index)
                 .ok_or_else(|| {
-                    AptosError::InvalidPrivateKey(format!(
+                    MovementError::InvalidPrivateKey(format!(
                         "don't have private key at index {index}"
                     ))
                 })?;
@@ -289,7 +289,7 @@ impl MultiEd25519Account {
     /// # Errors
     ///
     /// Returns an error if signature verification fails (e.g., invalid signature, insufficient signatures, signature mismatch).
-    pub fn verify(&self, message: &[u8], signature: &MultiEd25519Signature) -> AptosResult<()> {
+    pub fn verify(&self, message: &[u8], signature: &MultiEd25519Signature) -> MovementResult<()> {
         self.public_key.verify(message, signature)
     }
 
@@ -300,7 +300,7 @@ impl MultiEd25519Account {
     /// # Errors
     ///
     /// Returns an error if we don't have enough keys to meet the threshold.
-    pub fn sign(&self, message: &[u8]) -> AptosResult<MultiEd25519Signature> {
+    pub fn sign(&self, message: &[u8]) -> MovementResult<MultiEd25519Signature> {
         self.sign_internal(message)
     }
 
@@ -321,7 +321,7 @@ impl MultiEd25519Account {
     /// - Signer indices are out of bounds or duplicated
     pub fn aggregate_signatures(
         signatures: Vec<(u8, Ed25519Signature)>,
-    ) -> AptosResult<MultiEd25519Signature> {
+    ) -> MovementResult<MultiEd25519Signature> {
         MultiEd25519Signature::new(signatures)
     }
 
@@ -337,13 +337,13 @@ impl MultiEd25519Account {
         &self,
         message: &[u8],
         key_index: u8,
-    ) -> AptosResult<(u8, Ed25519Signature)> {
+    ) -> MovementResult<(u8, Ed25519Signature)> {
         let key = self
             .private_keys
             .iter()
             .find(|(i, _)| *i == key_index)
             .ok_or_else(|| {
-                AptosError::InvalidPrivateKey(format!(
+                MovementError::InvalidPrivateKey(format!(
                     "don't have private key at index {key_index}"
                 ))
             })?;
@@ -361,7 +361,7 @@ impl Account for MultiEd25519Account {
         self.public_key.to_bytes()
     }
 
-    fn sign(&self, message: &[u8]) -> AptosResult<Vec<u8>> {
+    fn sign(&self, message: &[u8]) -> MovementResult<Vec<u8>> {
         let sig = self.sign_internal(message)?;
         Ok(sig.to_bytes())
     }

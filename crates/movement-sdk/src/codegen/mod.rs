@@ -13,8 +13,8 @@
 //! # Runtime Code Generation
 //!
 //! ```rust,ignore
-//! use aptos_sdk::codegen::{ModuleGenerator, GeneratorConfig};
-//! use aptos_sdk::api::response::MoveModuleABI;
+//! use movement_sdk::codegen::{ModuleGenerator, GeneratorConfig};
+//! use movement_sdk::api::response::MoveModuleABI;
 //!
 //! // Load ABI from file or API
 //! let abi_json = std::fs::read_to_string("my_module_abi.json")?;
@@ -34,7 +34,7 @@
 //!
 //! ```rust,ignore
 //! // build.rs
-//! use aptos_sdk::codegen::build_helper;
+//! use movement_sdk::codegen::build_helper;
 //!
 //! fn main() {
 //!     // Generate from local ABI files
@@ -56,7 +56,7 @@
 //! # With Move Source (Better Parameter Names)
 //!
 //! ```rust,ignore
-//! use aptos_sdk::codegen::{ModuleGenerator, GeneratorConfig, MoveSourceParser};
+//! use movement_sdk::codegen::{ModuleGenerator, GeneratorConfig, MoveSourceParser};
 //!
 //! // Load ABI
 //! let abi: MoveModuleABI = serde_json::from_str(&abi_json)?;
@@ -75,13 +75,13 @@
 //!
 //! ```bash
 //! # Generate from a local ABI file
-//! aptos-codegen --input my_module_abi.json --output src/generated/
+//! movement-codegen --input my_module_abi.json --output src/generated/
 //!
 //! # Generate from on-chain module with Move source
-//! aptos-codegen --module 0x1::coin --network testnet --source coin.move --output src/
+//! movement-codegen --module 0x1::coin --network testnet --source coin.move --output src/
 //!
 //! # Generate from a directory of ABIs
-//! aptos-codegen --input-dir abi/ --output src/generated/
+//! movement-codegen --input-dir abi/ --output src/generated/
 //! ```
 
 pub mod build_helper;

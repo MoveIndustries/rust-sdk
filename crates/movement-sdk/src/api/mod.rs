@@ -1,6 +1,6 @@
-//! API clients for the Aptos blockchain.
+//! API clients for the Movement blockchain.
 //!
-//! This module provides clients for interacting with the Aptos network:
+//! This module provides clients for interacting with the Movement network:
 //!
 //! - [`FullnodeClient`] - REST API client for fullnode operations
 //! - [`FaucetClient`] - Client for funding accounts on testnets (feature-gated)
@@ -16,7 +16,7 @@ mod faucet;
 mod indexer;
 
 pub use fullnode::FullnodeClient;
-pub use response::{AptosResponse, GasEstimation, LedgerInfo, PendingTransaction};
+pub use response::{MovementResponse, GasEstimation, LedgerInfo, PendingTransaction};
 
 #[cfg(feature = "faucet")]
 pub use faucet::FaucetClient;

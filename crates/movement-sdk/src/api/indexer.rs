@@ -1,19 +1,19 @@
 //! GraphQL indexer client.
 //!
-//! This module provides a client for querying the Aptos Indexer GraphQL API.
+//! This module provides a client for querying the Movement Indexer GraphQL API.
 //! The indexer provides access to indexed blockchain data including tokens,
 //! events, transaction history, and more.
 //!
 //! # Example
 //!
 //! ```rust,no_run
-//! use aptos_sdk::api::{IndexerClient, PaginationParams};
-//! use aptos_sdk::config::AptosConfig;
-//! use aptos_sdk::types::AccountAddress;
+//! use movement_sdk::api::{IndexerClient, PaginationParams};
+//! use movement_sdk::config::MovementConfig;
+//! use movement_sdk::types::AccountAddress;
 //!
 //! #[tokio::main]
 //! async fn main() -> anyhow::Result<()> {
-//!     let config = AptosConfig::testnet();
+//!     let config = MovementConfig::testnet();
 //!     let client = IndexerClient::new(&config)?;
 //!     
 //!     // Get fungible asset balances
@@ -29,8 +29,8 @@
 //! }
 //! ```
 
-use crate::config::AptosConfig;
-use crate::error::{AptosError, AptosResult};
+use crate::config::MovementConfig;
+use crate::error::{MovementError, MovementResult};
 use crate::retry::{RetryConfig, RetryExecutor};
 use crate::types::AccountAddress;
 use reqwest::Client;
@@ -41,7 +41,7 @@ use url::Url;
 /// Maximum indexer response size: 10 MB.
 const MAX_INDEXER_RESPONSE_SIZE: usize = 10 * 1024 * 1024;
 
-/// Client for the Aptos indexer GraphQL API.
+/// Client for the Movement indexer GraphQL API.
 ///
 /// The indexer provides access to indexed blockchain data including
 /// tokens, events, and transaction history. Queries are automatically
@@ -50,12 +50,12 @@ const MAX_INDEXER_RESPONSE_SIZE: usize = 10 * 1024 * 1024;
 /// # Example
 ///
 /// ```rust,no_run
-/// use aptos_sdk::api::IndexerClient;
-/// use aptos_sdk::config::AptosConfig;
+/// use movement_sdk::api::IndexerClient;
+/// use movement_sdk::config::MovementConfig;
 ///
 /// #[tokio::main]
 /// async fn main() -> anyhow::Result<()> {
-///     let config = AptosConfig::testnet();
+///     let config = MovementConfig::testnet();
 ///     let client = IndexerClient::new(&config)?;
 ///     // Use the client for GraphQL queries
 ///     Ok(())
@@ -96,17 +96,17 @@ impl IndexerClient {
     ///
     /// This client uses `reqwest` with its default TLS configuration, which
     /// validates server certificates against the system's certificate store.
-    /// All Aptos indexer endpoints use HTTPS with valid certificates.
+    /// All Movement indexer endpoints use HTTPS with valid certificates.
     ///
     /// # Errors
     ///
     /// Returns an error if the indexer URL is not configured in the config, or if the HTTP client
     /// fails to build (e.g., invalid TLS configuration).
-    pub fn new(config: &AptosConfig) -> AptosResult<Self> {
+    pub fn new(config: &MovementConfig) -> MovementResult<Self> {
         let indexer_url = config
             .indexer_url()
             .cloned()
-            .ok_or_else(|| AptosError::Config("indexer URL not configured".into()))?;
+            .ok_or_else(|| MovementError::Config("indexer URL not configured".into()))?;
 
         let pool = config.pool_config();
 
@@ -121,7 +121,7 @@ impl IndexerClient {
             builder = builder.tcp_keepalive(keepalive);
         }
 
-        let client = builder.build().map_err(AptosError::Http)?;
+        let client = builder.build().map_err(MovementError::Http)?;
 
         let retry_config = Arc::new(config.retry_config().clone());
 
@@ -137,7 +137,7 @@ impl IndexerClient {
     /// # Errors
     ///
     /// Returns an error if the URL cannot be parsed.
-    pub fn with_url(url: &str) -> AptosResult<Self> {
+    pub fn with_url(url: &str) -> MovementResult<Self> {
         let indexer_url = Url::parse(url)?;
         // SECURITY: Validate URL scheme to prevent SSRF via dangerous protocols
         crate::config::validate_url_scheme(&indexer_url)?;
@@ -160,7 +160,7 @@ impl IndexerClient {
         &self,
         query: &str,
         variables: Option<serde_json::Value>,
-    ) -> AptosResult<T> {
+    ) -> MovementResult<T> {
         let request = GraphQLRequest {
             query: query.to_string(),
             variables,
@@ -201,7 +201,7 @@ impl IndexerClient {
                                 }
                                 message.push_str(&e.message);
                             }
-                            return Err(AptosError::Api {
+                            return Err(MovementError::Api {
                                 status_code: 400,
                                 message,
                                 error_code: Some("GRAPHQL_ERROR".into()),
@@ -210,12 +210,12 @@ impl IndexerClient {
                         }
 
                         graphql_response.data.ok_or_else(|| {
-                            AptosError::Internal("no data in GraphQL response".into())
+                            MovementError::Internal("no data in GraphQL response".into())
                         })
                     } else {
                         let status = response.status();
                         let body = response.text().await.unwrap_or_default();
-                        Err(AptosError::api(status.as_u16(), body))
+                        Err(MovementError::api(status.as_u16(), body))
                     }
                 }
             })
@@ -230,7 +230,7 @@ impl IndexerClient {
     pub async fn get_fungible_asset_balances(
         &self,
         address: AccountAddress,
-    ) -> AptosResult<Vec<FungibleAssetBalance>> {
+    ) -> MovementResult<Vec<FungibleAssetBalance>> {
         #[derive(Deserialize)]
         struct Response {
             current_fungible_asset_balances: Vec<FungibleAssetBalance>,
@@ -268,7 +268,7 @@ impl IndexerClient {
     pub async fn get_account_tokens(
         &self,
         address: AccountAddress,
-    ) -> AptosResult<Vec<TokenBalance>> {
+    ) -> MovementResult<Vec<TokenBalance>> {
         #[derive(Deserialize)]
         struct Response {
             current_token_ownerships_v2: Vec<TokenBalance>,
@@ -310,7 +310,7 @@ impl IndexerClient {
         &self,
         address: AccountAddress,
         limit: Option<u32>,
-    ) -> AptosResult<Vec<Transaction>> {
+    ) -> MovementResult<Vec<Transaction>> {
         #[derive(Deserialize)]
         struct Response {
             account_transactions: Vec<Transaction>,
@@ -517,7 +517,7 @@ impl IndexerClient {
         &self,
         address: AccountAddress,
         pagination: Option<PaginationParams>,
-    ) -> AptosResult<Page<TokenBalance>> {
+    ) -> MovementResult<Page<TokenBalance>> {
         #[derive(Deserialize)]
         struct AggregateCount {
             count: u64,
@@ -599,7 +599,7 @@ impl IndexerClient {
         &self,
         address: AccountAddress,
         pagination: Option<PaginationParams>,
-    ) -> AptosResult<Page<Transaction>> {
+    ) -> MovementResult<Page<Transaction>> {
         #[derive(Deserialize)]
         struct AggregateCount {
             count: u64,
@@ -677,7 +677,7 @@ impl IndexerClient {
         &self,
         event_type: &str,
         limit: Option<u32>,
-    ) -> AptosResult<Vec<Event>> {
+    ) -> MovementResult<Vec<Event>> {
         #[derive(Deserialize)]
         struct Response {
             events: Vec<Event>,
@@ -718,7 +718,7 @@ impl IndexerClient {
         &self,
         address: AccountAddress,
         limit: Option<u32>,
-    ) -> AptosResult<Vec<Event>> {
+    ) -> MovementResult<Vec<Event>> {
         #[derive(Deserialize)]
         struct Response {
             events: Vec<Event>,
@@ -759,7 +759,7 @@ impl IndexerClient {
     pub async fn get_collection(
         &self,
         collection_address: AccountAddress,
-    ) -> AptosResult<Collection> {
+    ) -> MovementResult<Collection> {
         #[derive(Deserialize)]
         struct Response {
             current_collections_v2: Vec<Collection>,
@@ -792,7 +792,7 @@ impl IndexerClient {
             .into_iter()
             .next()
             .ok_or_else(|| {
-                AptosError::NotFound(format!("Collection not found: {collection_address}"))
+                MovementError::NotFound(format!("Collection not found: {collection_address}"))
             })
     }
 
@@ -805,7 +805,7 @@ impl IndexerClient {
         &self,
         collection_address: AccountAddress,
         pagination: Option<PaginationParams>,
-    ) -> AptosResult<Page<TokenBalance>> {
+    ) -> MovementResult<Page<TokenBalance>> {
         #[derive(Deserialize)]
         struct Response {
             current_token_ownerships_v2: Vec<TokenBalance>,
@@ -868,7 +868,7 @@ impl IndexerClient {
     pub async fn get_coin_balances(
         &self,
         address: AccountAddress,
-    ) -> AptosResult<Vec<CoinBalance>> {
+    ) -> MovementResult<Vec<CoinBalance>> {
         #[derive(Deserialize)]
         struct Response {
             current_coin_balances: Vec<CoinBalance>,
@@ -902,7 +902,7 @@ impl IndexerClient {
         &self,
         address: AccountAddress,
         limit: Option<u32>,
-    ) -> AptosResult<Vec<CoinActivity>> {
+    ) -> MovementResult<Vec<CoinActivity>> {
         #[derive(Deserialize)]
         struct Response {
             coin_activities: Vec<CoinActivity>,
@@ -936,7 +936,7 @@ impl IndexerClient {
     /// # Errors
     ///
     /// Returns an error if the GraphQL query fails (see [`query`](Self::query) for details).
-    pub async fn get_processor_status(&self) -> AptosResult<Vec<ProcessorStatus>> {
+    pub async fn get_processor_status(&self) -> MovementResult<Vec<ProcessorStatus>> {
         #[derive(Deserialize)]
         struct Response {
             processor_status: Vec<ProcessorStatus>,
@@ -962,13 +962,13 @@ impl IndexerClient {
     ///
     /// Returns an error if the processor status cannot be fetched, or if no processor status
     /// is available.
-    pub async fn get_indexer_version(&self) -> AptosResult<u64> {
+    pub async fn get_indexer_version(&self) -> MovementResult<u64> {
         let statuses = self.get_processor_status().await?;
         statuses
             .into_iter()
             .map(|s| s.last_success_version)
             .max()
-            .ok_or_else(|| AptosError::Internal("No processor status available".into()))
+            .ok_or_else(|| MovementError::Internal("No processor status available".into()))
     }
 
     /// Checks if the indexer is healthy by comparing with a reference version.
@@ -980,7 +980,7 @@ impl IndexerClient {
         &self,
         reference_version: u64,
         max_lag: u64,
-    ) -> AptosResult<bool> {
+    ) -> MovementResult<bool> {
         let indexer_version = self.get_indexer_version().await?;
         Ok(reference_version.saturating_sub(indexer_version) <= max_lag)
     }
@@ -992,8 +992,11 @@ mod tests {
 
     #[test]
     fn test_indexer_client_creation() {
-        let client = IndexerClient::new(&AptosConfig::testnet());
-        assert!(client.is_ok());
+        // testnet preset has no indexer URL by default; opt in via with_indexer_url.
+        let config = MovementConfig::testnet()
+            .with_indexer_url("https://indexer.example.com/graphql")
+            .unwrap();
+        assert!(IndexerClient::new(&config).is_ok());
     }
 
     #[test]

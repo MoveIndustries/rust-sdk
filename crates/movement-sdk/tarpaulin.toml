@@ -1,16 +1,16 @@
-# Tarpaulin coverage configuration for aptos-sdk
+# Tarpaulin coverage configuration for movement-sdk
 #
 # Run unit tests only (default):
-#   cargo tarpaulin -p aptos-sdk
+#   cargo tarpaulin -p movement-sdk
 #
 # Run unit tests with all features:
-#   cargo tarpaulin -p aptos-sdk --profile full
+#   cargo tarpaulin -p movement-sdk --profile full
 #
 # Run with E2E tests (requires localnet running):
-#   cargo tarpaulin -p aptos-sdk --profile e2e
+#   cargo tarpaulin -p movement-sdk --profile e2e
 #
 # Run all tests including E2E:
-#   cargo tarpaulin -p aptos-sdk --profile all
+#   cargo tarpaulin -p movement-sdk --profile all
 
 # Default profile - unit tests with default features
 [default]
@@ -27,7 +27,7 @@ verbose = false
 output-dir = "target/coverage"
 
 # E2E profile - includes E2E tests (requires running localnet)
-# Run with: cargo tarpaulin -p aptos-sdk --profile e2e
+# Run with: cargo tarpaulin -p movement-sdk --profile e2e
 [e2e]
 features = "full,e2e"
 run-types = ["Tests", "Doctests"]

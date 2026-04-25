@@ -2,14 +2,14 @@
 //!
 //! This module requires the `mnemonic` feature flag.
 
-use crate::error::{AptosError, AptosResult};
+use crate::error::{MovementError, MovementResult};
 
 /// A BIP-39 mnemonic phrase for key derivation.
 ///
 /// # Example
 ///
 /// ```rust
-/// use aptos_sdk::account::Mnemonic;
+/// use movement_sdk::account::Mnemonic;
 ///
 /// // Generate a new mnemonic
 /// let mnemonic = Mnemonic::generate(24).unwrap();
@@ -34,7 +34,7 @@ impl Mnemonic {
     ///
     /// Returns an error if the word count is not one of 12, 15, 18, 21, or 24,
     /// or if entropy generation fails.
-    pub fn generate(word_count: usize) -> AptosResult<Self> {
+    pub fn generate(word_count: usize) -> MovementResult<Self> {
         let entropy_bytes = match word_count {
             12 => 16, // 128 bits
             15 => 20, // 160 bits
@@ -42,7 +42,7 @@ impl Mnemonic {
             21 => 28, // 224 bits
             24 => 32, // 256 bits
             _ => {
-                return Err(AptosError::InvalidMnemonic(format!(
+                return Err(MovementError::InvalidMnemonic(format!(
                     "invalid word count: {word_count}, must be 12, 15, 18, 21, or 24"
                 )));
             }
@@ -52,7 +52,7 @@ impl Mnemonic {
         rand::RngCore::fill_bytes(&mut rand::rngs::OsRng, &mut entropy);
 
         let mnemonic = bip39::Mnemonic::from_entropy(&entropy)
-            .map_err(|e| AptosError::InvalidMnemonic(e.to_string()));
+            .map_err(|e| MovementError::InvalidMnemonic(e.to_string()));
 
         // SECURITY: Zeroize entropy before it goes out of scope to prevent
         // key material from lingering in memory
@@ -70,10 +70,10 @@ impl Mnemonic {
     /// # Errors
     ///
     /// Returns an error if the phrase is not a valid BIP-39 mnemonic.
-    pub fn from_phrase(phrase: &str) -> AptosResult<Self> {
+    pub fn from_phrase(phrase: &str) -> MovementResult<Self> {
         // Validate the mnemonic
         let _mnemonic = bip39::Mnemonic::parse_normalized(phrase)
-            .map_err(|e| AptosError::InvalidMnemonic(e.to_string()))?;
+            .map_err(|e| MovementError::InvalidMnemonic(e.to_string()))?;
 
         Ok(Self {
             phrase: phrase.to_string(),
@@ -93,7 +93,7 @@ impl Mnemonic {
     ///
     /// Returns an error if the mnemonic cannot be re-parsed (should not happen
     /// since the phrase was validated during construction).
-    pub fn to_seed(&self) -> AptosResult<[u8; 64]> {
+    pub fn to_seed(&self) -> MovementResult<[u8; 64]> {
         self.to_seed_with_passphrase("")
     }
 
@@ -104,15 +104,15 @@ impl Mnemonic {
     /// Returns an error if the mnemonic phrase cannot be re-parsed. This should
     /// never happen because the phrase is validated during construction, but
     /// returning an error is safer than panicking.
-    pub fn to_seed_with_passphrase(&self, passphrase: &str) -> AptosResult<[u8; 64]> {
+    pub fn to_seed_with_passphrase(&self, passphrase: &str) -> MovementResult<[u8; 64]> {
         let mnemonic = bip39::Mnemonic::parse_normalized(&self.phrase).map_err(|e| {
-            AptosError::InvalidMnemonic(format!("internal error: mnemonic re-parse failed: {e}"))
+            MovementError::InvalidMnemonic(format!("internal error: mnemonic re-parse failed: {e}"))
         })?;
 
         Ok(mnemonic.to_seed(passphrase))
     }
 
-    /// Derives an Ed25519 private key using the Aptos derivation path.
+    /// Derives an Ed25519 private key using the Movement derivation path.
     ///
     /// Path: `m/44'/637'/0'/0'/index'`
     ///
@@ -120,7 +120,7 @@ impl Mnemonic {
     ///
     /// Returns an error if key derivation fails or the derived key is invalid.
     #[cfg(feature = "ed25519")]
-    pub fn derive_ed25519_key(&self, index: u32) -> AptosResult<crate::crypto::Ed25519PrivateKey> {
+    pub fn derive_ed25519_key(&self, index: u32) -> MovementResult<crate::crypto::Ed25519PrivateKey> {
         let mut seed = self.to_seed()?;
         let result = derive_ed25519_from_seed(&seed, index);
         // SECURITY: Zeroize seed after use
@@ -133,11 +133,11 @@ impl Mnemonic {
     }
 }
 
-/// Derives an Ed25519 key from a seed using the Aptos BIP-44 path.
+/// Derives an Ed25519 key from a seed using the Movement BIP-44 path.
 ///
 /// This implements a simplified SLIP-0010 derivation for Ed25519.
 #[cfg(feature = "ed25519")]
-fn derive_ed25519_from_seed(seed: &[u8], index: u32) -> AptosResult<[u8; 32]> {
+fn derive_ed25519_from_seed(seed: &[u8], index: u32) -> MovementResult<[u8; 32]> {
     use hmac::{Hmac, Mac};
     use sha2::Sha512;
 
@@ -145,7 +145,7 @@ fn derive_ed25519_from_seed(seed: &[u8], index: u32) -> AptosResult<[u8; 32]> {
 
     // SLIP-0010 master key derivation
     let mut mac = HmacSha512::new_from_slice(b"ed25519 seed")
-        .map_err(|e| AptosError::KeyDerivation(e.to_string()))?;
+        .map_err(|e| MovementError::KeyDerivation(e.to_string()))?;
     mac.update(seed);
     let result = mac.finalize().into_bytes();
 
@@ -154,11 +154,11 @@ fn derive_ed25519_from_seed(seed: &[u8], index: u32) -> AptosResult<[u8; 32]> {
     key.copy_from_slice(&result[..32]);
     chain_code.copy_from_slice(&result[32..]);
 
-    // Aptos derivation path: m/44'/637'/0'/0'/index'
+    // Movement derivation path: m/44'/637'/0'/0'/index'
     // All indices are hardened (with 0x80000000 offset)
     let path = [
         44 | 0x8000_0000,    // 44' (purpose)
-        637 | 0x8000_0000,   // 637' (Aptos coin type)
+        637 | 0x8000_0000,   // 637' (Movement coin type)
         0x8000_0000,         // 0' (account)
         0x8000_0000,         // 0' (change)
         index | 0x8000_0000, // index' (address index)
@@ -170,7 +170,7 @@ fn derive_ed25519_from_seed(seed: &[u8], index: u32) -> AptosResult<[u8; 32]> {
         data.extend_from_slice(&child_index.to_be_bytes());
 
         let mut mac = HmacSha512::new_from_slice(&chain_code)
-            .map_err(|e| AptosError::KeyDerivation(e.to_string()))?;
+            .map_err(|e| MovementError::KeyDerivation(e.to_string()))?;
         mac.update(&data);
         let result = mac.finalize().into_bytes();
 

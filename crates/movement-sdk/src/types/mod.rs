@@ -1,4 +1,4 @@
-//! Core Aptos types.
+//! Core Movement types.
 //!
 //! This module contains the fundamental types used throughout the SDK,
 //! including addresses, chain IDs, type tags, and hash values.

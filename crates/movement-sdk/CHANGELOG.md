@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `aptos-sdk` will be documented in this file.
+All notable changes to `movement-sdk` will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -82,11 +82,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `FullnodeClient` - REST API for blockchain interaction
 - `FaucetClient` (`faucet` feature) - Testnet account funding
 - `IndexerClient` (`indexer` feature) - GraphQL queries for indexed data
-- `AnsClient` - Aptos Names Service integration
+- `AnsClient` - Movement Names Service integration
 
 #### High-Level Client
-- `Aptos` - Unified client combining all APIs
-- `AptosConfig` - Network configuration with presets
+- `Movement` - Unified client combining all APIs
+- `MovementConfig` - Network configuration with presets
 - Automatic retry with exponential backoff
 - Connection pooling for improved performance
 - Local transaction simulation
@@ -118,6 +118,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - This SDK is independent of `aptos-core` for faster compilation
 - Minimum Supported Rust Version (MSRV): 1.90
 
-[0.4.0]: https://github.com/aptos-labs/aptos-rust-sdk/releases/tag/sdk-v0.4.0
-[0.1.0]: https://github.com/aptos-labs/aptos-rust-sdk/releases/tag/sdk-v0.1.0
+[0.4.0]: https://github.com/moveindustries/rust-sdk/releases/tag/sdk-v0.4.0
+[0.1.0]: https://github.com/moveindustries/rust-sdk/releases/tag/sdk-v0.1.0
 

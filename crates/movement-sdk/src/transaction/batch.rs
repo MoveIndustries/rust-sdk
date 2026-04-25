@@ -13,9 +13,9 @@
 //! # Example
 //!
 //! ```rust,ignore
-//! use aptos_sdk::transaction::batch::TransactionBatch;
+//! use movement_sdk::transaction::batch::TransactionBatch;
 //!
-//! let batch = TransactionBatch::new(&aptos, &sender)
+//! let batch = TransactionBatch::new(&movement, &sender)
 //!     .add(payload1)
 //!     .add(payload2)
 //!     .add(payload3)
@@ -32,7 +32,7 @@
 use crate::account::Account;
 use crate::api::FullnodeClient;
 
-use crate::error::{AptosError, AptosResult};
+use crate::error::{MovementError, MovementResult};
 use crate::transaction::{
     RawTransaction, SignedTransaction, TransactionBuilder, TransactionPayload,
     builder::sign_transaction,
@@ -49,7 +49,7 @@ pub struct BatchTransactionResult {
     /// The signed transaction that was submitted.
     pub transaction: SignedTransaction,
     /// Result of the submission/execution.
-    pub result: Result<BatchTransactionStatus, AptosError>,
+    pub result: Result<BatchTransactionStatus, MovementError>,
 }
 
 /// Status of a batch transaction after submission.
@@ -231,16 +231,16 @@ impl TransactionBatchBuilder {
     /// # Errors
     ///
     /// Returns an error if `sender`, `starting_sequence_number`, or `chain_id` is not set, or if building any transaction fails.
-    pub fn build(self) -> AptosResult<Vec<RawTransaction>> {
+    pub fn build(self) -> MovementResult<Vec<RawTransaction>> {
         let sender = self
             .sender
-            .ok_or_else(|| AptosError::Transaction("sender is required".into()))?;
+            .ok_or_else(|| MovementError::Transaction("sender is required".into()))?;
         let starting_seq = self.starting_sequence_number.ok_or_else(|| {
-            AptosError::Transaction("starting_sequence_number is required".into())
+            MovementError::Transaction("starting_sequence_number is required".into())
         })?;
         let chain_id = self
             .chain_id
-            .ok_or_else(|| AptosError::Transaction("chain_id is required".into()))?;
+            .ok_or_else(|| MovementError::Transaction("chain_id is required".into()))?;
 
         let mut transactions = Vec::with_capacity(self.payloads.len());
 
@@ -248,7 +248,7 @@ impl TransactionBatchBuilder {
             // SECURITY: Use checked arithmetic to prevent sequence number overflow
             let sequence_number = starting_seq
                 .checked_add(i as u64)
-                .ok_or_else(|| AptosError::Transaction("sequence number overflow".into()))?;
+                .ok_or_else(|| MovementError::Transaction("sequence number overflow".into()))?;
 
             let txn = TransactionBuilder::new()
                 .sender(sender)
@@ -270,7 +270,7 @@ impl TransactionBatchBuilder {
     /// # Errors
     ///
     /// Returns an error if building the transactions fails or if signing any transaction fails.
-    pub fn build_and_sign<A: Account>(self, account: &A) -> AptosResult<SignedTransactionBatch> {
+    pub fn build_and_sign<A: Account>(self, account: &A) -> MovementResult<SignedTransactionBatch> {
         let raw_transactions = self.build()?;
         let mut signed = Vec::with_capacity(raw_transactions.len());
 
@@ -424,7 +424,7 @@ async fn submit_and_wait_single(
     client: &FullnodeClient,
     txn: &SignedTransaction,
     timeout: Option<Duration>,
-) -> Result<BatchTransactionStatus, AptosError> {
+) -> Result<BatchTransactionStatus, MovementError> {
     let response = client.submit_and_wait(txn, timeout).await?;
     let data = response.into_inner();
 
@@ -525,7 +525,7 @@ impl BatchSummary {
     }
 }
 
-/// High-level batch operations for the Aptos client.
+/// High-level batch operations for the Movement client.
 #[allow(missing_debug_implementations)] // Contains references that may not implement Debug
 pub struct BatchOperations<'a> {
     client: &'a FullnodeClient,
@@ -539,7 +539,7 @@ impl<'a> BatchOperations<'a> {
     }
 
     /// Resolves the chain ID, fetching from the node if unknown.
-    async fn resolve_chain_id(&self) -> AptosResult<ChainId> {
+    async fn resolve_chain_id(&self) -> MovementResult<ChainId> {
         let id = self.chain_id.load(std::sync::atomic::Ordering::Relaxed);
         if id > 0 {
             return Ok(ChainId::new(id));
@@ -564,7 +564,7 @@ impl<'a> BatchOperations<'a> {
         &self,
         account: &A,
         payloads: Vec<TransactionPayload>,
-    ) -> AptosResult<SignedTransactionBatch> {
+    ) -> MovementResult<SignedTransactionBatch> {
         // Fetch sequence number, gas price, and chain ID in parallel
         let (sequence_number, gas_estimation, chain_id) = tokio::join!(
             self.client.get_sequence_number(account.address()),
@@ -595,7 +595,7 @@ impl<'a> BatchOperations<'a> {
         &self,
         account: &A,
         payloads: Vec<TransactionPayload>,
-    ) -> AptosResult<Vec<BatchTransactionResult>> {
+    ) -> MovementResult<Vec<BatchTransactionResult>> {
         let batch = self.build(account, payloads).await?;
         Ok(batch.submit_all(self.client).await)
     }
@@ -611,7 +611,7 @@ impl<'a> BatchOperations<'a> {
         account: &A,
         payloads: Vec<TransactionPayload>,
         timeout: Option<Duration>,
-    ) -> AptosResult<Vec<BatchTransactionResult>> {
+    ) -> MovementResult<Vec<BatchTransactionResult>> {
         let batch = self.build(account, payloads).await?;
         Ok(batch.submit_and_wait_all(self.client, timeout).await)
     }
@@ -626,7 +626,7 @@ impl<'a> BatchOperations<'a> {
         &self,
         sender: &A,
         transfers: Vec<(AccountAddress, u64)>,
-    ) -> AptosResult<Vec<BatchTransactionResult>> {
+    ) -> MovementResult<Vec<BatchTransactionResult>> {
         use crate::transaction::EntryFunction;
 
         let payloads: Vec<_> = transfers
@@ -634,7 +634,7 @@ impl<'a> BatchOperations<'a> {
             .map(|(recipient, amount)| {
                 EntryFunction::apt_transfer(recipient, amount).map(TransactionPayload::from)
             })
-            .collect::<AptosResult<Vec<_>>>()?;
+            .collect::<MovementResult<Vec<_>>>()?;
 
         self.submit_and_wait(sender, payloads, None).await
     }
@@ -908,7 +908,7 @@ mod tests {
         let results = vec![BatchTransactionResult {
             index: 0,
             transaction: create_dummy_signed_txn(),
-            result: Err(AptosError::Transaction("failed".to_string())),
+            result: Err(MovementError::Transaction("failed".to_string())),
         }];
 
         let summary = BatchSummary::from_results(&results);
@@ -1153,7 +1153,7 @@ mod tests {
             BatchTransactionResult {
                 index: 1,
                 transaction: txn,
-                result: Err(AptosError::Transaction("test".to_string())),
+                result: Err(MovementError::Transaction("test".to_string())),
             },
         ];
 

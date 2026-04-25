@@ -4,7 +4,7 @@
 //! Unlike `MultiEd25519`, each key can be a different signature scheme
 //! (Ed25519, Secp256k1, Secp256r1, etc.).
 
-use crate::error::{AptosError, AptosResult};
+use crate::error::{MovementError, MovementResult};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -36,14 +36,14 @@ impl AnyPublicKeyVariant {
     ///
     /// # Errors
     ///
-    /// Returns [`AptosError::InvalidPublicKey`] if the byte value is not a valid variant (0-3).
-    pub fn from_byte(byte: u8) -> AptosResult<Self> {
+    /// Returns [`MovementError::InvalidPublicKey`] if the byte value is not a valid variant (0-3).
+    pub fn from_byte(byte: u8) -> MovementResult<Self> {
         match byte {
             0 => Ok(Self::Ed25519),
             1 => Ok(Self::Secp256k1),
             2 => Ok(Self::Secp256r1),
             3 => Ok(Self::Keyless),
-            _ => Err(AptosError::InvalidPublicKey(format!(
+            _ => Err(MovementError::InvalidPublicKey(format!(
                 "unknown public key variant: {byte}"
             ))),
         }
@@ -80,7 +80,7 @@ impl AnyPublicKey {
     }
 
     /// Creates a Secp256k1 public key.
-    /// Uses uncompressed format (65 bytes) as required by the Aptos protocol.
+    /// Uses uncompressed format (65 bytes) as required by the Movement protocol.
     #[cfg(feature = "secp256k1")]
     pub fn secp256k1(public_key: &crate::crypto::Secp256k1PublicKey) -> Self {
         Self {
@@ -90,7 +90,7 @@ impl AnyPublicKey {
     }
 
     /// Creates a Secp256r1 public key.
-    /// Uses uncompressed format (65 bytes) as required by the Aptos protocol.
+    /// Uses uncompressed format (65 bytes) as required by the Movement protocol.
     #[cfg(feature = "secp256r1")]
     pub fn secp256r1(public_key: &crate::crypto::Secp256r1PublicKey) -> Self {
         Self {
@@ -123,9 +123,9 @@ impl AnyPublicKey {
     /// - Signature verification fails
     /// - Verification is not supported for the variant
     #[allow(unused_variables)]
-    pub fn verify(&self, message: &[u8], signature: &AnySignature) -> AptosResult<()> {
+    pub fn verify(&self, message: &[u8], signature: &AnySignature) -> MovementResult<()> {
         if signature.variant != self.variant {
-            return Err(AptosError::InvalidSignature(format!(
+            return Err(MovementError::InvalidSignature(format!(
                 "signature variant {:?} doesn't match public key variant {:?}",
                 signature.variant, self.variant
             )));
@@ -153,7 +153,7 @@ impl AnyPublicKey {
                 pk.verify(message, &sig)
             }
             #[allow(unreachable_patterns)]
-            _ => Err(AptosError::InvalidPublicKey(format!(
+            _ => Err(MovementError::InvalidPublicKey(format!(
                 "verification not supported for variant {:?}",
                 self.variant
             ))),
@@ -305,31 +305,31 @@ impl MultiKeyPublicKey {
     ///
     /// # Errors
     ///
-    /// Returns [`AptosError::InvalidPublicKey`] if:
+    /// Returns [`MovementError::InvalidPublicKey`] if:
     /// - No public keys are provided
     /// - More than 32 public keys are provided
     /// - Threshold is 0
     /// - Threshold exceeds the number of keys
-    pub fn new(public_keys: Vec<AnyPublicKey>, threshold: u8) -> AptosResult<Self> {
+    pub fn new(public_keys: Vec<AnyPublicKey>, threshold: u8) -> MovementResult<Self> {
         if public_keys.is_empty() {
-            return Err(AptosError::InvalidPublicKey(
+            return Err(MovementError::InvalidPublicKey(
                 "multi-key requires at least one public key".into(),
             ));
         }
         if public_keys.len() > MAX_NUM_OF_KEYS {
-            return Err(AptosError::InvalidPublicKey(format!(
+            return Err(MovementError::InvalidPublicKey(format!(
                 "multi-key supports at most {} keys, got {}",
                 MAX_NUM_OF_KEYS,
                 public_keys.len()
             )));
         }
         if threshold < MIN_THRESHOLD {
-            return Err(AptosError::InvalidPublicKey(
+            return Err(MovementError::InvalidPublicKey(
                 "threshold must be at least 1".into(),
             ));
         }
         if threshold as usize > public_keys.len() {
-            return Err(AptosError::InvalidPublicKey(format!(
+            return Err(MovementError::InvalidPublicKey(format!(
                 "threshold {} exceeds number of keys {}",
                 threshold,
                 public_keys.len()
@@ -388,25 +388,25 @@ impl MultiKeyPublicKey {
     ///
     /// # Errors
     ///
-    /// Returns [`AptosError::InvalidPublicKey`] if:
+    /// Returns [`MovementError::InvalidPublicKey`] if:
     /// - The bytes are empty
     /// - The number of keys is invalid (0 or > 32)
     /// - The bytes are too short for the expected structure
     /// - Any public key variant byte is invalid
     /// - Any public key length or data is invalid
     /// - The threshold is invalid
-    pub fn from_bytes(bytes: &[u8]) -> AptosResult<Self> {
+    pub fn from_bytes(bytes: &[u8]) -> MovementResult<Self> {
         // SECURITY: Limit individual key size to prevent DoS via large allocations
         // Largest supported key is uncompressed secp256k1/secp256r1 at 65 bytes
         const MAX_KEY_SIZE: usize = 128;
 
         if bytes.is_empty() {
-            return Err(AptosError::InvalidPublicKey("empty bytes".into()));
+            return Err(MovementError::InvalidPublicKey("empty bytes".into()));
         }
 
         let num_keys = bytes[0] as usize;
         if num_keys == 0 || num_keys > MAX_NUM_OF_KEYS {
-            return Err(AptosError::InvalidPublicKey(format!(
+            return Err(MovementError::InvalidPublicKey(format!(
                 "invalid number of keys: {num_keys}"
             )));
         }
@@ -416,7 +416,7 @@ impl MultiKeyPublicKey {
 
         for _ in 0..num_keys {
             if offset >= bytes.len() {
-                return Err(AptosError::InvalidPublicKey("bytes too short".into()));
+                return Err(MovementError::InvalidPublicKey("bytes too short".into()));
             }
 
             let variant = AnyPublicKeyVariant::from_byte(bytes[offset])?;
@@ -424,18 +424,18 @@ impl MultiKeyPublicKey {
 
             // Decode ULEB128 length
             let (len, len_bytes) = uleb128_decode(&bytes[offset..]).ok_or_else(|| {
-                AptosError::InvalidPublicKey("invalid ULEB128 length encoding".into())
+                MovementError::InvalidPublicKey("invalid ULEB128 length encoding".into())
             })?;
             offset += len_bytes;
 
             if len > MAX_KEY_SIZE {
-                return Err(AptosError::InvalidPublicKey(format!(
+                return Err(MovementError::InvalidPublicKey(format!(
                     "key size {len} exceeds maximum {MAX_KEY_SIZE}"
                 )));
             }
 
             if offset + len > bytes.len() {
-                return Err(AptosError::InvalidPublicKey(
+                return Err(MovementError::InvalidPublicKey(
                     "bytes too short for key".into(),
                 ));
             }
@@ -447,7 +447,7 @@ impl MultiKeyPublicKey {
         }
 
         if offset >= bytes.len() {
-            return Err(AptosError::InvalidPublicKey(
+            return Err(MovementError::InvalidPublicKey(
                 "bytes too short for threshold".into(),
             ));
         }
@@ -475,16 +475,16 @@ impl MultiKeyPublicKey {
     /// - The number of signatures is less than the threshold
     /// - Any individual signature verification fails
     /// - A signer index is out of bounds
-    pub fn verify(&self, message: &[u8], signature: &MultiKeySignature) -> AptosResult<()> {
+    pub fn verify(&self, message: &[u8], signature: &MultiKeySignature) -> MovementResult<()> {
         // Check that we have enough signatures
         if signature.num_signatures() < self.threshold as usize {
-            return Err(AptosError::SignatureVerificationFailed);
+            return Err(MovementError::SignatureVerificationFailed);
         }
 
         // Verify each signature
         for (index, sig) in signature.signatures() {
             if *index as usize >= self.public_keys.len() {
-                return Err(AptosError::InvalidSignature(format!(
+                return Err(MovementError::InvalidSignature(format!(
                     "signer index {} out of bounds (max {})",
                     index,
                     self.public_keys.len() - 1
@@ -533,19 +533,19 @@ impl MultiKeySignature {
     ///
     /// # Errors
     ///
-    /// Returns [`AptosError::InvalidSignature`] if:
+    /// Returns [`MovementError::InvalidSignature`] if:
     /// - No signatures are provided
     /// - More than 32 signatures are provided
     /// - A signer index is out of bounds (>= 32)
     /// - Duplicate signer indices are present
-    pub fn new(mut signatures: Vec<(u8, AnySignature)>) -> AptosResult<Self> {
+    pub fn new(mut signatures: Vec<(u8, AnySignature)>) -> MovementResult<Self> {
         if signatures.is_empty() {
-            return Err(AptosError::InvalidSignature(
+            return Err(MovementError::InvalidSignature(
                 "multi-key signature requires at least one signature".into(),
             ));
         }
         if signatures.len() > MAX_NUM_OF_KEYS {
-            return Err(AptosError::InvalidSignature(format!(
+            return Err(MovementError::InvalidSignature(format!(
                 "too many signatures: {} (max {})",
                 signatures.len(),
                 MAX_NUM_OF_KEYS
@@ -561,14 +561,14 @@ impl MultiKeySignature {
 
         for (index, _) in &signatures {
             if *index as usize >= MAX_NUM_OF_KEYS {
-                return Err(AptosError::InvalidSignature(format!(
+                return Err(MovementError::InvalidSignature(format!(
                     "signer index {} out of bounds (max {})",
                     index,
                     MAX_NUM_OF_KEYS - 1
                 )));
             }
             if last_index == Some(*index) {
-                return Err(AptosError::InvalidSignature(format!(
+                return Err(MovementError::InvalidSignature(format!(
                     "duplicate signer index {index}"
                 )));
             }
@@ -635,25 +635,25 @@ impl MultiKeySignature {
     ///
     /// # Errors
     ///
-    /// Returns [`AptosError::InvalidSignature`] if:
+    /// Returns [`MovementError::InvalidSignature`] if:
     /// - The bytes are too short (less than 5 bytes for `num_sigs` + bitmap)
     /// - The number of signatures is invalid (0 or > 32)
     /// - The bitmap doesn't match the number of signatures
     /// - The bytes are too short for the expected structure
     /// - Any signature variant byte is invalid
     /// - Any signature length or data is invalid
-    pub fn from_bytes(bytes: &[u8]) -> AptosResult<Self> {
+    pub fn from_bytes(bytes: &[u8]) -> MovementResult<Self> {
         // SECURITY: Limit individual signature size to prevent DoS via large allocations
         // Largest supported signature is ~72 bytes for ECDSA DER format
         const MAX_SIGNATURE_SIZE: usize = 128;
 
         if bytes.len() < 5 {
-            return Err(AptosError::InvalidSignature("bytes too short".into()));
+            return Err(MovementError::InvalidSignature("bytes too short".into()));
         }
 
         let num_sigs = bytes[0] as usize;
         if num_sigs == 0 || num_sigs > MAX_NUM_OF_KEYS {
-            return Err(AptosError::InvalidSignature(format!(
+            return Err(MovementError::InvalidSignature(format!(
                 "invalid number of signatures: {num_sigs}"
             )));
         }
@@ -679,14 +679,14 @@ impl MultiKeySignature {
         }
 
         if signer_indices.len() != num_sigs {
-            return Err(AptosError::InvalidSignature(
+            return Err(MovementError::InvalidSignature(
                 "bitmap doesn't match number of signatures".into(),
             ));
         }
 
         for &index in &signer_indices {
             if offset >= bitmap_start {
-                return Err(AptosError::InvalidSignature("bytes too short".into()));
+                return Err(MovementError::InvalidSignature("bytes too short".into()));
             }
 
             let variant = AnyPublicKeyVariant::from_byte(bytes[offset])?;
@@ -695,18 +695,18 @@ impl MultiKeySignature {
             // Decode ULEB128 length
             let (len, len_bytes) =
                 uleb128_decode(&bytes[offset..bitmap_start]).ok_or_else(|| {
-                    AptosError::InvalidSignature("invalid ULEB128 length encoding".into())
+                    MovementError::InvalidSignature("invalid ULEB128 length encoding".into())
                 })?;
             offset += len_bytes;
 
             if len > MAX_SIGNATURE_SIZE {
-                return Err(AptosError::InvalidSignature(format!(
+                return Err(MovementError::InvalidSignature(format!(
                     "signature size {len} exceeds maximum {MAX_SIGNATURE_SIZE}"
                 )));
             }
 
             if offset + len > bitmap_start {
-                return Err(AptosError::InvalidSignature(
+                return Err(MovementError::InvalidSignature(
                     "bytes too short for signature".into(),
                 ));
             }

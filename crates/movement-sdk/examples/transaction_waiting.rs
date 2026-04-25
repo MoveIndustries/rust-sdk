@@ -10,8 +10,8 @@
 //!
 //! Run with: `cargo run --example transaction_waiting --features "ed25519,faucet"`
 
-use aptos_sdk::{
-    Aptos, AptosConfig,
+use movement_sdk::{
+    Movement, MovementConfig,
     account::Ed25519Account,
     transaction::{BatchSummary, BatchTransactionStatus, EntryFunction, TransactionBatchBuilder},
 };
@@ -22,46 +22,46 @@ async fn main() -> anyhow::Result<()> {
     println!("=== Transaction Waiting Strategies ===\n");
 
     // Connect to testnet
-    let aptos = Aptos::new(AptosConfig::testnet())?;
-    println!("Connected to testnet (chain_id: {})", aptos.chain_id());
+    let movement = Movement::new(MovementConfig::testnet())?;
+    println!("Connected to testnet (chain_id: {})", movement.chain_id());
 
     // Create and fund accounts
-    let sender = aptos.create_funded_account(200_000_000).await?;
+    let sender = movement.create_funded_account(200_000_000).await?;
     let recipient = Ed25519Account::generate();
     println!("Sender: {}", sender.address());
     println!("Recipient: {}", recipient.address());
 
     // ==== Part 1: Basic Submit and Wait ====
     println!("\n--- Part 1: Basic Submit and Wait ---");
-    basic_submit_and_wait(&aptos, &sender, recipient.address()).await?;
+    basic_submit_and_wait(&movement, &sender, recipient.address()).await?;
 
     // ==== Part 2: Custom Timeout ====
     println!("\n--- Part 2: Custom Timeout Handling ---");
-    custom_timeout(&aptos, &sender, recipient.address()).await?;
+    custom_timeout(&movement, &sender, recipient.address()).await?;
 
     // ==== Part 3: Submit First, Wait Later ====
     println!("\n--- Part 3: Deferred Waiting ---");
-    deferred_waiting(&aptos, &sender, recipient.address()).await?;
+    deferred_waiting(&movement, &sender, recipient.address()).await?;
 
     // ==== Part 4: Batch Parallel Waiting ====
     println!("\n--- Part 4: Batch Parallel Waiting ---");
-    batch_parallel_waiting(&aptos, &sender).await?;
+    batch_parallel_waiting(&movement, &sender).await?;
 
     // ==== Part 5: Batch Sequential Waiting ====
     println!("\n--- Part 5: Batch Sequential Waiting ---");
-    batch_sequential_waiting(&aptos, &sender).await?;
+    batch_sequential_waiting(&movement, &sender).await?;
 
     // ==== Part 6: Parsing Transaction Results ====
     println!("\n--- Part 6: Parsing Transaction Results ---");
-    parsing_results(&aptos, &sender, recipient.address()).await?;
+    parsing_results(&movement, &sender, recipient.address()).await?;
 
     // ==== Part 7: Retry Patterns ====
     println!("\n--- Part 7: Retry Patterns ---");
-    retry_patterns(&aptos, &sender, recipient.address()).await?;
+    retry_patterns(&movement, &sender, recipient.address()).await?;
 
     // ==== Part 8: Waiting for Multiple Independent Transactions ====
     println!("\n--- Part 8: Multiple Independent Transactions ---");
-    multiple_independent(&aptos, &sender).await?;
+    multiple_independent(&movement, &sender).await?;
 
     println!("\n=== Transaction Waiting Examples Completed ===");
     Ok(())
@@ -69,14 +69,14 @@ async fn main() -> anyhow::Result<()> {
 
 /// Part 1: Basic submit and wait - simplest approach
 async fn basic_submit_and_wait(
-    aptos: &Aptos,
+    movement: &Movement,
     sender: &Ed25519Account,
-    recipient: aptos_sdk::types::AccountAddress,
+    recipient: movement_sdk::types::AccountAddress,
 ) -> anyhow::Result<()> {
     let payload = EntryFunction::apt_transfer(recipient, 100_000)?;
 
     // sign_submit_and_wait: builds, signs, submits, and waits in one call
-    let result = aptos
+    let result = movement
         .sign_submit_and_wait(sender, payload.into(), None) // None = default timeout (30s)
         .await?;
 
@@ -94,9 +94,9 @@ async fn basic_submit_and_wait(
 
 /// Part 2: Using custom timeouts
 async fn custom_timeout(
-    aptos: &Aptos,
+    movement: &Movement,
     sender: &Ed25519Account,
-    recipient: aptos_sdk::types::AccountAddress,
+    recipient: movement_sdk::types::AccountAddress,
 ) -> anyhow::Result<()> {
     let payload = EntryFunction::apt_transfer(recipient, 100_000)?;
 
@@ -104,7 +104,7 @@ async fn custom_timeout(
     let long_timeout = Some(Duration::from_secs(60));
     println!("Using custom timeout: 60 seconds");
 
-    let _result = aptos
+    let _result = movement
         .sign_submit_and_wait(sender, payload.into(), long_timeout)
         .await?;
 
@@ -114,7 +114,7 @@ async fn custom_timeout(
     let payload2 = EntryFunction::apt_transfer(recipient, 50_000)?;
     let short_timeout = Some(Duration::from_secs(120)); // 2 minutes for safety
 
-    let result2 = aptos
+    let result2 = movement
         .sign_submit_and_wait(sender, payload2.into(), short_timeout)
         .await?;
 
@@ -133,15 +133,15 @@ async fn custom_timeout(
 
 /// Part 3: Submit first, wait later (deferred waiting)
 async fn deferred_waiting(
-    aptos: &Aptos,
+    movement: &Movement,
     sender: &Ed25519Account,
-    recipient: aptos_sdk::types::AccountAddress,
+    recipient: movement_sdk::types::AccountAddress,
 ) -> anyhow::Result<()> {
     let payload = EntryFunction::apt_transfer(recipient, 100_000)?;
 
     // Step 1: Submit the transaction (returns immediately with pending status)
     println!("Step 1: Submit transaction (non-blocking)");
-    let pending = aptos.sign_and_submit(sender, payload.into()).await?;
+    let pending = movement.sign_and_submit(sender, payload.into()).await?;
     let txn_hash = pending.data.hash;
     println!("  Transaction submitted: {}", txn_hash);
 
@@ -152,7 +152,7 @@ async fn deferred_waiting(
 
     // Step 3: Wait for the transaction when ready
     println!("\nStep 3: Wait for transaction confirmation");
-    let result = aptos
+    let result = movement
         .fullnode()
         .wait_for_transaction(&txn_hash, Some(Duration::from_secs(60)))
         .await?;
@@ -166,7 +166,7 @@ async fn deferred_waiting(
 
     // You can also check status without blocking using get_transaction_by_hash
     println!("\nStep 4: Non-blocking status check");
-    let status = aptos.fullnode().get_transaction_by_hash(&txn_hash).await?;
+    let status = movement.fullnode().get_transaction_by_hash(&txn_hash).await?;
     let version = status.data.get("version").and_then(|v| v.as_str());
     println!("  Transaction version: {:?}", version);
 
@@ -174,7 +174,7 @@ async fn deferred_waiting(
 }
 
 /// Part 4: Batch waiting - parallel strategy
-async fn batch_parallel_waiting(aptos: &Aptos, sender: &Ed25519Account) -> anyhow::Result<()> {
+async fn batch_parallel_waiting(movement: &Movement, sender: &Ed25519Account) -> anyhow::Result<()> {
     // Create multiple recipients
     let recipients: Vec<_> = (0..5).map(|_| Ed25519Account::generate()).collect();
 
@@ -193,13 +193,13 @@ async fn batch_parallel_waiting(aptos: &Aptos, sender: &Ed25519Account) -> anyho
         .collect::<Result<Vec<_>, _>>()?;
 
     // Get sequence number
-    let seq = aptos.get_sequence_number(sender.address()).await?;
+    let seq = movement.get_sequence_number(sender.address()).await?;
 
     // Build and sign batch
     let batch = TransactionBatchBuilder::new()
         .sender(sender.address())
         .starting_sequence_number(seq)
-        .chain_id(aptos.chain_id())
+        .chain_id(movement.chain_id())
         .gas_unit_price(100)
         .add_payloads(payloads)
         .build_and_sign(sender)?;
@@ -208,7 +208,7 @@ async fn batch_parallel_waiting(aptos: &Aptos, sender: &Ed25519Account) -> anyho
 
     // Submit all in PARALLEL and wait for all
     let start = std::time::Instant::now();
-    let results = batch.submit_and_wait_all(aptos.fullnode(), None).await;
+    let results = batch.submit_and_wait_all(movement.fullnode(), None).await;
     let elapsed = start.elapsed();
 
     println!("\nParallel wait completed in {:?}", elapsed);
@@ -229,7 +229,7 @@ async fn batch_parallel_waiting(aptos: &Aptos, sender: &Ed25519Account) -> anyho
 }
 
 /// Part 5: Batch waiting - sequential strategy
-async fn batch_sequential_waiting(aptos: &Aptos, sender: &Ed25519Account) -> anyhow::Result<()> {
+async fn batch_sequential_waiting(movement: &Movement, sender: &Ed25519Account) -> anyhow::Result<()> {
     // Create recipients
     let recipients: Vec<_> = (0..3).map(|_| Ed25519Account::generate()).collect();
 
@@ -249,13 +249,13 @@ async fn batch_sequential_waiting(aptos: &Aptos, sender: &Ed25519Account) -> any
         .collect::<Result<Vec<_>, _>>()?;
 
     // Get sequence number
-    let seq = aptos.get_sequence_number(sender.address()).await?;
+    let seq = movement.get_sequence_number(sender.address()).await?;
 
     // Build batch
     let batch = TransactionBatchBuilder::new()
         .sender(sender.address())
         .starting_sequence_number(seq)
-        .chain_id(aptos.chain_id())
+        .chain_id(movement.chain_id())
         .gas_unit_price(100)
         .add_payloads(payloads)
         .build_and_sign(sender)?;
@@ -263,7 +263,7 @@ async fn batch_sequential_waiting(aptos: &Aptos, sender: &Ed25519Account) -> any
     // Submit SEQUENTIALLY (wait for each before next)
     let start = std::time::Instant::now();
     let results = batch
-        .submit_and_wait_sequential(aptos.fullnode(), None)
+        .submit_and_wait_sequential(movement.fullnode(), None)
         .await;
     let elapsed = start.elapsed();
 
@@ -301,13 +301,13 @@ async fn batch_sequential_waiting(aptos: &Aptos, sender: &Ed25519Account) -> any
 
 /// Part 6: Parsing transaction results in detail
 async fn parsing_results(
-    aptos: &Aptos,
+    movement: &Movement,
     sender: &Ed25519Account,
-    recipient: aptos_sdk::types::AccountAddress,
+    recipient: movement_sdk::types::AccountAddress,
 ) -> anyhow::Result<()> {
     let payload = EntryFunction::apt_transfer(recipient, 100_000)?;
 
-    let result = aptos
+    let result = movement
         .sign_submit_and_wait(sender, payload.into(), None)
         .await?;
 
@@ -403,28 +403,28 @@ async fn parsing_results(
 
 /// Part 7: Retry patterns for failed submissions
 async fn retry_patterns(
-    aptos: &Aptos,
+    movement: &Movement,
     sender: &Ed25519Account,
-    recipient: aptos_sdk::types::AccountAddress,
+    recipient: movement_sdk::types::AccountAddress,
 ) -> anyhow::Result<()> {
     println!("Demonstrating safe retry patterns:");
 
     // Build a transaction
     let payload = EntryFunction::apt_transfer(recipient, 50_000)?;
-    let raw_txn = aptos.build_transaction(sender, payload.into()).await?;
-    let signed_txn = aptos_sdk::transaction::builder::sign_transaction(&raw_txn, sender)?;
+    let raw_txn = movement.build_transaction(sender, payload.into()).await?;
+    let signed_txn = movement_sdk::transaction::builder::sign_transaction(&raw_txn, sender)?;
 
     // Pattern 1: Idempotent resubmission
     println!("\n1. Idempotent resubmission:");
     println!("   Submitting same signed transaction is safe");
 
     // Submit first time
-    let pending = aptos.submit_transaction(&signed_txn).await?;
+    let pending = movement.submit_transaction(&signed_txn).await?;
     println!("   First submit: {}", pending.data.hash);
 
     // Second submission of same transaction is idempotent
     // (will succeed but won't execute twice)
-    match aptos.submit_transaction(&signed_txn).await {
+    match movement.submit_transaction(&signed_txn).await {
         Ok(p) => println!("   Resubmit: {} (same hash, safe)", p.data.hash),
         Err(e) if e.to_string().contains("already") => {
             println!("   Resubmit: already submitted (safe)")
@@ -433,7 +433,7 @@ async fn retry_patterns(
     }
 
     // Wait for the transaction
-    let result = aptos
+    let result = movement
         .fullnode()
         .wait_for_transaction(&pending.data.hash, None)
         .await?;
@@ -447,17 +447,17 @@ async fn retry_patterns(
     // Pattern 2: Retry with exponential backoff (handled by SDK)
     println!("\n2. Automatic retry with backoff:");
     println!("   The SDK automatically retries transient failures");
-    println!("   Configure via AptosConfig::with_retry()");
+    println!("   Configure via MovementConfig::with_retry()");
 
     // Pattern 3: Check before retry
     println!("\n3. Check status before retrying:");
 
     let payload2 = EntryFunction::apt_transfer(recipient, 25_000)?;
-    let pending2 = aptos.sign_and_submit(sender, payload2.into()).await?;
+    let pending2 = movement.sign_and_submit(sender, payload2.into()).await?;
     let hash = pending2.data.hash;
 
     // Check if already confirmed before retrying
-    match aptos.fullnode().get_transaction_by_hash(&hash).await {
+    match movement.fullnode().get_transaction_by_hash(&hash).await {
         Ok(txn) if txn.data.get("version").is_some() => {
             println!("   Transaction already confirmed, no retry needed");
         }
@@ -470,18 +470,18 @@ async fn retry_patterns(
     }
 
     // Wait for final confirmation
-    aptos.fullnode().wait_for_transaction(&hash, None).await?;
+    movement.fullnode().wait_for_transaction(&hash, None).await?;
     println!("   Transaction confirmed");
 
     Ok(())
 }
 
 /// Part 8: Waiting for multiple independent transactions from different senders
-async fn multiple_independent(aptos: &Aptos, _sender: &Ed25519Account) -> anyhow::Result<()> {
+async fn multiple_independent(movement: &Movement, _sender: &Ed25519Account) -> anyhow::Result<()> {
     // Create multiple independent senders
-    let sender1 = aptos.create_funded_account(50_000_000).await?;
-    let sender2 = aptos.create_funded_account(50_000_000).await?;
-    let sender3 = aptos.create_funded_account(50_000_000).await?;
+    let sender1 = movement.create_funded_account(50_000_000).await?;
+    let sender2 = movement.create_funded_account(50_000_000).await?;
+    let sender3 = movement.create_funded_account(50_000_000).await?;
 
     let recipient = Ed25519Account::generate();
 
@@ -497,9 +497,9 @@ async fn multiple_independent(aptos: &Aptos, _sender: &Ed25519Account) -> anyhow
     let start = std::time::Instant::now();
 
     let (result1, result2, result3) = tokio::join!(
-        aptos.sign_submit_and_wait(&sender1, payload1.into(), None),
-        aptos.sign_submit_and_wait(&sender2, payload2.into(), None),
-        aptos.sign_submit_and_wait(&sender3, payload3.into(), None),
+        movement.sign_submit_and_wait(&sender1, payload1.into(), None),
+        movement.sign_submit_and_wait(&sender2, payload2.into(), None),
+        movement.sign_submit_and_wait(&sender3, payload3.into(), None),
     );
 
     let elapsed = start.elapsed();
@@ -538,7 +538,7 @@ async fn multiple_independent(aptos: &Aptos, _sender: &Ed25519Account) -> anyhow
 
     // Verify recipient got all the funds
     tokio::time::sleep(Duration::from_secs(1)).await;
-    let balance = aptos.get_balance(recipient.address()).await.unwrap_or(0);
+    let balance = movement.get_balance(recipient.address()).await.unwrap_or(0);
     println!(
         "\nRecipient total balance: {} APT",
         balance as f64 / 100_000_000.0

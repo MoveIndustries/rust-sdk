@@ -49,21 +49,20 @@ cleanup() {
         echo -e "${YELLOW}Stopping localnet (PID: $LOCALNET_PID)...${NC}"
         kill "$LOCALNET_PID" 2>/dev/null || true
         # Also kill any child processes
-        pkill -f "aptos node" 2>/dev/null || true
+        pkill -f "movement node" 2>/dev/null || true
     fi
 }
 
 # Set up trap for cleanup
 trap cleanup EXIT
 
-# Check if Aptos CLI is installed
-check_aptos_cli() {
-    if ! command -v aptos &> /dev/null; then
-        echo -e "${RED}Error: Aptos CLI is not installed${NC}"
-        echo "Install it with: curl -fsSL https://aptos.dev/scripts/install_cli.py | python3"
+# Check if Movement CLI is installed
+check_movement_cli() {
+    if ! command -v movement &> /dev/null; then
+        echo -e "${RED}Error: Movement CLI is not installed${NC}"
         exit 1
     fi
-    echo -e "${GREEN}✓ Aptos CLI found: $(aptos --version)${NC}"
+    echo -e "${GREEN}✓ Movement CLI found: $(movement --version)${NC}"
 }
 
 # Check if localnet is already running
@@ -79,11 +78,12 @@ start_localnet() {
     echo -e "${YELLOW}Starting localnet...${NC}"
     
     # Kill any existing localnet
-    pkill -f "aptos node" 2>/dev/null || true
+    pkill -f "movement node" 2>/dev/null || true
     sleep 2
-    
-    # Start localnet in background
-    aptos node run-localnet --with-faucet --force-restart > /tmp/localnet.log 2>&1 &
+
+    # Start localnet in background. `yes` answers the interactive
+    # "delete existing localnet data?" prompt that --force-restart triggers.
+    yes | movement node run-localnet --with-faucet --force-restart --do-not-delegate > /tmp/localnet.log 2>&1 &
     LOCALNET_PID=$!
     
     echo "Localnet PID: $LOCALNET_PID"
@@ -126,13 +126,13 @@ run_tests() {
     
     cd "$PROJECT_DIR"
     
-    export APTOS_LOCAL_NODE_URL="http://127.0.0.1:8080/v1"
-    export APTOS_LOCAL_FAUCET_URL="http://127.0.0.1:8081"
-    
-    local test_cmd="cargo test -p aptos-sdk --features 'e2e,full' -- --ignored"
-    
+    export MOVEMENT_LOCAL_NODE_URL="http://127.0.0.1:8080/v1"
+    export MOVEMENT_LOCAL_FAUCET_URL="http://127.0.0.1:8081"
+
+    local test_cmd="cargo test -p movement-sdk --features 'e2e,full' -- --ignored"
+
     if [[ -n "$TEST_FILTER" ]]; then
-        test_cmd="cargo test -p aptos-sdk --features 'e2e,full' -- --ignored $TEST_FILTER"
+        test_cmd="cargo test -p movement-sdk --features 'e2e,full' -- --ignored $TEST_FILTER"
     fi
     
     echo "Running: $test_cmd"
@@ -142,11 +142,11 @@ run_tests() {
 # Main
 main() {
     echo "======================================"
-    echo "  Aptos Rust SDK E2E Test Runner"
+    echo "  Movement Rust SDK E2E Test Runner"
     echo "======================================"
     echo
-    
-    check_aptos_cli
+
+    check_movement_cli
     
     if [[ "$START_LOCALNET" == "true" ]]; then
         if check_localnet_running; then

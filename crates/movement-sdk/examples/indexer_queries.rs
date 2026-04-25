@@ -7,22 +7,22 @@
 //!
 //! Run with: `cargo run --example indexer_queries --features "ed25519,indexer"`
 
-use aptos_sdk::{Aptos, AptosConfig, api::PaginationParams, types::AccountAddress};
+use movement_sdk::{Movement, MovementConfig, api::PaginationParams, types::AccountAddress};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     println!("=== Indexer Queries Example ===\n");
 
     // Setup
-    let aptos = Aptos::new(AptosConfig::testnet())?;
+    let movement = Movement::new(MovementConfig::testnet())?;
     println!("Connected to testnet");
 
     // Get the indexer client (requires "indexer" feature)
-    let indexer = aptos.indexer().ok_or_else(|| {
+    let indexer = movement.indexer().ok_or_else(|| {
         anyhow::anyhow!("Indexer not available. Make sure the 'indexer' feature is enabled.")
     })?;
 
-    // Use a known address with activity (Aptos Framework)
+    // Use a known address with activity (Movement Framework)
     let known_address = AccountAddress::ONE; // 0x1
     println!("Querying data for address: {}", known_address);
 

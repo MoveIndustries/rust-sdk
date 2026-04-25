@@ -1,6 +1,6 @@
 //! End-to-end tests against localnet or testnet.
 //!
-//! These tests require a running Aptos node and are only compiled when
+//! These tests require a running Movement node and are only compiled when
 //! the `e2e` feature is enabled.
 //!
 //! ## Running the tests
@@ -13,17 +13,17 @@
 //! ### Option 2: Manual setup
 //! ```bash
 //! # In one terminal, start localnet:
-//! aptos node run-localnet --with-faucet
+//! movement node run-localnet --with-faucet
 //!
 //! # In another terminal, run tests:
-//! cargo test -p aptos-sdk --features "e2e,full"
+//! cargo test -p movement-sdk --features "e2e,full"
 //! ```
 //!
 //! ### Option 3: Using custom node URLs
 //! ```bash
 //! export APTOS_LOCAL_NODE_URL=http://127.0.0.1:8080/v1
 //! export APTOS_LOCAL_FAUCET_URL=http://127.0.0.1:8081
-//! cargo test -p aptos-sdk --features "e2e,full"
+//! cargo test -p movement-sdk --features "e2e,full"
 //! ```
 //!
 //! ## Test Categories
@@ -35,13 +35,13 @@
 //! - **multi_signer_tests**: Multi-agent and fee payer transactions
 //! - **state_tests**: Resource and state queries
 
-use aptos_sdk::{Aptos, AptosConfig};
+use movement_sdk::{Movement, MovementConfig};
 use std::env;
 
 /// Gets the configuration for E2E tests.
-fn get_test_config() -> AptosConfig {
+fn get_test_config() -> MovementConfig {
     if let Ok(node_url) = env::var("APTOS_LOCAL_NODE_URL") {
-        AptosConfig::custom(&node_url)
+        MovementConfig::custom(&node_url)
             .unwrap()
             .with_faucet_url(
                 &env::var("APTOS_LOCAL_FAUCET_URL")
@@ -49,7 +49,7 @@ fn get_test_config() -> AptosConfig {
             )
             .unwrap()
     } else {
-        AptosConfig::local()
+        MovementConfig::local()
     }
 }
 
@@ -65,20 +65,20 @@ async fn wait_for_finality() {
 #[cfg(all(feature = "ed25519", feature = "faucet"))]
 mod account_tests {
     use super::*;
-    use aptos_sdk::account::Ed25519Account;
+    use movement_sdk::account::Ed25519Account;
 
     #[tokio::test]
     #[ignore]
     async fn e2e_create_and_fund_account() {
         let config = get_test_config();
-        let aptos = Aptos::new(config).expect("failed to create client");
+        let movement = Movement::new(config).expect("failed to create client");
 
         // Create account
         let account = Ed25519Account::generate();
         println!("Created account: {}", account.address());
 
         // Fund account
-        let txn_hashes = aptos
+        let txn_hashes = movement
             .fund_account(account.address(), 100_000_000)
             .await
             .expect("failed to fund account");
@@ -87,7 +87,7 @@ mod account_tests {
         wait_for_finality().await;
 
         // Check balance
-        let balance = aptos
+        let balance = movement
             .get_balance(account.address())
             .await
             .expect("failed to get balance");
@@ -99,10 +99,10 @@ mod account_tests {
     #[ignore]
     async fn e2e_create_funded_account_helper() {
         let config = get_test_config();
-        let aptos = Aptos::new(config).expect("failed to create client");
+        let movement = Movement::new(config).expect("failed to create client");
 
         // Use helper method
-        let account = aptos
+        let account = movement
             .create_funded_account(50_000_000)
             .await
             .expect("failed to create funded account");
@@ -111,7 +111,7 @@ mod account_tests {
 
         wait_for_finality().await;
 
-        let balance = aptos
+        let balance = movement
             .get_balance(account.address())
             .await
             .expect("failed to get balance");
@@ -122,14 +122,14 @@ mod account_tests {
     #[ignore]
     async fn e2e_get_sequence_number() {
         let config = get_test_config();
-        let aptos = Aptos::new(config).expect("failed to create client");
+        let movement = Movement::new(config).expect("failed to create client");
 
-        let account = aptos
+        let account = movement
             .create_funded_account(100_000_000)
             .await
             .expect("failed to create account");
 
-        let seq_num = aptos
+        let seq_num = movement
             .get_sequence_number(account.address())
             .await
             .expect("failed to get sequence number");
@@ -143,12 +143,12 @@ mod account_tests {
     #[ignore]
     async fn e2e_account_not_found() {
         let config = get_test_config();
-        let aptos = Aptos::new(config).expect("failed to create client");
+        let movement = Movement::new(config).expect("failed to create client");
 
         // Random unfunded account
         let account = Ed25519Account::generate();
 
-        let result = aptos.get_sequence_number(account.address()).await;
+        let result = movement.get_sequence_number(account.address()).await;
 
         // Should get an error for non-existent account
         assert!(result.is_err() || result.unwrap() == 0);
@@ -162,16 +162,16 @@ mod account_tests {
 #[cfg(all(feature = "ed25519", feature = "faucet"))]
 mod transfer_tests {
     use super::*;
-    use aptos_sdk::account::Ed25519Account;
+    use movement_sdk::account::Ed25519Account;
 
     #[tokio::test]
     #[ignore]
     async fn e2e_transfer_apt() {
         let config = get_test_config();
-        let aptos = Aptos::new(config).expect("failed to create client");
+        let movement = Movement::new(config).expect("failed to create client");
 
         // Create and fund sender
-        let sender = aptos
+        let sender = movement
             .create_funded_account(200_000_000)
             .await
             .expect("failed to create sender");
@@ -182,7 +182,7 @@ mod transfer_tests {
         println!("Recipient: {}", recipient.address());
 
         // Transfer
-        let result = aptos
+        let result = movement
             .transfer_apt(&sender, recipient.address(), 10_000_000)
             .await
             .expect("failed to transfer");
@@ -194,7 +194,7 @@ mod transfer_tests {
         wait_for_finality().await;
 
         // Check recipient balance
-        let balance = aptos
+        let balance = movement
             .get_balance(recipient.address())
             .await
             .expect("failed to get balance");
@@ -208,9 +208,9 @@ mod transfer_tests {
     #[ignore]
     async fn e2e_multiple_transfers() {
         let config = get_test_config();
-        let aptos = Aptos::new(config).expect("failed to create client");
+        let movement = Movement::new(config).expect("failed to create client");
 
-        let sender = aptos
+        let sender = movement
             .create_funded_account(500_000_000)
             .await
             .expect("failed to create sender");
@@ -219,7 +219,7 @@ mod transfer_tests {
         let recipients: Vec<_> = (0..3).map(|_| Ed25519Account::generate()).collect();
 
         for (i, recipient) in recipients.iter().enumerate() {
-            let result = aptos
+            let result = movement
                 .transfer_apt(&sender, recipient.address(), 1_000_000 * (i as u64 + 1))
                 .await
                 .expect("failed to transfer");
@@ -233,7 +233,7 @@ mod transfer_tests {
 
         // Verify balances
         for (i, recipient) in recipients.iter().enumerate() {
-            let balance = aptos.get_balance(recipient.address()).await.unwrap_or(0);
+            let balance = movement.get_balance(recipient.address()).await.unwrap_or(0);
             let expected = 1_000_000 * (i as u64 + 1);
             assert_eq!(balance, expected, "recipient {} balance mismatch", i);
         }
@@ -243,9 +243,9 @@ mod transfer_tests {
     #[ignore]
     async fn e2e_transfer_insufficient_balance() {
         let config = get_test_config();
-        let aptos = Aptos::new(config).expect("failed to create client");
+        let movement = Movement::new(config).expect("failed to create client");
 
-        let sender = aptos
+        let sender = movement
             .create_funded_account(1_000_000)
             .await
             .expect("failed to create sender");
@@ -253,7 +253,7 @@ mod transfer_tests {
         let recipient = Ed25519Account::generate();
 
         // Try to transfer more than we have
-        let result = aptos
+        let result = movement
             .transfer_apt(&sender, recipient.address(), 999_999_999_999)
             .await;
 
@@ -274,15 +274,15 @@ mod transfer_tests {
 #[cfg(all(feature = "ed25519", feature = "faucet"))]
 mod view_tests {
     use super::*;
-    use aptos_sdk::account::Ed25519Account;
+    use movement_sdk::account::Ed25519Account;
 
     #[tokio::test]
     #[ignore]
     async fn e2e_view_timestamp() {
         let config = get_test_config();
-        let aptos = Aptos::new(config).expect("failed to create client");
+        let movement = Movement::new(config).expect("failed to create client");
 
-        let result = aptos
+        let result = movement
             .view("0x1::timestamp::now_seconds", vec![], vec![])
             .await
             .expect("failed to call view function");
@@ -301,9 +301,9 @@ mod view_tests {
     #[ignore]
     async fn e2e_view_coin_balance() {
         let config = get_test_config();
-        let aptos = Aptos::new(config).expect("failed to create client");
+        let movement = Movement::new(config).expect("failed to create client");
 
-        let account = aptos
+        let account = movement
             .create_funded_account(100_000_000)
             .await
             .expect("failed to create account");
@@ -311,7 +311,7 @@ mod view_tests {
         wait_for_finality().await;
 
         // Use view function to check balance
-        let result = aptos
+        let result = movement
             .view(
                 "0x1::coin::balance",
                 vec!["0x1::aptos_coin::AptosCoin".to_string()],
@@ -328,9 +328,9 @@ mod view_tests {
     #[ignore]
     async fn e2e_view_account_exists() {
         let config = get_test_config();
-        let aptos = Aptos::new(config).expect("failed to create client");
+        let movement = Movement::new(config).expect("failed to create client");
 
-        let account = aptos
+        let account = movement
             .create_funded_account(100_000_000)
             .await
             .expect("failed to create account");
@@ -338,7 +338,7 @@ mod view_tests {
         wait_for_finality().await;
 
         // Check if account exists
-        let result = aptos
+        let result = movement
             .view(
                 "0x1::account::exists_at",
                 vec![],
@@ -354,12 +354,12 @@ mod view_tests {
     #[ignore]
     async fn e2e_view_nonexistent_account() {
         let config = get_test_config();
-        let aptos = Aptos::new(config).expect("failed to create client");
+        let movement = Movement::new(config).expect("failed to create client");
 
         let random_address = Ed25519Account::generate().address();
         println!("Random address: {}", random_address);
 
-        let result = aptos
+        let result = movement
             .view(
                 "0x1::account::exists_at",
                 vec![],
@@ -369,7 +369,7 @@ mod view_tests {
             .expect("failed to call view function");
 
         println!("Result: {:?}", result);
-        // Note: Modern Aptos chains use implicit accounts (AIP-42), so all addresses
+        // Note: Modern Movement chains use implicit accounts (AIP-42), so all addresses
         // are considered to "exist" with sequence_number=0 until a transaction is made.
         // The view function returns true for all addresses now.
         assert_eq!(result[0], serde_json::json!(true));
@@ -383,16 +383,16 @@ mod view_tests {
 #[cfg(all(feature = "ed25519", feature = "faucet"))]
 mod transaction_tests {
     use super::*;
-    use aptos_sdk::account::Ed25519Account;
-    use aptos_sdk::transaction::{EntryFunction, builder::sign_transaction};
+    use movement_sdk::account::Ed25519Account;
+    use movement_sdk::transaction::{EntryFunction, builder::sign_transaction};
 
     #[tokio::test]
     #[ignore]
     async fn e2e_build_sign_submit_transaction() {
         let config = get_test_config();
-        let aptos = Aptos::new(config).expect("failed to create client");
+        let movement = Movement::new(config).expect("failed to create client");
 
-        let sender = aptos
+        let sender = movement
             .create_funded_account(500_000_000)
             .await
             .expect("failed to create account");
@@ -401,7 +401,7 @@ mod transaction_tests {
 
         // Build transaction manually
         let payload = EntryFunction::apt_transfer(recipient.address(), 1000).unwrap();
-        let raw_txn = aptos
+        let raw_txn = movement
             .build_transaction(&sender, payload.into())
             .await
             .expect("failed to build transaction");
@@ -427,7 +427,7 @@ mod transaction_tests {
         );
 
         // Submit
-        let result = aptos
+        let result = movement
             .submit_and_wait(&signed, None)
             .await
             .expect("failed to submit");
@@ -438,14 +438,14 @@ mod transaction_tests {
     #[tokio::test]
     #[ignore]
     async fn e2e_simulate_transaction() {
-        use aptos_sdk::account::Account;
-        use aptos_sdk::transaction::authenticator::{Ed25519PublicKey, Ed25519Signature};
-        use aptos_sdk::transaction::{SignedTransaction, TransactionAuthenticator};
+        use movement_sdk::account::Account;
+        use movement_sdk::transaction::authenticator::{Ed25519PublicKey, Ed25519Signature};
+        use movement_sdk::transaction::{SignedTransaction, TransactionAuthenticator};
 
         let config = get_test_config();
-        let aptos = Aptos::new(config).expect("failed to create client");
+        let movement = Movement::new(config).expect("failed to create client");
 
-        let account = aptos
+        let account = movement
             .create_funded_account(500_000_000)
             .await
             .expect("failed to create account");
@@ -453,7 +453,7 @@ mod transaction_tests {
         let payload =
             EntryFunction::apt_transfer(Ed25519Account::generate().address(), 1000).unwrap();
 
-        let raw_txn = aptos
+        let raw_txn = movement
             .build_transaction(&account, payload.into())
             .await
             .expect("failed to build transaction");
@@ -467,7 +467,7 @@ mod transaction_tests {
         let signed = SignedTransaction::new(raw_txn, auth);
 
         // Simulate
-        let result = aptos
+        let result = movement
             .simulate_transaction(&signed)
             .await
             .expect("failed to simulate");
@@ -484,18 +484,18 @@ mod transaction_tests {
     #[tokio::test]
     #[ignore]
     async fn e2e_get_transaction_by_hash() {
-        use aptos_sdk::types::HashValue;
+        use movement_sdk::types::HashValue;
 
         let config = get_test_config();
-        let aptos = Aptos::new(config).expect("failed to create client");
+        let movement = Movement::new(config).expect("failed to create client");
 
-        let sender = aptos
+        let sender = movement
             .create_funded_account(500_000_000)
             .await
             .expect("failed to create account");
 
         // Do a transfer
-        let result = aptos
+        let result = movement
             .transfer_apt(&sender, Ed25519Account::generate().address(), 1000)
             .await
             .expect("failed to transfer");
@@ -507,7 +507,7 @@ mod transaction_tests {
 
         // Parse the hash and get transaction by hash (via fullnode client)
         let hash = HashValue::from_hex(hash_str).expect("invalid hash");
-        let txn = aptos.fullnode().get_transaction_by_hash(&hash).await;
+        let txn = movement.fullnode().get_transaction_by_hash(&hash).await;
         assert!(txn.is_ok(), "should be able to get transaction by hash");
     }
 
@@ -515,9 +515,9 @@ mod transaction_tests {
     #[ignore]
     async fn e2e_transaction_expiration() {
         let config = get_test_config();
-        let aptos = Aptos::new(config).expect("failed to create client");
+        let movement = Movement::new(config).expect("failed to create client");
 
-        let account = aptos
+        let account = movement
             .create_funded_account(100_000_000)
             .await
             .expect("failed to create account");
@@ -525,12 +525,12 @@ mod transaction_tests {
         // Build transaction with very short expiration (already expired)
         let payload =
             EntryFunction::apt_transfer(Ed25519Account::generate().address(), 1000).unwrap();
-        let chain_id = aptos
+        let chain_id = movement
             .ensure_chain_id()
             .await
             .expect("failed to resolve chain id");
 
-        let raw_txn = aptos_sdk::transaction::TransactionBuilder::new()
+        let raw_txn = movement_sdk::transaction::TransactionBuilder::new()
             .sender(account.address())
             .sequence_number(0)
             .payload(payload.into())
@@ -542,7 +542,7 @@ mod transaction_tests {
         let signed = sign_transaction(&raw_txn, &account).expect("failed to sign");
 
         // Submission should fail due to expiration
-        let result = aptos.submit_and_wait(&signed, None).await;
+        let result = movement.submit_and_wait(&signed, None).await;
         assert!(result.is_err(), "expired transaction should fail");
     }
 }
@@ -559,9 +559,9 @@ mod ledger_tests {
     #[ignore]
     async fn e2e_get_ledger_info() {
         let config = get_test_config();
-        let aptos = Aptos::new(config).expect("failed to create client");
+        let movement = Movement::new(config).expect("failed to create client");
 
-        let ledger_info = aptos
+        let ledger_info = movement
             .ledger_info()
             .await
             .expect("failed to get ledger info");
@@ -589,17 +589,17 @@ mod ledger_tests {
     #[ignore]
     async fn e2e_chain_id_from_ledger() {
         let config = get_test_config();
-        let aptos = Aptos::new(config).expect("failed to create client");
+        let movement = Movement::new(config).expect("failed to create client");
 
         // Just verify we can get ledger info
-        let _ledger_info = aptos
+        let _ledger_info = movement
             .ledger_info()
             .await
             .expect("failed to get ledger info");
 
         // Chain ID should be set
-        assert!(aptos.chain_id().id() > 0);
-        println!("Client chain ID: {}", aptos.chain_id().id());
+        assert!(movement.chain_id().id() > 0);
+        println!("Client chain ID: {}", movement.chain_id().id());
     }
 }
 
@@ -610,8 +610,8 @@ mod ledger_tests {
 #[cfg(all(feature = "ed25519", feature = "faucet"))]
 mod multi_signer_tests {
     use super::*;
-    use aptos_sdk::account::{Account, Ed25519Account};
-    use aptos_sdk::transaction::{
+    use movement_sdk::account::{Account, Ed25519Account};
+    use movement_sdk::transaction::{
         EntryFunction, TransactionBuilder,
         builder::{sign_fee_payer_transaction, sign_multi_agent_transaction},
         types::{FeePayerRawTransaction, MultiAgentRawTransaction},
@@ -621,16 +621,16 @@ mod multi_signer_tests {
     #[ignore]
     async fn e2e_fee_payer_transaction() {
         let config = get_test_config();
-        let aptos = Aptos::new(config).expect("failed to create client");
+        let movement = Movement::new(config).expect("failed to create client");
 
         // Create sender with minimal funds (just for account creation)
-        let sender = aptos
+        let sender = movement
             .create_funded_account(1_000)
             .await
             .expect("failed to create sender");
 
         // Create fee payer with lots of funds
-        let fee_payer = aptos
+        let fee_payer = movement
             .create_funded_account(500_000_000)
             .await
             .expect("failed to create fee payer");
@@ -644,11 +644,11 @@ mod multi_signer_tests {
         // Build the fee payer transaction
         let payload = EntryFunction::apt_transfer(recipient.address(), 500).unwrap();
 
-        let sender_seq = aptos
+        let sender_seq = movement
             .get_sequence_number(sender.address())
             .await
             .unwrap_or(0);
-        let chain_id = aptos
+        let chain_id = movement
             .ensure_chain_id()
             .await
             .expect("failed to resolve chain id");
@@ -673,7 +673,7 @@ mod multi_signer_tests {
             .expect("failed to sign");
 
         // Submit
-        let result = aptos.submit_and_wait(&signed, None).await;
+        let result = movement.submit_and_wait(&signed, None).await;
 
         // This may or may not work depending on localnet support for fee payer
         match result {
@@ -690,16 +690,16 @@ mod multi_signer_tests {
     #[ignore]
     async fn e2e_multi_agent_transaction() {
         let config = get_test_config();
-        let aptos = Aptos::new(config).expect("failed to create client");
+        let movement = Movement::new(config).expect("failed to create client");
 
         // Create primary sender
-        let sender = aptos
+        let sender = movement
             .create_funded_account(200_000_000)
             .await
             .expect("failed to create sender");
 
         // Create secondary signer
-        let secondary = aptos
+        let secondary = movement
             .create_funded_account(100_000_000)
             .await
             .expect("failed to create secondary");
@@ -712,11 +712,11 @@ mod multi_signer_tests {
         let payload =
             EntryFunction::apt_transfer(Ed25519Account::generate().address(), 1000).unwrap();
 
-        let sender_seq = aptos
+        let sender_seq = movement
             .get_sequence_number(sender.address())
             .await
             .unwrap_or(0);
-        let chain_id = aptos
+        let chain_id = movement
             .ensure_chain_id()
             .await
             .expect("failed to resolve chain id");
@@ -742,7 +742,7 @@ mod multi_signer_tests {
             .expect("failed to sign");
 
         // Submit
-        let result = aptos.submit_and_wait(&signed, None).await;
+        let result = movement.submit_and_wait(&signed, None).await;
 
         match result {
             Ok(r) => {
@@ -762,15 +762,15 @@ mod multi_signer_tests {
 #[cfg(all(feature = "ed25519", feature = "secp256k1", feature = "faucet"))]
 mod multi_key_e2e_tests {
     use super::*;
-    use aptos_sdk::account::{AnyPrivateKey, MultiKeyAccount};
-    use aptos_sdk::crypto::{Ed25519PrivateKey, Secp256k1PrivateKey};
-    use aptos_sdk::transaction::{EntryFunction, TransactionBuilder, builder::sign_transaction};
+    use movement_sdk::account::{AnyPrivateKey, MultiKeyAccount};
+    use movement_sdk::crypto::{Ed25519PrivateKey, Secp256k1PrivateKey};
+    use movement_sdk::transaction::{EntryFunction, TransactionBuilder, builder::sign_transaction};
 
     #[tokio::test]
     #[ignore]
     async fn e2e_multi_key_account_transfer() {
         let config = get_test_config();
-        let aptos = Aptos::new(config).expect("failed to create client");
+        let movement = Movement::new(config).expect("failed to create client");
 
         // Create a 2-of-3 multi-key account with mixed types
         let ed_key1 = Ed25519PrivateKey::generate();
@@ -787,7 +787,7 @@ mod multi_key_e2e_tests {
         println!("Multi-key account: {}", multi_key_account.address());
 
         // Fund the multi-key account
-        aptos
+        movement
             .fund_account(multi_key_account.address(), 100_000_000)
             .await
             .expect("failed to fund");
@@ -795,21 +795,21 @@ mod multi_key_e2e_tests {
         wait_for_finality().await;
 
         // Check balance
-        let balance = aptos
+        let balance = movement
             .get_balance(multi_key_account.address())
             .await
             .unwrap_or(0);
         println!("Multi-key balance: {}", balance);
 
         // Build and sign a transfer
-        let recipient = aptos_sdk::account::Ed25519Account::generate();
+        let recipient = movement_sdk::account::Ed25519Account::generate();
         let payload = EntryFunction::apt_transfer(recipient.address(), 1_000_000).unwrap();
 
-        let seq = aptos
+        let seq = movement
             .get_sequence_number(multi_key_account.address())
             .await
             .unwrap_or(0);
-        let chain_id = aptos
+        let chain_id = movement
             .ensure_chain_id()
             .await
             .expect("failed to resolve chain id");
@@ -828,7 +828,7 @@ mod multi_key_e2e_tests {
             sign_transaction(&raw_txn, &multi_key_account).expect("failed to sign with multi-key");
 
         // Submit
-        let result = aptos.submit_and_wait(&signed, None).await;
+        let result = movement.submit_and_wait(&signed, None).await;
 
         match result {
             Ok(r) => {
@@ -855,9 +855,9 @@ mod state_tests {
     #[ignore]
     async fn e2e_get_account_resource() {
         let config = get_test_config();
-        let aptos = Aptos::new(config).expect("failed to create client");
+        let movement = Movement::new(config).expect("failed to create client");
 
-        let account = aptos
+        let account = movement
             .create_funded_account(100_000_000)
             .await
             .expect("failed to create account");
@@ -865,7 +865,7 @@ mod state_tests {
         wait_for_finality().await;
 
         // Get the Account resource via fullnode client
-        let resource = aptos
+        let resource = movement
             .fullnode()
             .get_account_resource(account.address(), "0x1::account::Account")
             .await;
@@ -884,9 +884,9 @@ mod state_tests {
     #[ignore]
     async fn e2e_get_coin_store_resource() {
         let config = get_test_config();
-        let aptos = Aptos::new(config).expect("failed to create client");
+        let movement = Movement::new(config).expect("failed to create client");
 
-        let account = aptos
+        let account = movement
             .create_funded_account(100_000_000)
             .await
             .expect("failed to create account");
@@ -894,7 +894,7 @@ mod state_tests {
         wait_for_finality().await;
 
         // Get the CoinStore resource for APT
-        let resource = aptos
+        let resource = movement
             .fullnode()
             .get_account_resource(
                 account.address(),
@@ -919,7 +919,7 @@ mod state_tests {
 
 #[cfg(all(feature = "ed25519", feature = "faucet"))]
 mod single_key_tests {
-    use aptos_sdk::account::Ed25519SingleKeyAccount;
+    use movement_sdk::account::Ed25519SingleKeyAccount;
 
     #[tokio::test]
     #[ignore]
@@ -945,7 +945,7 @@ mod single_key_tests {
 
 #[cfg(all(feature = "secp256k1", feature = "faucet"))]
 mod secp256k1_tests {
-    use aptos_sdk::account::Secp256k1Account;
+    use movement_sdk::account::Secp256k1Account;
 
     #[tokio::test]
     #[ignore]
@@ -972,17 +972,17 @@ mod secp256k1_tests {
 #[cfg(all(feature = "ed25519", feature = "faucet"))]
 mod batch_tests {
     use super::*;
-    use aptos_sdk::account::Ed25519Account;
-    use aptos_sdk::transaction::{InputEntryFunctionData, TransactionBatchBuilder};
+    use movement_sdk::account::Ed25519Account;
+    use movement_sdk::transaction::{InputEntryFunctionData, TransactionBatchBuilder};
 
     #[tokio::test]
     #[ignore]
     async fn e2e_batch_build() {
         let config = get_test_config();
-        let aptos = Aptos::new(config).expect("failed to create client");
+        let movement = Movement::new(config).expect("failed to create client");
 
         // Create sender
-        let sender = aptos
+        let sender = movement
             .create_funded_account(500_000_000)
             .await
             .expect("failed to create sender");
@@ -993,12 +993,12 @@ mod batch_tests {
         wait_for_finality().await;
 
         // Get sequence number and resolve chain ID
-        let seq_num = aptos
+        let seq_num = movement
             .fullnode()
             .get_sequence_number(sender.address())
             .await
             .expect("failed to get seq num");
-        let chain_id = aptos
+        let chain_id = movement
             .ensure_chain_id()
             .await
             .expect("failed to resolve chain id");
@@ -1030,20 +1030,20 @@ mod batch_tests {
 #[cfg(all(feature = "ed25519", feature = "faucet"))]
 mod balance_tests {
     use super::*;
-    use aptos_sdk::account::Ed25519Account;
+    use movement_sdk::account::Ed25519Account;
 
     #[tokio::test]
     #[ignore]
     async fn e2e_balance_multiple_accounts() {
         let config = get_test_config();
-        let aptos = Aptos::new(config).expect("failed to create client");
+        let movement = Movement::new(config).expect("failed to create client");
 
         // Create multiple accounts
         let accounts: Vec<_> = (0..3).map(|_| Ed25519Account::generate()).collect();
 
         // Fund all accounts
         for account in &accounts {
-            aptos
+            movement
                 .fund_account(account.address(), 50_000_000)
                 .await
                 .expect("failed to fund account");
@@ -1053,7 +1053,7 @@ mod balance_tests {
 
         // Check all balances
         for (i, account) in accounts.iter().enumerate() {
-            let balance = aptos
+            let balance = movement
                 .get_balance(account.address())
                 .await
                 .expect("failed to get balance");

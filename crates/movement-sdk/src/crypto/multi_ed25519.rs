@@ -7,7 +7,7 @@ use crate::crypto::ed25519::{
     ED25519_PUBLIC_KEY_LENGTH, ED25519_SIGNATURE_LENGTH, Ed25519PublicKey, Ed25519Signature,
 };
 use crate::crypto::traits::{PublicKey, Verifier};
-use crate::error::{AptosError, AptosResult};
+use crate::error::{MovementError, MovementResult};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -28,7 +28,7 @@ pub const MIN_THRESHOLD: u8 = 1;
 /// # Example
 ///
 /// ```rust,ignore
-/// use aptos_sdk::crypto::{Ed25519PrivateKey, MultiEd25519PublicKey};
+/// use movement_sdk::crypto::{Ed25519PrivateKey, MultiEd25519PublicKey};
 ///
 /// let keys: Vec<_> = (0..3).map(|_| Ed25519PrivateKey::generate().public_key()).collect();
 /// let multi_pk = MultiEd25519PublicKey::new(keys, 2).unwrap(); // 2-of-3
@@ -56,26 +56,26 @@ impl MultiEd25519PublicKey {
     /// - More than 32 public keys are provided
     /// - Threshold is 0
     /// - Threshold exceeds the number of keys
-    pub fn new(public_keys: Vec<Ed25519PublicKey>, threshold: u8) -> AptosResult<Self> {
+    pub fn new(public_keys: Vec<Ed25519PublicKey>, threshold: u8) -> MovementResult<Self> {
         if public_keys.is_empty() {
-            return Err(AptosError::InvalidPublicKey(
+            return Err(MovementError::InvalidPublicKey(
                 "multi-Ed25519 requires at least one public key".into(),
             ));
         }
         if public_keys.len() > MAX_NUM_OF_KEYS {
-            return Err(AptosError::InvalidPublicKey(format!(
+            return Err(MovementError::InvalidPublicKey(format!(
                 "multi-Ed25519 supports at most {} keys, got {}",
                 MAX_NUM_OF_KEYS,
                 public_keys.len()
             )));
         }
         if threshold < MIN_THRESHOLD {
-            return Err(AptosError::InvalidPublicKey(
+            return Err(MovementError::InvalidPublicKey(
                 "threshold must be at least 1".into(),
             ));
         }
         if threshold as usize > public_keys.len() {
-            return Err(AptosError::InvalidPublicKey(format!(
+            return Err(MovementError::InvalidPublicKey(format!(
                 "threshold {} exceeds number of keys {}",
                 threshold,
                 public_keys.len()
@@ -118,18 +118,18 @@ impl MultiEd25519PublicKey {
     ///
     /// # Errors
     ///
-    /// Returns [`AptosError::InvalidPublicKey`] if:
+    /// Returns [`MovementError::InvalidPublicKey`] if:
     /// - The bytes are empty
     /// - The bytes are too short (less than 33 bytes for one key + threshold)
     /// - The key bytes length is not a multiple of 32 bytes
     /// - Any individual public key fails to parse
     /// - The threshold is invalid (0, exceeds number of keys, etc.)
-    pub fn from_bytes(bytes: &[u8]) -> AptosResult<Self> {
+    pub fn from_bytes(bytes: &[u8]) -> MovementResult<Self> {
         if bytes.is_empty() {
-            return Err(AptosError::InvalidPublicKey("empty bytes".into()));
+            return Err(MovementError::InvalidPublicKey("empty bytes".into()));
         }
         if bytes.len() < ED25519_PUBLIC_KEY_LENGTH + 1 {
-            return Err(AptosError::InvalidPublicKey(format!(
+            return Err(MovementError::InvalidPublicKey(format!(
                 "bytes too short: {} bytes",
                 bytes.len()
             )));
@@ -139,7 +139,7 @@ impl MultiEd25519PublicKey {
         let key_bytes = &bytes[..bytes.len() - 1];
 
         if !key_bytes.len().is_multiple_of(ED25519_PUBLIC_KEY_LENGTH) {
-            return Err(AptosError::InvalidPublicKey(format!(
+            return Err(MovementError::InvalidPublicKey(format!(
                 "key bytes length {} is not a multiple of {}",
                 key_bytes.len(),
                 ED25519_PUBLIC_KEY_LENGTH
@@ -180,16 +180,16 @@ impl MultiEd25519PublicKey {
     /// - The number of signatures is less than the threshold
     /// - Any individual signature verification fails
     /// - A signer index is out of bounds
-    pub fn verify(&self, message: &[u8], signature: &MultiEd25519Signature) -> AptosResult<()> {
+    pub fn verify(&self, message: &[u8], signature: &MultiEd25519Signature) -> MovementResult<()> {
         // Check that we have enough signatures
         if signature.num_signatures() < self.threshold as usize {
-            return Err(AptosError::SignatureVerificationFailed);
+            return Err(MovementError::SignatureVerificationFailed);
         }
 
         // Verify each signature
         for (index, sig) in signature.signatures() {
             if *index as usize >= self.public_keys.len() {
-                return Err(AptosError::InvalidSignature(format!(
+                return Err(MovementError::InvalidSignature(format!(
                     "signer index {} out of bounds (max {})",
                     index,
                     self.public_keys.len() - 1
@@ -206,7 +206,7 @@ impl MultiEd25519PublicKey {
 impl PublicKey for MultiEd25519PublicKey {
     const LENGTH: usize = 0; // Variable length
 
-    fn from_bytes(bytes: &[u8]) -> AptosResult<Self> {
+    fn from_bytes(bytes: &[u8]) -> MovementResult<Self> {
         MultiEd25519PublicKey::from_bytes(bytes)
     }
 
@@ -218,7 +218,7 @@ impl PublicKey for MultiEd25519PublicKey {
 impl Verifier for MultiEd25519PublicKey {
     type Signature = MultiEd25519Signature;
 
-    fn verify(&self, message: &[u8], signature: &MultiEd25519Signature) -> AptosResult<()> {
+    fn verify(&self, message: &[u8], signature: &MultiEd25519Signature) -> MovementResult<()> {
         MultiEd25519PublicKey::verify(self, message, signature)
     }
 }
@@ -291,19 +291,19 @@ impl MultiEd25519Signature {
     ///
     /// # Errors
     ///
-    /// Returns [`AptosError::InvalidSignature`] if:
+    /// Returns [`MovementError::InvalidSignature`] if:
     /// - No signatures are provided
     /// - More than 32 signatures are provided
     /// - A signer index is out of bounds (>= 32)
     /// - Duplicate signer indices are present
-    pub fn new(mut signatures: Vec<(u8, Ed25519Signature)>) -> AptosResult<Self> {
+    pub fn new(mut signatures: Vec<(u8, Ed25519Signature)>) -> MovementResult<Self> {
         if signatures.is_empty() {
-            return Err(AptosError::InvalidSignature(
+            return Err(MovementError::InvalidSignature(
                 "multi-Ed25519 signature requires at least one signature".into(),
             ));
         }
         if signatures.len() > MAX_NUM_OF_KEYS {
-            return Err(AptosError::InvalidSignature(format!(
+            return Err(MovementError::InvalidSignature(format!(
                 "too many signatures: {} (max {})",
                 signatures.len(),
                 MAX_NUM_OF_KEYS
@@ -319,14 +319,14 @@ impl MultiEd25519Signature {
 
         for (index, _) in &signatures {
             if *index as usize >= MAX_NUM_OF_KEYS {
-                return Err(AptosError::InvalidSignature(format!(
+                return Err(MovementError::InvalidSignature(format!(
                     "signer index {} out of bounds (max {})",
                     index,
                     MAX_NUM_OF_KEYS - 1
                 )));
             }
             if last_index == Some(*index) {
-                return Err(AptosError::InvalidSignature(format!(
+                return Err(MovementError::InvalidSignature(format!(
                     "duplicate signer index {index}"
                 )));
             }
@@ -347,13 +347,13 @@ impl MultiEd25519Signature {
     ///
     /// # Errors
     ///
-    /// Returns [`AptosError::InvalidSignature`] if:
+    /// Returns [`MovementError::InvalidSignature`] if:
     /// - The bytes are too short (less than 4 bytes for bitmap)
     /// - The signature bytes length doesn't match the expected number of signatures from the bitmap
     /// - Any individual signature fails to parse
-    pub fn from_bytes(bytes: &[u8]) -> AptosResult<Self> {
+    pub fn from_bytes(bytes: &[u8]) -> MovementResult<Self> {
         if bytes.len() < 4 {
-            return Err(AptosError::InvalidSignature("bytes too short".into()));
+            return Err(MovementError::InvalidSignature("bytes too short".into()));
         }
 
         let bitmap_start = bytes.len() - 4;
@@ -366,7 +366,7 @@ impl MultiEd25519Signature {
         let num_sigs = bitmap.iter().map(|b| b.count_ones()).sum::<u32>() as usize;
 
         if sig_bytes.len() != num_sigs * ED25519_SIGNATURE_LENGTH {
-            return Err(AptosError::InvalidSignature(format!(
+            return Err(MovementError::InvalidSignature(format!(
                 "signature bytes length {} doesn't match expected {} signatures",
                 sig_bytes.len(),
                 num_sigs
@@ -434,7 +434,7 @@ impl crate::crypto::traits::Signature for MultiEd25519Signature {
     type PublicKey = MultiEd25519PublicKey;
     const LENGTH: usize = 0; // Variable length
 
-    fn from_bytes(bytes: &[u8]) -> AptosResult<Self> {
+    fn from_bytes(bytes: &[u8]) -> MovementResult<Self> {
         MultiEd25519Signature::from_bytes(bytes)
     }
 

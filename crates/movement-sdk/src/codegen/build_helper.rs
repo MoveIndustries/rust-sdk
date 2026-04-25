@@ -7,7 +7,7 @@
 //! Add to your `build.rs`:
 //!
 //! ```rust,ignore
-//! use aptos_sdk::codegen::build_helper;
+//! use movement_sdk::codegen::build_helper;
 //!
 //! fn main() {
 //!     // Generate from a local ABI file
@@ -44,7 +44,7 @@
 
 use crate::api::response::MoveModuleABI;
 use crate::codegen::{GeneratorConfig, ModuleGenerator, MoveSourceParser};
-use crate::error::{AptosError, AptosResult};
+use crate::error::{MovementError, MovementResult};
 use std::fs;
 use std::path::Path;
 
@@ -99,9 +99,9 @@ fn is_rust_keyword(name: &str) -> bool {
 /// This prevents:
 /// - Path traversal attacks via names like `../../../tmp/evil`
 /// - Invalid `pub mod` declarations in generated mod.rs (e.g., `pub mod fn;`)
-fn validate_module_name(name: &str) -> AptosResult<()> {
+fn validate_module_name(name: &str) -> MovementResult<()> {
     if name.is_empty() {
-        return Err(AptosError::Config(
+        return Err(MovementError::Config(
             "module name cannot be empty".to_string(),
         ));
     }
@@ -111,19 +111,19 @@ fn validate_module_name(name: &str) -> AptosResult<()> {
     let mut chars = name.chars();
     let first = chars.next().unwrap(); // safe: name is non-empty
     if !first.is_ascii_alphabetic() && first != '_' {
-        return Err(AptosError::Config(format!(
+        return Err(MovementError::Config(format!(
             "invalid module name '{name}': must start with a letter or underscore"
         )));
     }
 
     if !chars.all(|c| c.is_ascii_alphanumeric() || c == '_') {
-        return Err(AptosError::Config(format!(
+        return Err(MovementError::Config(format!(
             "invalid module name '{name}': must contain only ASCII alphanumeric characters or underscores"
         )));
     }
 
     if is_rust_keyword(name) {
-        return Err(AptosError::Config(format!(
+        return Err(MovementError::Config(format!(
             "invalid module name '{name}': Rust keywords cannot be used as module names"
         )));
     }
@@ -205,7 +205,7 @@ impl BuildConfig {
 pub fn generate_from_abi(
     abi_path: impl AsRef<Path>,
     output_dir: impl AsRef<Path>,
-) -> AptosResult<()> {
+) -> MovementResult<()> {
     generate_from_abi_with_config(abi_path, output_dir, BuildConfig::default())
 }
 
@@ -223,13 +223,13 @@ pub fn generate_from_abi_with_config(
     abi_path: impl AsRef<Path>,
     output_dir: impl AsRef<Path>,
     config: BuildConfig,
-) -> AptosResult<()> {
+) -> MovementResult<()> {
     let abi_path = abi_path.as_ref();
     let output_dir = output_dir.as_ref();
 
     // Read and parse ABI
     let abi_content = fs::read_to_string(abi_path).map_err(|e| {
-        AptosError::Config(format!(
+        MovementError::Config(format!(
             "Failed to read ABI file {}: {}",
             abi_path.display(),
             e
@@ -237,7 +237,7 @@ pub fn generate_from_abi_with_config(
     })?;
 
     let abi: MoveModuleABI = serde_json::from_str(&abi_content)
-        .map_err(|e| AptosError::Config(format!("Failed to parse ABI JSON: {e}")))?;
+        .map_err(|e| MovementError::Config(format!("Failed to parse ABI JSON: {e}")))?;
 
     // SECURITY: Validate module name to prevent path traversal
     validate_module_name(&abi.name)?;
@@ -248,14 +248,14 @@ pub fn generate_from_abi_with_config(
 
     // Create output directory
     fs::create_dir_all(output_dir)
-        .map_err(|e| AptosError::Config(format!("Failed to create output directory: {e}")))?;
+        .map_err(|e| MovementError::Config(format!("Failed to create output directory: {e}")))?;
 
     // Write output file
     let output_filename = format!("{}.rs", abi.name);
     let output_path = output_dir.join(&output_filename);
 
     fs::write(&output_path, &code)
-        .map_err(|e| AptosError::Config(format!("Failed to write output file: {e}")))?;
+        .map_err(|e| MovementError::Config(format!("Failed to write output file: {e}")))?;
 
     if config.print_cargo_instructions {
         println!("cargo:rerun-if-changed={}", abi_path.display());
@@ -294,7 +294,7 @@ pub fn generate_from_abi_with_config(
 pub fn generate_from_abis(
     abi_paths: &[impl AsRef<Path>],
     output_dir: impl AsRef<Path>,
-) -> AptosResult<()> {
+) -> MovementResult<()> {
     generate_from_abis_with_config(abi_paths, output_dir, &BuildConfig::default())
 }
 
@@ -313,7 +313,7 @@ pub fn generate_from_abis_with_config(
     abi_paths: &[impl AsRef<Path>],
     output_dir: impl AsRef<Path>,
     config: &BuildConfig,
-) -> AptosResult<()> {
+) -> MovementResult<()> {
     let output_dir = output_dir.as_ref();
     let mut module_names = Vec::new();
 
@@ -322,7 +322,7 @@ pub fn generate_from_abis_with_config(
         let abi_path = abi_path.as_ref();
 
         let abi_content = fs::read_to_string(abi_path).map_err(|e| {
-            AptosError::Config(format!(
+            MovementError::Config(format!(
                 "Failed to read ABI file {}: {}",
                 abi_path.display(),
                 e
@@ -330,7 +330,7 @@ pub fn generate_from_abis_with_config(
         })?;
 
         let abi: MoveModuleABI = serde_json::from_str(&abi_content).map_err(|e| {
-            AptosError::Config(format!(
+            MovementError::Config(format!(
                 "Failed to parse ABI JSON from {}: {}",
                 abi_path.display(),
                 e
@@ -345,14 +345,14 @@ pub fn generate_from_abis_with_config(
 
         // Create output directory
         fs::create_dir_all(output_dir)
-            .map_err(|e| AptosError::Config(format!("Failed to create output directory: {e}")))?;
+            .map_err(|e| MovementError::Config(format!("Failed to create output directory: {e}")))?;
 
         // Write output file
         let output_filename = format!("{}.rs", abi.name);
         let output_path = output_dir.join(&output_filename);
 
         fs::write(&output_path, &code)
-            .map_err(|e| AptosError::Config(format!("Failed to write output file: {e}")))?;
+            .map_err(|e| MovementError::Config(format!("Failed to write output file: {e}")))?;
 
         module_names.push(abi.name);
 
@@ -367,7 +367,7 @@ pub fn generate_from_abis_with_config(
         let mod_path = output_dir.join("mod.rs");
 
         fs::write(&mod_path, mod_content)
-            .map_err(|e| AptosError::Config(format!("Failed to write mod.rs: {e}")))?;
+            .map_err(|e| MovementError::Config(format!("Failed to write mod.rs: {e}")))?;
     }
 
     Ok(())
@@ -394,21 +394,21 @@ pub fn generate_from_abi_with_source(
     abi_path: impl AsRef<Path>,
     source_path: impl AsRef<Path>,
     output_dir: impl AsRef<Path>,
-) -> AptosResult<()> {
+) -> MovementResult<()> {
     let abi_path = abi_path.as_ref();
     let source_path = source_path.as_ref();
     let output_dir = output_dir.as_ref();
 
     // Read and parse ABI
     let abi_content = fs::read_to_string(abi_path)
-        .map_err(|e| AptosError::Config(format!("Failed to read ABI file: {e}")))?;
+        .map_err(|e| MovementError::Config(format!("Failed to read ABI file: {e}")))?;
 
     let abi: MoveModuleABI = serde_json::from_str(&abi_content)
-        .map_err(|e| AptosError::Config(format!("Failed to parse ABI JSON: {e}")))?;
+        .map_err(|e| MovementError::Config(format!("Failed to parse ABI JSON: {e}")))?;
 
     // Read and parse Move source
     let source_content = fs::read_to_string(source_path)
-        .map_err(|e| AptosError::Config(format!("Failed to read Move source: {e}")))?;
+        .map_err(|e| MovementError::Config(format!("Failed to read Move source: {e}")))?;
 
     let source_info = MoveSourceParser::parse(&source_content);
 
@@ -422,14 +422,14 @@ pub fn generate_from_abi_with_source(
 
     // Create output directory
     fs::create_dir_all(output_dir)
-        .map_err(|e| AptosError::Config(format!("Failed to create output directory: {e}")))?;
+        .map_err(|e| MovementError::Config(format!("Failed to create output directory: {e}")))?;
 
     // Write output file
     let output_filename = format!("{}.rs", abi.name);
     let output_path = output_dir.join(&output_filename);
 
     fs::write(&output_path, &code)
-        .map_err(|e| AptosError::Config(format!("Failed to write output file: {e}")))?;
+        .map_err(|e| MovementError::Config(format!("Failed to write output file: {e}")))?;
 
     println!("cargo:rerun-if-changed={}", abi_path.display());
     println!("cargo:rerun-if-changed={}", source_path.display());
@@ -445,7 +445,7 @@ fn generate_mod_file(module_names: &[String]) -> String {
     let _ = writeln!(&mut content, "//!");
     let _ = writeln!(
         &mut content,
-        "//! This file was auto-generated by aptos-sdk codegen."
+        "//! This file was auto-generated by movement-sdk codegen."
     );
     let _ = writeln!(&mut content, "//! Do not edit manually.");
     let _ = writeln!(&mut content);
@@ -495,11 +495,11 @@ fn generate_mod_file(module_names: &[String]) -> String {
 pub fn generate_from_directory(
     abi_dir: impl AsRef<Path>,
     output_dir: impl AsRef<Path>,
-) -> AptosResult<()> {
+) -> MovementResult<()> {
     let abi_dir = abi_dir.as_ref();
 
     let entries = fs::read_dir(abi_dir)
-        .map_err(|e| AptosError::Config(format!("Failed to read ABI directory: {e}")))?;
+        .map_err(|e| MovementError::Config(format!("Failed to read ABI directory: {e}")))?;
 
     let abi_paths: Vec<_> = entries
         .filter_map(Result::ok)
@@ -508,7 +508,7 @@ pub fn generate_from_directory(
         .collect();
 
     if abi_paths.is_empty() {
-        return Err(AptosError::Config(format!(
+        return Err(MovementError::Config(format!(
             "No JSON files found in {}",
             abi_dir.display()
         )));

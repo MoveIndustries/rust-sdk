@@ -1,7 +1,7 @@
 //! Faucet client for funding accounts on testnets.
 
-use crate::config::AptosConfig;
-use crate::error::{AptosError, AptosResult};
+use crate::config::MovementConfig;
+use crate::error::{MovementError, MovementResult};
 use crate::retry::{RetryConfig, RetryExecutor};
 use crate::types::AccountAddress;
 use reqwest::Client;
@@ -12,7 +12,7 @@ use url::Url;
 /// Maximum faucet response size: 1 MB (faucet responses are typically tiny).
 const MAX_FAUCET_RESPONSE_SIZE: usize = 1024 * 1024;
 
-/// Client for the Aptos faucet service.
+/// Client for the Movement faucet service.
 ///
 /// The faucet is only available on devnet and testnet. Requests are
 /// automatically retried with exponential backoff for transient failures.
@@ -20,13 +20,13 @@ const MAX_FAUCET_RESPONSE_SIZE: usize = 1024 * 1024;
 /// # Example
 ///
 /// ```rust,no_run
-/// use aptos_sdk::api::FaucetClient;
-/// use aptos_sdk::config::AptosConfig;
-/// use aptos_sdk::types::AccountAddress;
+/// use movement_sdk::api::FaucetClient;
+/// use movement_sdk::config::MovementConfig;
+/// use movement_sdk::types::AccountAddress;
 ///
 /// #[tokio::main]
 /// async fn main() -> anyhow::Result<()> {
-///     let config = AptosConfig::testnet();
+///     let config = MovementConfig::testnet();
 ///     let client = FaucetClient::new(&config)?;
 ///     let address = AccountAddress::from_hex("0x123")?;
 ///     client.fund(address, 100_000_000).await?;
@@ -70,11 +70,11 @@ impl FaucetClient {
     ///
     /// Returns an error if the faucet URL is not configured in the config, or if the HTTP client
     /// fails to build (e.g., invalid TLS configuration).
-    pub fn new(config: &AptosConfig) -> AptosResult<Self> {
+    pub fn new(config: &MovementConfig) -> MovementResult<Self> {
         let faucet_url = config
             .faucet_url()
             .cloned()
-            .ok_or_else(|| AptosError::Config("faucet URL not configured".into()))?;
+            .ok_or_else(|| MovementError::Config("faucet URL not configured".into()))?;
 
         let pool = config.pool_config();
 
@@ -88,7 +88,7 @@ impl FaucetClient {
             builder = builder.tcp_keepalive(keepalive);
         }
 
-        let client = builder.build().map_err(AptosError::Http)?;
+        let client = builder.build().map_err(MovementError::Http)?;
 
         let retry_config = Arc::new(config.retry_config().clone());
 
@@ -104,7 +104,7 @@ impl FaucetClient {
     /// # Errors
     ///
     /// Returns an error if the URL cannot be parsed.
-    pub fn with_url(url: &str) -> AptosResult<Self> {
+    pub fn with_url(url: &str) -> MovementResult<Self> {
         let faucet_url = Url::parse(url)?;
         // SECURITY: Validate URL scheme to prevent SSRF via dangerous protocols
         crate::config::validate_url_scheme(&faucet_url)?;
@@ -132,7 +132,7 @@ impl FaucetClient {
     /// Returns an error if the URL cannot be built, the HTTP request fails, the API returns
     /// an error status code (e.g., rate limiting 429, server error 500), or the response
     /// cannot be parsed as JSON.
-    pub async fn fund(&self, address: AccountAddress, amount: u64) -> AptosResult<Vec<String>> {
+    pub async fn fund(&self, address: AccountAddress, amount: u64) -> MovementResult<Vec<String>> {
         let url = self.build_url(&format!("mint?address={address}&amount={amount}"))?;
         let client = self.client.clone();
         let retry_config = self.retry_config.clone();
@@ -158,7 +158,7 @@ impl FaucetClient {
                     } else {
                         let status = response.status();
                         let body = response.text().await.unwrap_or_default();
-                        Err(AptosError::api(status.as_u16(), body))
+                        Err(MovementError::api(status.as_u16(), body))
                     }
                 }
             })
@@ -170,7 +170,7 @@ impl FaucetClient {
     /// # Errors
     ///
     /// Returns an error if the funding request fails (see [`fund`](Self::fund) for details).
-    pub async fn fund_default(&self, address: AccountAddress) -> AptosResult<Vec<String>> {
+    pub async fn fund_default(&self, address: AccountAddress) -> MovementResult<Vec<String>> {
         self.fund(address, 100_000_000).await // 1 APT
     }
 
@@ -185,15 +185,15 @@ impl FaucetClient {
     pub async fn create_and_fund(
         &self,
         amount: u64,
-    ) -> AptosResult<(crate::account::Ed25519Account, Vec<String>)> {
+    ) -> MovementResult<(crate::account::Ed25519Account, Vec<String>)> {
         let account = crate::account::Ed25519Account::generate();
         let txn_hashes = self.fund(account.address(), amount).await?;
         Ok((account, txn_hashes))
     }
 
-    fn build_url(&self, path: &str) -> AptosResult<Url> {
+    fn build_url(&self, path: &str) -> MovementResult<Url> {
         let base = self.faucet_url.as_str().trim_end_matches('/');
-        Url::parse(&format!("{base}/{path}")).map_err(AptosError::Url)
+        Url::parse(&format!("{base}/{path}")).map_err(MovementError::Url)
     }
 }
 
@@ -207,16 +207,18 @@ mod tests {
 
     #[test]
     fn test_faucet_client_creation() {
-        let client = FaucetClient::new(&AptosConfig::testnet());
-        assert!(client.is_ok());
+        // testnet preset has no faucet URL by default; opt in via with_faucet_url.
+        let config = MovementConfig::testnet()
+            .with_faucet_url("https://faucet.example.com")
+            .unwrap();
+        assert!(FaucetClient::new(&config).is_ok());
 
         // Mainnet has no faucet
-        let client = FaucetClient::new(&AptosConfig::mainnet());
-        assert!(client.is_err());
+        assert!(FaucetClient::new(&MovementConfig::mainnet()).is_err());
     }
 
     fn create_mock_faucet_client(server: &MockServer) -> FaucetClient {
-        let config = AptosConfig::custom(&server.uri())
+        let config = MovementConfig::custom(&server.uri())
             .unwrap()
             .with_faucet_url(&server.uri())
             .unwrap()
@@ -299,7 +301,7 @@ mod tests {
             .await;
 
         // Create client without retry to test error handling
-        let config = AptosConfig::custom(&server.uri())
+        let config = MovementConfig::custom(&server.uri())
             .unwrap()
             .with_faucet_url(&server.uri())
             .unwrap()
@@ -321,7 +323,7 @@ mod tests {
             .mount(&server)
             .await;
 
-        let config = AptosConfig::custom(&server.uri())
+        let config = MovementConfig::custom(&server.uri())
             .unwrap()
             .with_faucet_url(&server.uri())
             .unwrap()
@@ -355,7 +357,9 @@ mod tests {
 
     #[test]
     fn test_build_url() {
-        let config = AptosConfig::testnet();
+        let config = MovementConfig::testnet()
+            .with_faucet_url("https://faucet.example.com")
+            .unwrap();
         let client = FaucetClient::new(&config).unwrap();
         let url = client.build_url("mint?address=0x1&amount=1000").unwrap();
         assert!(url.as_str().contains("mint"));

@@ -1,4 +1,4 @@
-//! Integration tests for the Aptos SDK.
+//! Integration tests for the Movement SDK.
 //!
 //! ## Test Categories
 //!
@@ -9,10 +9,10 @@
 //!
 //! ```bash
 //! # Unit + behavioral tests (default)
-//! cargo test -p aptos-sdk --features "full"
+//! cargo test -p movement-sdk --features "full"
 //!
 //! # Include E2E tests (requires localnet)
-//! cargo test -p aptos-sdk --features "full,e2e" -- --ignored
+//! cargo test -p movement-sdk --features "full,e2e" -- --ignored
 //! ```
 
 mod behavioral;

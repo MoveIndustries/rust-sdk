@@ -1,6 +1,6 @@
 # Feature Design Documents
 
-This directory contains detailed design documents for each major feature of the Aptos Rust SDK v2.
+This directory contains detailed design documents for each major feature of the Movement Rust SDK v2.
 
 ## Purpose
 

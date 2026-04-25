@@ -1,9 +1,9 @@
 //! Hash value type.
 //!
-//! A 32-byte cryptographic hash value used throughout Aptos for
+//! A 32-byte cryptographic hash value used throughout Movement for
 //! transaction hashes, state roots, and other cryptographic commitments.
 
-use crate::error::{AptosError, AptosResult};
+use crate::error::{MovementError, MovementResult};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use sha3::{Digest, Sha3_256};
 use std::fmt;
@@ -14,7 +14,7 @@ pub const HASH_LENGTH: usize = 32;
 
 /// A 32-byte cryptographic hash value.
 ///
-/// Hash values are used throughout Aptos for:
+/// Hash values are used throughout Movement for:
 /// - Transaction hashes
 /// - State roots
 /// - Event keys
@@ -23,7 +23,7 @@ pub const HASH_LENGTH: usize = 32;
 /// # Example
 ///
 /// ```rust
-/// use aptos_sdk::HashValue;
+/// use movement_sdk::HashValue;
 ///
 /// // Compute a hash
 /// let hash = HashValue::sha3_256(b"hello world");
@@ -77,7 +77,7 @@ impl HashValue {
     ///
     /// Returns an error if the hex string is not exactly 64 hex characters
     /// (excluding the optional `0x` prefix) or contains invalid hex characters.
-    pub fn from_hex<T: AsRef<[u8]>>(hex_str: T) -> AptosResult<Self> {
+    pub fn from_hex<T: AsRef<[u8]>>(hex_str: T) -> MovementResult<Self> {
         let hex_str = hex_str.as_ref();
         let hex_str = if hex_str.starts_with(b"0x") || hex_str.starts_with(b"0X") {
             &hex_str[2..]
@@ -95,10 +95,10 @@ impl HashValue {
     /// # Errors
     ///
     /// Returns an error if the byte slice is not exactly 32 bytes long.
-    pub fn from_bytes<T: AsRef<[u8]>>(bytes: T) -> AptosResult<Self> {
+    pub fn from_bytes<T: AsRef<[u8]>>(bytes: T) -> MovementResult<Self> {
         let bytes = bytes.as_ref();
         if bytes.len() != HASH_LENGTH {
-            return Err(AptosError::Internal(format!(
+            return Err(MovementError::Internal(format!(
                 "Invalid hash length: expected {} bytes, got {}",
                 HASH_LENGTH,
                 bytes.len()
@@ -149,7 +149,7 @@ impl fmt::Display for HashValue {
 }
 
 impl FromStr for HashValue {
-    type Err = AptosError;
+    type Err = MovementError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Self::from_hex(s)

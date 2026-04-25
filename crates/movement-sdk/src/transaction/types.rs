@@ -1,6 +1,6 @@
 //! Transaction types.
 
-use crate::error::AptosResult;
+use crate::error::MovementResult;
 use crate::transaction::authenticator::TransactionAuthenticator;
 use crate::transaction::payload::TransactionPayload;
 use crate::types::{AccountAddress, ChainId, HashValue};
@@ -59,9 +59,9 @@ impl RawTransaction {
     /// # Errors
     ///
     /// Returns an error if BCS serialization of the transaction fails.
-    pub fn signing_message(&self) -> AptosResult<Vec<u8>> {
+    pub fn signing_message(&self) -> MovementResult<Vec<u8>> {
         let prefix = crate::crypto::sha3_256(b"APTOS::RawTransaction");
-        let bcs_bytes = aptos_bcs::to_bytes(self).map_err(crate::error::AptosError::bcs)?;
+        let bcs_bytes = aptos_bcs::to_bytes(self).map_err(crate::error::MovementError::bcs)?;
 
         let mut message = Vec::with_capacity(prefix.len() + bcs_bytes.len());
         message.extend_from_slice(&prefix);
@@ -74,8 +74,8 @@ impl RawTransaction {
     /// # Errors
     ///
     /// Returns an error if BCS serialization fails.
-    pub fn to_bcs(&self) -> AptosResult<Vec<u8>> {
-        aptos_bcs::to_bytes(self).map_err(crate::error::AptosError::bcs)
+    pub fn to_bcs(&self) -> MovementResult<Vec<u8>> {
+        aptos_bcs::to_bytes(self).map_err(crate::error::MovementError::bcs)
     }
 }
 
@@ -159,9 +159,9 @@ impl RawTransactionOrderless {
     /// # Errors
     ///
     /// Returns an error if BCS serialization of the transaction fails.
-    pub fn signing_message(&self) -> AptosResult<Vec<u8>> {
+    pub fn signing_message(&self) -> MovementResult<Vec<u8>> {
         let prefix = crate::crypto::sha3_256(b"APTOS::RawTransactionOrderless");
-        let bcs_bytes = aptos_bcs::to_bytes(self).map_err(crate::error::AptosError::bcs)?;
+        let bcs_bytes = aptos_bcs::to_bytes(self).map_err(crate::error::MovementError::bcs)?;
 
         let mut message = Vec::with_capacity(prefix.len() + bcs_bytes.len());
         message.extend_from_slice(&prefix);
@@ -174,8 +174,8 @@ impl RawTransactionOrderless {
     /// # Errors
     ///
     /// Returns an error if BCS serialization fails.
-    pub fn to_bcs(&self) -> AptosResult<Vec<u8>> {
-        aptos_bcs::to_bytes(self).map_err(crate::error::AptosError::bcs)
+    pub fn to_bcs(&self) -> MovementResult<Vec<u8>> {
+        aptos_bcs::to_bytes(self).map_err(crate::error::MovementError::bcs)
     }
 }
 
@@ -202,8 +202,8 @@ impl SignedTransactionOrderless {
     /// # Errors
     ///
     /// Returns an error if BCS serialization fails.
-    pub fn to_bcs(&self) -> AptosResult<Vec<u8>> {
-        aptos_bcs::to_bytes(self).map_err(crate::error::AptosError::bcs)
+    pub fn to_bcs(&self) -> MovementResult<Vec<u8>> {
+        aptos_bcs::to_bytes(self).map_err(crate::error::MovementError::bcs)
     }
 
     /// Returns the sender address.
@@ -221,7 +221,7 @@ impl SignedTransactionOrderless {
     /// # Errors
     ///
     /// Returns an error if BCS serialization of the transaction fails.
-    pub fn hash(&self) -> AptosResult<HashValue> {
+    pub fn hash(&self) -> MovementResult<HashValue> {
         let bcs_bytes = self.to_bcs()?;
         let prefix = crate::crypto::sha3_256(b"APTOS::Transaction");
 
@@ -258,8 +258,8 @@ impl SignedTransaction {
     /// # Errors
     ///
     /// Returns an error if BCS serialization fails.
-    pub fn to_bcs(&self) -> AptosResult<Vec<u8>> {
-        aptos_bcs::to_bytes(self).map_err(crate::error::AptosError::bcs)
+    pub fn to_bcs(&self) -> MovementResult<Vec<u8>> {
+        aptos_bcs::to_bytes(self).map_err(crate::error::MovementError::bcs)
     }
 
     /// Returns the sender address.
@@ -277,7 +277,7 @@ impl SignedTransaction {
     /// # Errors
     ///
     /// Returns an error if BCS serialization of the transaction fails.
-    pub fn hash(&self) -> AptosResult<HashValue> {
+    pub fn hash(&self) -> MovementResult<HashValue> {
         let bcs_bytes = self.to_bcs()?;
         let prefix = crate::crypto::sha3_256(b"APTOS::Transaction");
 
@@ -339,7 +339,7 @@ impl MultiAgentRawTransaction {
     /// # Errors
     ///
     /// Returns an error if BCS serialization fails.
-    pub fn signing_message(&self) -> AptosResult<Vec<u8>> {
+    pub fn signing_message(&self) -> MovementResult<Vec<u8>> {
         // Serialize as RawTransactionWithData::MultiAgent variant
         #[derive(Serialize)]
         enum RawTransactionWithData<'a> {
@@ -356,7 +356,7 @@ impl MultiAgentRawTransaction {
             secondary_signer_addresses: &self.secondary_signer_addresses,
         };
 
-        let bcs_bytes = aptos_bcs::to_bytes(&data).map_err(crate::error::AptosError::bcs)?;
+        let bcs_bytes = aptos_bcs::to_bytes(&data).map_err(crate::error::MovementError::bcs)?;
 
         let mut message = Vec::with_capacity(prefix.len() + bcs_bytes.len());
         message.extend_from_slice(&prefix);
@@ -404,7 +404,7 @@ impl FeePayerRawTransaction {
     /// # Errors
     ///
     /// Returns an error if BCS serialization fails.
-    pub fn signing_message(&self) -> AptosResult<Vec<u8>> {
+    pub fn signing_message(&self) -> MovementResult<Vec<u8>> {
         #[derive(Serialize)]
         enum RawTransactionWithData<'a> {
             #[allow(dead_code)]
@@ -426,7 +426,7 @@ impl FeePayerRawTransaction {
             fee_payer_address: &self.fee_payer_address,
         };
 
-        let bcs_bytes = aptos_bcs::to_bytes(&data).map_err(crate::error::AptosError::bcs)?;
+        let bcs_bytes = aptos_bcs::to_bytes(&data).map_err(crate::error::MovementError::bcs)?;
 
         let mut message = Vec::with_capacity(prefix.len() + bcs_bytes.len());
         message.extend_from_slice(&prefix);
@@ -513,7 +513,7 @@ mod tests {
 
     #[test]
     fn test_authenticator_bcs_format() {
-        // Test that Ed25519 authenticator serializes WITH length prefixes (Aptos BCS format)
+        // Test that Ed25519 authenticator serializes WITH length prefixes (Movement BCS format)
         use crate::transaction::authenticator::{Ed25519PublicKey, Ed25519Signature};
         let auth = crate::transaction::TransactionAuthenticator::Ed25519 {
             public_key: Ed25519PublicKey([0xab; 32]),

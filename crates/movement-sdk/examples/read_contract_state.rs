@@ -8,7 +8,7 @@
 //!
 //! Run with: `cargo run --example read_contract_state --features ed25519`
 
-use aptos_sdk::{Aptos, AptosConfig, types::AccountAddress};
+use movement_sdk::{Movement, MovementConfig, types::AccountAddress};
 use serde::Deserialize;
 
 /// CoinStore resource structure
@@ -49,14 +49,14 @@ struct CoinValue {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Create client for mainnet to read real data
-    let aptos = Aptos::new(AptosConfig::mainnet())?;
+    let movement = Movement::new(MovementConfig::mainnet())?;
     println!("Connected to mainnet");
 
     // ==== Part 1: Read Account Resource ====
     println!("\n=== Part 1: Read Account Resource ===");
 
     let framework_addr = AccountAddress::ONE;
-    let account_resource = aptos
+    let account_resource = movement
         .fullnode()
         .get_account_resource(framework_addr, "0x1::account::Account")
         .await?;
@@ -74,7 +74,7 @@ async fn main() -> anyhow::Result<()> {
         "0x0000000000000000000000000000000000000000000000000000000000000001",
     )?;
 
-    match aptos
+    match movement
         .fullnode()
         .get_account_resource(
             rich_addr,
@@ -102,13 +102,13 @@ async fn main() -> anyhow::Result<()> {
     println!("\n=== Part 3: Call View Functions ===");
 
     // Get current timestamp
-    let timestamp = aptos
+    let timestamp = movement
         .view("0x1::timestamp::now_seconds", vec![], vec![])
         .await?;
     println!("Current blockchain timestamp: {:?} seconds", timestamp);
 
     // Get total APT supply
-    let supply = aptos
+    let supply = movement
         .view(
             "0x1::coin::supply",
             vec!["0x1::aptos_coin::AptosCoin".to_string()],
@@ -118,7 +118,7 @@ async fn main() -> anyhow::Result<()> {
     println!("APT total supply: {:?}", supply);
 
     // Check if an address is an account
-    let is_account = aptos
+    let is_account = movement
         .view(
             "0x1::account::exists_at",
             vec![],
@@ -128,7 +128,7 @@ async fn main() -> anyhow::Result<()> {
     println!("Is 0x1 an account: {:?}", is_account);
 
     // Get account sequence number via view
-    let seq_num = aptos
+    let seq_num = movement
         .view(
             "0x1::account::get_sequence_number",
             vec![],
@@ -146,7 +146,7 @@ async fn main() -> anyhow::Result<()> {
         "0x0000000000000000000000000000000000000000000000000000000000000001",
     )?;
 
-    match aptos
+    match movement
         .fullnode()
         .get_account_resource(validator_addr, "0x1::stake::StakePool")
         .await
@@ -171,7 +171,7 @@ async fn main() -> anyhow::Result<()> {
     // ==== Part 5: List All Resources ====
     println!("\n=== Part 5: List All Account Resources ===");
 
-    let all_resources = aptos
+    let all_resources = movement
         .fullnode()
         .get_account_resources(framework_addr)
         .await?;
@@ -190,7 +190,7 @@ async fn main() -> anyhow::Result<()> {
     // ==== Part 6: Read Module ABI ====
     println!("\n=== Part 6: Read Module Information ===");
 
-    let coin_module = aptos
+    let coin_module = movement
         .fullnode()
         .get_account_module(framework_addr, "coin")
         .await?;
@@ -223,7 +223,7 @@ async fn main() -> anyhow::Result<()> {
     println!("\n=== Part 7: Complex View Function ===");
 
     // Get coin info
-    let coin_info = aptos
+    let coin_info = movement
         .view(
             "0x1::coin::name",
             vec!["0x1::aptos_coin::AptosCoin".to_string()],
@@ -232,7 +232,7 @@ async fn main() -> anyhow::Result<()> {
         .await?;
     println!("APT coin name: {:?}", coin_info);
 
-    let coin_symbol = aptos
+    let coin_symbol = movement
         .view(
             "0x1::coin::symbol",
             vec!["0x1::aptos_coin::AptosCoin".to_string()],
@@ -241,7 +241,7 @@ async fn main() -> anyhow::Result<()> {
         .await?;
     println!("APT coin symbol: {:?}", coin_symbol);
 
-    let coin_decimals = aptos
+    let coin_decimals = movement
         .view(
             "0x1::coin::decimals",
             vec!["0x1::aptos_coin::AptosCoin".to_string()],

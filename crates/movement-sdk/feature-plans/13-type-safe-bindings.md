@@ -15,14 +15,14 @@ Generate compile-time type-safe bindings for Move contracts using procedural mac
 
 ## Macros
 
-### `aptos_contract!`
+### `movement_contract!`
 
 Generates contract bindings from inline ABI:
 
 ```rust
-use aptos_sdk::aptos_contract;
+use movement_sdk::movement_contract;
 
-aptos_contract! {
+movement_contract! {
     name: CoinModule,
     abi: r#"{
         "address": "0x1",
@@ -49,22 +49,22 @@ aptos_contract! {
 // pub struct CoinModule;
 // impl CoinModule {
 //     pub fn transfer(to: AccountAddress, amount: u64, type_args: Vec<TypeTag>) 
-//         -> AptosResult<TransactionPayload> { ... }
+//         -> MovementResult<TransactionPayload> { ... }
 // }
 ```
 
-### `aptos_contract_file!`
+### `movement_contract_file!`
 
 Generates bindings from an ABI file:
 
 ```rust
-use aptos_sdk::aptos_contract_file;
+use movement_sdk::movement_contract_file;
 
 // Reads ABI at compile time
-aptos_contract_file!("abi/my_module.json", MyModule);
+movement_contract_file!("abi/my_module.json", MyModule);
 
 // With Move source
-aptos_contract_file!("abi/my_module.json", MyModule, "sources/my_module.move");
+movement_contract_file!("abi/my_module.json", MyModule, "sources/my_module.move");
 ```
 
 ### `#[derive(MoveStruct)]`
@@ -72,7 +72,7 @@ aptos_contract_file!("abi/my_module.json", MyModule, "sources/my_module.move");
 Derives BCS serialization for Move-compatible structs:
 
 ```rust
-use aptos_sdk::MoveStruct;
+use movement_sdk::MoveStruct;
 
 #[derive(MoveStruct, Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[move_struct(address = "0x1", module = "coin", name = "CoinStore")]
@@ -84,8 +84,8 @@ pub struct CoinStore {
 // Generated:
 // impl CoinStore {
 //     pub fn type_tag() -> &'static str { "0x1::coin::CoinStore" }
-//     pub fn to_bcs(&self) -> AptosResult<Vec<u8>> { ... }
-//     pub fn from_bcs(bytes: &[u8]) -> AptosResult<Self> { ... }
+//     pub fn to_bcs(&self) -> MovementResult<Vec<u8>> { ... }
+//     pub fn from_bcs(bytes: &[u8]) -> MovementResult<Self> { ... }
 // }
 ```
 
@@ -94,12 +94,12 @@ pub struct CoinStore {
 For each entry function:
 - Excludes `&signer` parameters (sender is implicit)
 - Generates BCS-encoded arguments
-- Returns `AptosResult<TransactionPayload>`
+- Returns `MovementResult<TransactionPayload>`
 
 For each view function:
-- Generates async function taking `&Aptos` client
+- Generates async function taking `&Movement` client
 - JSON-encodes arguments for API call
-- Returns `AptosResult<Vec<serde_json::Value>>`
+- Returns `MovementResult<Vec<serde_json::Value>>`
 
 For each struct:
 - Generates Rust struct with serde derives
@@ -123,9 +123,9 @@ For each struct:
 ## Usage Example
 
 ```rust
-use aptos_sdk::{aptos_contract, Aptos, AptosConfig};
+use movement_sdk::{movement_contract, Movement, MovementConfig};
 
-aptos_contract! {
+movement_contract! {
     name: MyToken,
     abi: include_str!("../abi/my_token.json"),
     source: include_str!("../sources/my_token.move")
@@ -133,15 +133,15 @@ aptos_contract! {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let aptos = Aptos::new(AptosConfig::testnet())?;
-    let account = aptos.account().create_ed25519()?;
+    let movement = Movement::new(MovementConfig::testnet())?;
+    let account = movement.account().create_ed25519()?;
     
     // Type-safe entry function call
     let payload = MyToken::transfer(recipient, 1000)?;
-    aptos.sign_submit_and_wait(&account, payload, None).await?;
+    movement.sign_submit_and_wait(&account, payload, None).await?;
     
     // Type-safe view function call
-    let balance = MyToken::view_balance(&aptos, account.address()).await?;
+    let balance = MyToken::view_balance(&movement, account.address()).await?;
     
     Ok(())
 }
@@ -152,7 +152,7 @@ async fn main() -> anyhow::Result<()> {
 ### Crate Structure
 
 ```
-crates/aptos-sdk-macros/
+crates/movement-sdk-macros/
 ├── Cargo.toml
 ├── src/
 │   ├── lib.rs       # Macro definitions
@@ -167,7 +167,7 @@ Enable with the `macros` feature:
 
 ```toml
 [dependencies]
-aptos-sdk = { version = "0.1", features = ["macros"] }
+movement-sdk = { version = "0.1", features = ["macros"] }
 ```
 
 ## Benefits

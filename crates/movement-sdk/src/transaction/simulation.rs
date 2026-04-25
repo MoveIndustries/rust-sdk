@@ -14,12 +14,12 @@
 //! # Example
 //!
 //! ```rust,ignore
-//! use aptos_sdk::transaction::simulation::SimulationResult;
+//! use movement_sdk::transaction::simulation::SimulationResult;
 //!
-//! let aptos = Aptos::testnet()?;
+//! let movement = Movement::testnet()?;
 //!
 //! // Simulate a transaction
-//! let result = aptos.simulate_payload(&account, payload).await?;
+//! let result = movement.simulate_payload(&account, payload).await?;
 //!
 //! if result.success() {
 //!     println!("Transaction will succeed!");
@@ -29,7 +29,7 @@
 //! }
 //! ```
 
-use crate::error::{AptosError, AptosResult};
+use crate::error::{MovementError, MovementResult};
 use serde::{Deserialize, Serialize};
 
 /// Result of a transaction simulation.
@@ -66,8 +66,8 @@ impl SimulationResult {
     /// # Errors
     ///
     /// Returns an error if the response is empty or if parsing the JSON fails.
-    pub fn from_response(response: Vec<serde_json::Value>) -> AptosResult<Self> {
-        let data = response.into_iter().next().ok_or_else(|| AptosError::Api {
+    pub fn from_response(response: Vec<serde_json::Value>) -> MovementResult<Self> {
+        let data = response.into_iter().next().ok_or_else(|| MovementError::Api {
             status_code: 200,
             message: "Empty simulation response".into(),
             error_code: None,
@@ -82,7 +82,7 @@ impl SimulationResult {
     /// # Errors
     ///
     /// Returns an error if the JSON structure is invalid or missing required fields.
-    pub fn from_json(data: serde_json::Value) -> AptosResult<Self> {
+    pub fn from_json(data: serde_json::Value) -> MovementResult<Self> {
         let success = data
             .get("success")
             .and_then(serde_json::Value::as_bool)

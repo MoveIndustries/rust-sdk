@@ -1,7 +1,7 @@
 //! Transaction building and signing.
 //!
 //! This module provides types and utilities for constructing, signing,
-//! and submitting transactions to the Aptos blockchain.
+//! and submitting transactions to the Movement blockchain.
 //!
 //! # Overview
 //!
@@ -15,8 +15,8 @@
 //! # Example: Simple Transaction
 //!
 //! ```rust,ignore
-//! use aptos_sdk::transaction::{TransactionBuilder, EntryFunction};
-//! use aptos_sdk::types::AccountAddress;
+//! use movement_sdk::transaction::{TransactionBuilder, EntryFunction};
+//! use movement_sdk::types::AccountAddress;
 //!
 //! let payload = EntryFunction::apt_transfer(recipient, 1000)?;
 //!
@@ -31,7 +31,7 @@
 //! # Example: Type-Safe Payload Building
 //!
 //! ```rust,ignore
-//! use aptos_sdk::transaction::InputEntryFunctionData;
+//! use movement_sdk::transaction::InputEntryFunctionData;
 //!
 //! // Simple and ergonomic payload construction
 //! let payload = InputEntryFunctionData::new("0x1::aptos_account::transfer")
@@ -50,7 +50,7 @@
 //! # Example: Sponsored Transaction
 //!
 //! ```rust,ignore
-//! use aptos_sdk::transaction::{SponsoredTransactionBuilder, EntryFunction};
+//! use movement_sdk::transaction::{SponsoredTransactionBuilder, EntryFunction};
 //!
 //! let payload = EntryFunction::apt_transfer(recipient, 1000)?;
 //!
@@ -66,7 +66,7 @@
 //! # Example: Batch Transactions
 //!
 //! ```rust,ignore
-//! use aptos_sdk::transaction::batch::TransactionBatchBuilder;
+//! use movement_sdk::transaction::batch::TransactionBatchBuilder;
 //!
 //! let batch = TransactionBatchBuilder::new()
 //!     .sender(account.address())

@@ -1,0 +1,9 @@
+This project is derived from the Aptos Rust SDK
+(https://github.com/aptos-labs/aptos-rust-sdk), commit 51d18045c661c1001fcf652778b10aaf8e7d349f.
+
+Original work is indicated as licensed under the Apache License 2.0 via:
+- Cargo.toml license field
+- crates.io distribution
+- README statements
+
+Modifications, rebranding, and additional features by Movement.

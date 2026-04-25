@@ -1,9 +1,9 @@
 //! Ed25519 signature scheme implementation.
 //!
-//! Ed25519 is the default and most commonly used signature scheme on Aptos.
+//! Ed25519 is the default and most commonly used signature scheme on Movement.
 
 use crate::crypto::traits::{PublicKey, Signature, Signer, Verifier};
-use crate::error::{AptosError, AptosResult};
+use crate::error::{MovementError, MovementResult};
 use ed25519_dalek::{Signer as DalekSigner, Verifier as DalekVerifier};
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -24,7 +24,7 @@ pub const ED25519_SIGNATURE_LENGTH: usize = 64;
 /// # Example
 ///
 /// ```rust
-/// use aptos_sdk::crypto::{Ed25519PrivateKey, Signer};
+/// use movement_sdk::crypto::{Ed25519PrivateKey, Signer};
 ///
 /// // Generate a random key
 /// let private_key = Ed25519PrivateKey::generate();
@@ -55,11 +55,11 @@ impl Ed25519PrivateKey {
     ///
     /// # Errors
     ///
-    /// Returns [`AptosError::InvalidPrivateKey`] if:
+    /// Returns [`MovementError::InvalidPrivateKey`] if:
     /// - The byte slice length is not exactly 32 bytes
-    pub fn from_bytes(bytes: &[u8]) -> AptosResult<Self> {
+    pub fn from_bytes(bytes: &[u8]) -> MovementResult<Self> {
         if bytes.len() != ED25519_PRIVATE_KEY_LENGTH {
-            return Err(AptosError::InvalidPrivateKey(format!(
+            return Err(MovementError::InvalidPrivateKey(format!(
                 "expected {} bytes, got {}",
                 ED25519_PRIVATE_KEY_LENGTH,
                 bytes.len()
@@ -77,9 +77,9 @@ impl Ed25519PrivateKey {
     ///
     /// # Errors
     ///
-    /// Returns [`AptosError::Hex`] if the hex string is invalid.
-    /// Returns [`AptosError::InvalidPrivateKey`] if the decoded bytes are not exactly 32 bytes.
-    pub fn from_hex(hex_str: &str) -> AptosResult<Self> {
+    /// Returns [`MovementError::Hex`] if the hex string is invalid.
+    /// Returns [`MovementError::InvalidPrivateKey`] if the decoded bytes are not exactly 32 bytes.
+    pub fn from_hex(hex_str: &str) -> MovementResult<Self> {
         let bytes = const_hex::decode(hex_str)?;
         Self::from_bytes(&bytes)
     }
@@ -95,18 +95,18 @@ impl Ed25519PrivateKey {
     /// # Example
     ///
     /// ```rust
-    /// use aptos_sdk::crypto::Ed25519PrivateKey;
+    /// use movement_sdk::crypto::Ed25519PrivateKey;
     ///
     /// let key = Ed25519PrivateKey::from_aip80(
     ///     "ed25519-priv-0x0000000000000000000000000000000000000000000000000000000000000001"
     /// ).unwrap();
     /// ```
-    pub fn from_aip80(s: &str) -> AptosResult<Self> {
+    pub fn from_aip80(s: &str) -> MovementResult<Self> {
         const PREFIX: &str = "ed25519-priv-";
         if let Some(hex_part) = s.strip_prefix(PREFIX) {
             Self::from_hex(hex_part)
         } else {
-            Err(AptosError::InvalidPrivateKey(format!(
+            Err(MovementError::InvalidPrivateKey(format!(
                 "invalid AIP-80 format: expected prefix '{PREFIX}'"
             )))
         }
@@ -132,7 +132,7 @@ impl Ed25519PrivateKey {
     /// # Example
     ///
     /// ```rust
-    /// use aptos_sdk::crypto::Ed25519PrivateKey;
+    /// use movement_sdk::crypto::Ed25519PrivateKey;
     ///
     /// let key = Ed25519PrivateKey::generate();
     /// let aip80 = key.to_aip80();
@@ -179,7 +179,7 @@ impl fmt::Debug for Ed25519PrivateKey {
 /// # Example
 ///
 /// ```rust
-/// use aptos_sdk::crypto::{Ed25519PrivateKey, Ed25519PublicKey, Signer, Verifier};
+/// use movement_sdk::crypto::{Ed25519PrivateKey, Ed25519PublicKey, Signer, Verifier};
 ///
 /// let private_key = Ed25519PrivateKey::generate();
 /// let public_key = private_key.public_key();
@@ -199,12 +199,12 @@ impl Ed25519PublicKey {
     ///
     /// # Errors
     ///
-    /// Returns [`AptosError::InvalidPublicKey`] if:
+    /// Returns [`MovementError::InvalidPublicKey`] if:
     /// - The byte slice length is not exactly 32 bytes
     /// - The bytes do not represent a valid Ed25519 public key
-    pub fn from_bytes(bytes: &[u8]) -> AptosResult<Self> {
+    pub fn from_bytes(bytes: &[u8]) -> MovementResult<Self> {
         if bytes.len() != ED25519_PUBLIC_KEY_LENGTH {
-            return Err(AptosError::InvalidPublicKey(format!(
+            return Err(MovementError::InvalidPublicKey(format!(
                 "expected {} bytes, got {}",
                 ED25519_PUBLIC_KEY_LENGTH,
                 bytes.len()
@@ -213,7 +213,7 @@ impl Ed25519PublicKey {
         let mut key_bytes = [0u8; ED25519_PUBLIC_KEY_LENGTH];
         key_bytes.copy_from_slice(bytes);
         let verifying_key = ed25519_dalek::VerifyingKey::from_bytes(&key_bytes)
-            .map_err(|e| AptosError::InvalidPublicKey(e.to_string()))?;
+            .map_err(|e| MovementError::InvalidPublicKey(e.to_string()))?;
         Ok(Self {
             inner: verifying_key,
         })
@@ -223,9 +223,9 @@ impl Ed25519PublicKey {
     ///
     /// # Errors
     ///
-    /// Returns [`AptosError::Hex`] if the hex string is invalid.
-    /// Returns [`AptosError::InvalidPublicKey`] if the decoded bytes are not exactly 32 bytes or do not represent a valid Ed25519 public key.
-    pub fn from_hex(hex_str: &str) -> AptosResult<Self> {
+    /// Returns [`MovementError::Hex`] if the hex string is invalid.
+    /// Returns [`MovementError::InvalidPublicKey`] if the decoded bytes are not exactly 32 bytes or do not represent a valid Ed25519 public key.
+    pub fn from_hex(hex_str: &str) -> MovementResult<Self> {
         let bytes = const_hex::decode(hex_str)?;
         Self::from_bytes(&bytes)
     }
@@ -237,12 +237,12 @@ impl Ed25519PublicKey {
     /// # Errors
     ///
     /// Returns an error if the format is invalid or the key bytes are invalid.
-    pub fn from_aip80(s: &str) -> AptosResult<Self> {
+    pub fn from_aip80(s: &str) -> MovementResult<Self> {
         const PREFIX: &str = "ed25519-pub-";
         if let Some(hex_part) = s.strip_prefix(PREFIX) {
             Self::from_hex(hex_part)
         } else {
-            Err(AptosError::InvalidPublicKey(format!(
+            Err(MovementError::InvalidPublicKey(format!(
                 "invalid AIP-80 format: expected prefix '{PREFIX}'"
             )))
         }
@@ -269,11 +269,11 @@ impl Ed25519PublicKey {
     ///
     /// # Errors
     ///
-    /// Returns [`AptosError::SignatureVerificationFailed`] if the signature is invalid or does not match the message.
-    pub fn verify(&self, message: &[u8], signature: &Ed25519Signature) -> AptosResult<()> {
+    /// Returns [`MovementError::SignatureVerificationFailed`] if the signature is invalid or does not match the message.
+    pub fn verify(&self, message: &[u8], signature: &Ed25519Signature) -> MovementResult<()> {
         self.inner
             .verify(message, &signature.inner)
-            .map_err(|_| AptosError::SignatureVerificationFailed)
+            .map_err(|_| MovementError::SignatureVerificationFailed)
     }
 
     /// Derives the account address for this public key.
@@ -292,7 +292,7 @@ impl Ed25519PublicKey {
 impl PublicKey for Ed25519PublicKey {
     const LENGTH: usize = ED25519_PUBLIC_KEY_LENGTH;
 
-    fn from_bytes(bytes: &[u8]) -> AptosResult<Self> {
+    fn from_bytes(bytes: &[u8]) -> MovementResult<Self> {
         Ed25519PublicKey::from_bytes(bytes)
     }
 
@@ -304,7 +304,7 @@ impl PublicKey for Ed25519PublicKey {
 impl Verifier for Ed25519PublicKey {
     type Signature = Ed25519Signature;
 
-    fn verify(&self, message: &[u8], signature: &Ed25519Signature) -> AptosResult<()> {
+    fn verify(&self, message: &[u8], signature: &Ed25519Signature) -> MovementResult<()> {
         Ed25519PublicKey::verify(self, message, signature)
     }
 }
@@ -360,19 +360,19 @@ impl Ed25519Signature {
     ///
     /// # Errors
     ///
-    /// Returns [`AptosError::InvalidSignature`] if:
+    /// Returns [`MovementError::InvalidSignature`] if:
     /// - The byte slice length is not exactly 64 bytes
     /// - The bytes do not represent a valid Ed25519 signature
-    pub fn from_bytes(bytes: &[u8]) -> AptosResult<Self> {
+    pub fn from_bytes(bytes: &[u8]) -> MovementResult<Self> {
         if bytes.len() != ED25519_SIGNATURE_LENGTH {
-            return Err(AptosError::InvalidSignature(format!(
+            return Err(MovementError::InvalidSignature(format!(
                 "expected {} bytes, got {}",
                 ED25519_SIGNATURE_LENGTH,
                 bytes.len()
             )));
         }
         let signature = ed25519_dalek::Signature::from_slice(bytes)
-            .map_err(|e| AptosError::InvalidSignature(e.to_string()))?;
+            .map_err(|e| MovementError::InvalidSignature(e.to_string()))?;
         Ok(Self { inner: signature })
     }
 
@@ -380,9 +380,9 @@ impl Ed25519Signature {
     ///
     /// # Errors
     ///
-    /// Returns [`AptosError::Hex`] if the hex string is invalid.
-    /// Returns [`AptosError::InvalidSignature`] if the decoded bytes are not exactly 64 bytes or do not represent a valid Ed25519 signature.
-    pub fn from_hex(hex_str: &str) -> AptosResult<Self> {
+    /// Returns [`MovementError::Hex`] if the hex string is invalid.
+    /// Returns [`MovementError::InvalidSignature`] if the decoded bytes are not exactly 64 bytes or do not represent a valid Ed25519 signature.
+    pub fn from_hex(hex_str: &str) -> MovementResult<Self> {
         let bytes = const_hex::decode(hex_str)?;
         Self::from_bytes(&bytes)
     }
@@ -402,7 +402,7 @@ impl Signature for Ed25519Signature {
     type PublicKey = Ed25519PublicKey;
     const LENGTH: usize = ED25519_SIGNATURE_LENGTH;
 
-    fn from_bytes(bytes: &[u8]) -> AptosResult<Self> {
+    fn from_bytes(bytes: &[u8]) -> MovementResult<Self> {
         Ed25519Signature::from_bytes(bytes)
     }
 

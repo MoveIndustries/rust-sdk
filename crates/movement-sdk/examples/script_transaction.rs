@@ -10,8 +10,8 @@
 //!
 //! Run with: `cargo run --example script_transaction --features "ed25519,faucet"`
 
-use aptos_sdk::{
-    Aptos, AptosConfig,
+use movement_sdk::{
+    Movement, MovementConfig,
     account::Ed25519Account,
     transaction::{Script, ScriptArgument, TransactionBuilder, TransactionPayload},
     types::TypeTag,
@@ -22,11 +22,11 @@ async fn main() -> anyhow::Result<()> {
     println!("=== Script Transaction Example ===\n");
 
     // Connect to testnet
-    let aptos = Aptos::new(AptosConfig::testnet())?;
-    println!("Connected to testnet (chain_id: {})", aptos.chain_id());
+    let movement = Movement::new(MovementConfig::testnet())?;
+    println!("Connected to testnet (chain_id: {})", movement.chain_id());
 
     // Create and fund accounts
-    let sender = aptos.create_funded_account(100_000_000).await?;
+    let sender = movement.create_funded_account(100_000_000).await?;
     let recipient = Ed25519Account::generate();
     println!("Sender: {}", sender.address());
     println!("Recipient: {}", recipient.address());
@@ -74,7 +74,7 @@ async fn main() -> anyhow::Result<()> {
     //     }
     // }
     //
-    // To compile: `aptos move compile --named-addresses std=0x1`
+    // To compile: `movement move compile --named-addresses std=0x1`
     // The compiled bytecode would be in `build/<project>/bytecode_scripts/`
 
     // For demonstration, we'll use a minimal script bytecode
@@ -107,14 +107,14 @@ async fn main() -> anyhow::Result<()> {
     println!("\n--- Part 4: Building Script Transaction ---");
 
     // Get sequence number
-    let sequence_number = aptos.get_sequence_number(sender.address()).await?;
+    let sequence_number = movement.get_sequence_number(sender.address()).await?;
 
     // Build the transaction
     let raw_txn = TransactionBuilder::new()
         .sender(sender.address())
         .sequence_number(sequence_number)
         .payload(payload)
-        .chain_id(aptos.chain_id())
+        .chain_id(movement.chain_id())
         .max_gas_amount(100_000)
         .gas_unit_price(100)
         .expiration_from_now(600)
@@ -126,12 +126,12 @@ async fn main() -> anyhow::Result<()> {
     println!("  Max gas: {}", raw_txn.max_gas_amount);
 
     // Sign the transaction
-    let _signed_txn = aptos_sdk::transaction::builder::sign_transaction(&raw_txn, &sender)?;
+    let _signed_txn = movement_sdk::transaction::builder::sign_transaction(&raw_txn, &sender)?;
     println!("Transaction signed successfully");
 
     // Note: We won't submit this transaction since we don't have valid bytecode
     // In a real scenario, you would:
-    // let result = aptos.submit_and_wait(&signed_txn, None).await?;
+    // let result = movement.submit_and_wait(&signed_txn, None).await?;
 
     // ==== Part 5: Script with Type Arguments ====
     println!("\n--- Part 5: Script with Type Arguments ---");
@@ -235,8 +235,8 @@ async fn main() -> anyhow::Result<()> {
     println!("         }}");
     println!("     }}");
     println!();
-    println!("  2. Compile with Aptos CLI:");
-    println!("     aptos move compile --named-addresses std=0x1");
+    println!("  2. Compile with Movement CLI:");
+    println!("     movement move compile --named-addresses std=0x1");
     println!();
     println!("  3. Read the compiled bytecode:");
     println!("     let bytecode = std::fs::read(\"build/project/bytecode_scripts/main.mv\")?;");

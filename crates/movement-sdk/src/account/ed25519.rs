@@ -18,18 +18,18 @@ use crate::crypto::{
     ED25519_SCHEME, Ed25519PrivateKey, Ed25519PublicKey, SINGLE_KEY_SCHEME,
     derive_authentication_key,
 };
-use crate::error::AptosResult;
+use crate::error::MovementResult;
 use crate::types::AccountAddress;
 use std::fmt;
 
 /// An Ed25519 account for signing transactions.
 ///
-/// This is the most common account type on Aptos.
+/// This is the most common account type on Movement.
 ///
 /// # Example
 ///
 /// ```rust
-/// use aptos_sdk::account::Ed25519Account;
+/// use movement_sdk::account::Ed25519Account;
 ///
 /// // Generate a new random account
 /// let account = Ed25519Account::generate();
@@ -65,7 +65,7 @@ impl Ed25519Account {
     /// # Errors
     ///
     /// Returns an error if the bytes are not a valid Ed25519 private key (must be exactly 32 bytes).
-    pub fn from_private_key_bytes(bytes: &[u8]) -> AptosResult<Self> {
+    pub fn from_private_key_bytes(bytes: &[u8]) -> MovementResult<Self> {
         let private_key = Ed25519PrivateKey::from_bytes(bytes)?;
         Ok(Self::from_private_key(private_key))
     }
@@ -77,14 +77,14 @@ impl Ed25519Account {
     /// This function will return an error if:
     /// - The hex string is invalid or cannot be decoded
     /// - The decoded bytes are not a valid Ed25519 private key
-    pub fn from_private_key_hex(hex_str: &str) -> AptosResult<Self> {
+    pub fn from_private_key_hex(hex_str: &str) -> MovementResult<Self> {
         let private_key = Ed25519PrivateKey::from_hex(hex_str)?;
         Ok(Self::from_private_key(private_key))
     }
 
     /// Creates an account from a BIP-39 mnemonic phrase.
     ///
-    /// Uses the standard Aptos derivation path: `m/44'/637'/0'/0'/index'`
+    /// Uses the standard Movement derivation path: `m/44'/637'/0'/0'/index'`
     ///
     /// # Arguments
     ///
@@ -94,7 +94,7 @@ impl Ed25519Account {
     /// # Example
     ///
     /// ```rust,ignore
-    /// use aptos_sdk::account::Ed25519Account;
+    /// use movement_sdk::account::Ed25519Account;
     ///
     /// let mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
     /// let account = Ed25519Account::from_mnemonic(mnemonic, 0).unwrap();
@@ -104,7 +104,7 @@ impl Ed25519Account {
     ///
     /// Returns an error if the mnemonic phrase is invalid or if key derivation fails.
     #[cfg(feature = "mnemonic")]
-    pub fn from_mnemonic(mnemonic: &str, index: u32) -> AptosResult<Self> {
+    pub fn from_mnemonic(mnemonic: &str, index: u32) -> MovementResult<Self> {
         let mnemonic = Mnemonic::from_phrase(mnemonic)?;
         let private_key = mnemonic.derive_ed25519_key(index)?;
         Ok(Self::from_private_key(private_key))
@@ -118,7 +118,7 @@ impl Ed25519Account {
     ///
     /// Returns an error if mnemonic generation or key derivation fails.
     #[cfg(feature = "mnemonic")]
-    pub fn generate_with_mnemonic() -> AptosResult<(Self, String)> {
+    pub fn generate_with_mnemonic() -> MovementResult<(Self, String)> {
         let mnemonic = Mnemonic::generate(24)?;
         let phrase = mnemonic.phrase().to_string();
         let private_key = mnemonic.derive_ed25519_key(0)?;
@@ -158,7 +158,7 @@ impl Account for Ed25519Account {
         AuthenticationKey::new(self.public_key.to_authentication_key())
     }
 
-    fn sign(&self, message: &[u8]) -> AptosResult<Vec<u8>> {
+    fn sign(&self, message: &[u8]) -> MovementResult<Vec<u8>> {
         Ok(self.private_key.sign(message).to_bytes().to_vec())
     }
 
@@ -201,7 +201,7 @@ impl fmt::Debug for Ed25519Account {
 /// # Example
 ///
 /// ```rust
-/// use aptos_sdk::account::Ed25519SingleKeyAccount;
+/// use movement_sdk::account::Ed25519SingleKeyAccount;
 ///
 /// // Generate a new random account
 /// let account = Ed25519SingleKeyAccount::generate();
@@ -237,7 +237,7 @@ impl Ed25519SingleKeyAccount {
     /// # Errors
     ///
     /// Returns an error if the bytes are not a valid Ed25519 private key (must be exactly 32 bytes).
-    pub fn from_private_key_bytes(bytes: &[u8]) -> AptosResult<Self> {
+    pub fn from_private_key_bytes(bytes: &[u8]) -> MovementResult<Self> {
         let private_key = Ed25519PrivateKey::from_bytes(bytes)?;
         Ok(Self::from_private_key(private_key))
     }
@@ -249,20 +249,20 @@ impl Ed25519SingleKeyAccount {
     /// This function will return an error if:
     /// - The hex string is invalid or cannot be decoded
     /// - The decoded bytes are not a valid Ed25519 private key
-    pub fn from_private_key_hex(hex_str: &str) -> AptosResult<Self> {
+    pub fn from_private_key_hex(hex_str: &str) -> MovementResult<Self> {
         let private_key = Ed25519PrivateKey::from_hex(hex_str)?;
         Ok(Self::from_private_key(private_key))
     }
 
     /// Creates an account from a BIP-39 mnemonic phrase.
     ///
-    /// Uses the standard Aptos derivation path: `m/44'/637'/0'/0'/index'`
+    /// Uses the standard Movement derivation path: `m/44'/637'/0'/0'/index'`
     ///
     /// # Errors
     ///
     /// Returns an error if the mnemonic phrase is invalid or if key derivation fails.
     #[cfg(feature = "mnemonic")]
-    pub fn from_mnemonic(mnemonic: &str, index: u32) -> AptosResult<Self> {
+    pub fn from_mnemonic(mnemonic: &str, index: u32) -> MovementResult<Self> {
         let mnemonic = Mnemonic::from_phrase(mnemonic)?;
         let private_key = mnemonic.derive_ed25519_key(index)?;
         Ok(Self::from_private_key(private_key))
@@ -324,7 +324,7 @@ impl Account for Ed25519SingleKeyAccount {
         AuthenticationKey::new(key)
     }
 
-    fn sign(&self, message: &[u8]) -> AptosResult<Vec<u8>> {
+    fn sign(&self, message: &[u8]) -> MovementResult<Vec<u8>> {
         Ok(self.private_key.sign(message).to_bytes().to_vec())
     }
 

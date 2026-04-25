@@ -1,11 +1,11 @@
-# aptos-sdk-macros
+# movement-sdk-macros
 
-Procedural macros for generating type-safe Aptos contract bindings at compile time.
+Procedural macros for generating type-safe Movement contract bindings at compile time.
 
 ## Features
 
-- `aptos_contract!` - Generate contract bindings from inline ABI
-- `aptos_contract_file!` - Generate contract bindings from ABI file
+- `movement_contract!` - Generate contract bindings from inline ABI
+- `movement_contract_file!` - Generate contract bindings from ABI file
 - `#[derive(MoveStruct)]` - Derive Move struct serialization
 - Compile-time type checking for contract interactions
 
@@ -14,10 +14,10 @@ Procedural macros for generating type-safe Aptos contract bindings at compile ti
 ### Contract Bindings from ABI
 
 ```rust
-use aptos_sdk_macros::aptos_contract;
+use movement_sdk_macros::movement_contract;
 
 // From inline ABI JSON
-aptos_contract! {
+movement_contract! {
     name: MyCoin,
     abi: r#"{
         "address": "0xcafe",
@@ -29,24 +29,24 @@ aptos_contract! {
 
 // Use the generated bindings
 let payload = MyCoin::transfer(recipient, amount)?;
-let balance = MyCoin::view_balance(&aptos, owner).await?;
+let balance = MyCoin::view_balance(&movement, owner).await?;
 ```
 
 ### From ABI File
 
 ```rust
-use aptos_sdk_macros::aptos_contract_file;
+use movement_sdk_macros::movement_contract_file;
 
 // Load ABI from file at compile time
-aptos_contract_file!("abi/my_module.json", MyModule);
+movement_contract_file!("abi/my_module.json", MyModule);
 ```
 
 ### With Move Source (Better Parameter Names)
 
 ```rust
-use aptos_sdk_macros::aptos_contract;
+use movement_sdk_macros::movement_contract;
 
-aptos_contract! {
+movement_contract! {
     name: MyCoin,
     abi: include_str!("../abi/my_coin.json"),
     source: include_str!("../sources/my_coin.move")
@@ -81,7 +81,7 @@ impl MyCoin {
         &self,
         recipient: AccountAddress,
         amount: u64,
-    ) -> AptosResult<TransactionPayload> {
+    ) -> MovementResult<TransactionPayload> {
         // ...
     }
 
@@ -90,25 +90,25 @@ impl MyCoin {
         &self,
         to: AccountAddress,
         amount: u64,
-    ) -> AptosResult<TransactionPayload> {
+    ) -> MovementResult<TransactionPayload> {
         // ...
     }
 
     /// Get balance with typed return (BCS - recommended)
     pub async fn view_balance(
         &self,
-        aptos: &Aptos,
+        movement: &Movement,
         owner: AccountAddress,
-    ) -> AptosResult<u64> {
+    ) -> MovementResult<u64> {
         // Uses BCS for lossless serialization
     }
 
     /// Get balance with JSON response (for debugging)
     pub async fn view_balance_json(
         &self,
-        aptos: &Aptos,
+        movement: &Movement,
         owner: AccountAddress,
-    ) -> AptosResult<Vec<serde_json::Value>> {
+    ) -> MovementResult<Vec<serde_json::Value>> {
         // Uses JSON for human-readable output
     }
 }

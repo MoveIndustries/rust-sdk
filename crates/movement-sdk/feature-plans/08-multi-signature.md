@@ -42,13 +42,13 @@ impl MultiEd25519Account {
     pub fn new(
         private_keys: Vec<Ed25519PrivateKey>,
         threshold: u8,
-    ) -> Result<Self, AptosError>;
+    ) -> Result<Self, MovementError>;
     
     /// Create from public keys (no signing capability).
     pub fn from_public_keys(
         public_keys: Vec<Ed25519PublicKey>,
         threshold: u8,
-    ) -> Result<Self, AptosError>;
+    ) -> Result<Self, MovementError>;
     
     /// Add a private key to enable signing.
     pub fn with_private_key(self, key: Ed25519PrivateKey) -> Self;
@@ -82,7 +82,7 @@ pub struct MultiEd25519PublicKey {
 }
 
 impl MultiEd25519PublicKey {
-    pub fn new(keys: Vec<Ed25519PublicKey>, threshold: u8) -> Result<Self, AptosError>;
+    pub fn new(keys: Vec<Ed25519PublicKey>, threshold: u8) -> Result<Self, MovementError>;
     pub fn threshold(&self) -> u8;
     pub fn public_keys(&self) -> &[Ed25519PublicKey];
     pub fn to_bytes(&self) -> Vec<u8>;

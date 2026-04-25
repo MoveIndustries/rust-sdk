@@ -8,7 +8,7 @@
 //!
 //! Run with: `cargo run --example transaction_data --features "ed25519,faucet"`
 
-use aptos_sdk::{Aptos, AptosConfig, account::Ed25519Account, transaction::EntryFunction};
+use movement_sdk::{Movement, MovementConfig, account::Ed25519Account, transaction::EntryFunction};
 use serde::Deserialize;
 
 /// Coin deposit event from 0x1::coin
@@ -32,11 +32,11 @@ struct CreateAccountEvent {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Create client for testnet
-    let aptos = Aptos::new(AptosConfig::testnet())?;
+    let movement = Movement::new(MovementConfig::testnet())?;
     println!("Connected to testnet");
 
     // Create and fund accounts for testing
-    let sender = aptos.create_funded_account(100_000_000).await?;
+    let sender = movement.create_funded_account(100_000_000).await?;
     let recipient = Ed25519Account::generate();
     println!("Sender: {}", sender.address());
     println!("Recipient: {}", recipient.address());
@@ -45,12 +45,12 @@ async fn main() -> anyhow::Result<()> {
     println!("\n=== Part 1: Submit Transaction and Get Details ===");
 
     let payload = EntryFunction::apt_transfer(recipient.address(), 10_000_000)?;
-    let pending = aptos.sign_and_submit(&sender, payload.into()).await?;
+    let pending = movement.sign_and_submit(&sender, payload.into()).await?;
     let txn_hash = pending.data.hash;
     println!("Submitted transaction: {}", txn_hash);
 
     // Wait for the transaction
-    let result = aptos
+    let result = movement
         .fullnode()
         .wait_for_transaction(&txn_hash, None)
         .await?;
@@ -178,7 +178,7 @@ async fn main() -> anyhow::Result<()> {
     println!("\n=== Part 3: Query Deposit Events for Account ===");
 
     // Query deposit events for the recipient
-    let events = aptos
+    let events = movement
         .fullnode()
         .get_events_by_event_handle(
             recipient.address(),
@@ -215,12 +215,12 @@ async fn main() -> anyhow::Result<()> {
     println!("\n=== Part 4: Query Transactions ===");
 
     // Get the ledger info to find recent transaction version
-    let ledger_info = aptos.ledger_info().await?;
+    let ledger_info = movement.ledger_info().await?;
     let current_height = ledger_info.height()?;
     println!("Current ledger version: {}", ledger_info.version()?);
 
     // Get a recent block
-    let block = aptos
+    let block = movement
         .fullnode()
         .get_block_by_height(current_height, true)
         .await?;
@@ -249,7 +249,7 @@ async fn main() -> anyhow::Result<()> {
     // ==== Part 5: Get Account Resources ====
     println!("\n=== Part 5: Get Account Resources ===");
 
-    let resources = aptos
+    let resources = movement
         .fullnode()
         .get_account_resources(sender.address())
         .await?;
@@ -260,7 +260,7 @@ async fn main() -> anyhow::Result<()> {
     }
 
     // Get specific coin balance
-    let apt_resource = aptos
+    let apt_resource = movement
         .fullnode()
         .get_account_resource(
             sender.address(),
@@ -282,7 +282,7 @@ async fn main() -> anyhow::Result<()> {
     // ==== Part 6: Get Transaction by Hash (lookup previously submitted) ====
     println!("\n=== Part 6: Lookup Transaction by Hash ===");
 
-    let lookup = aptos.fullnode().get_transaction_by_hash(&txn_hash).await?;
+    let lookup = movement.fullnode().get_transaction_by_hash(&txn_hash).await?;
     println!("Re-fetched transaction:");
     println!(
         "  Timestamp: {}",

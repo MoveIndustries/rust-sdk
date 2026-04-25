@@ -17,7 +17,7 @@ This feature implements automatic retry logic for API calls with exponential bac
 ### RetryConfig
 
 ```rust
-use aptos_sdk::retry::RetryConfig;
+use movement_sdk::retry::RetryConfig;
 
 // Default configuration (3 retries, 100ms initial delay, 2x backoff)
 let config = RetryConfig::default();
@@ -39,26 +39,26 @@ let custom = RetryConfig::builder()
     .build();
 ```
 
-### Integration with AptosConfig
+### Integration with MovementConfig
 
 ```rust
-use aptos_sdk::{Aptos, AptosConfig};
-use aptos_sdk::retry::RetryConfig;
+use movement_sdk::{Movement, MovementConfig};
+use movement_sdk::retry::RetryConfig;
 
 // Configure retry at client level
-let aptos = Aptos::new(
-    AptosConfig::testnet()
+let movement = Movement::new(
+    MovementConfig::testnet()
         .with_retry(RetryConfig::aggressive())
 )?;
 
 // Or disable retry
-let aptos = Aptos::new(
-    AptosConfig::testnet().without_retry()
+let movement = Movement::new(
+    MovementConfig::testnet().without_retry()
 )?;
 
 // Convenience method for max_retries
-let aptos = Aptos::new(
-    AptosConfig::testnet().with_max_retries(5)
+let movement = Movement::new(
+    MovementConfig::testnet().with_max_retries(5)
 )?;
 ```
 
@@ -97,7 +97,7 @@ By default, the following conditions trigger a retry:
    - 502 Bad Gateway
    - 503 Service Unavailable
    - 504 Gateway Timeout
-3. **Rate Limiting**: `AptosError::RateLimited`
+3. **Rate Limiting**: `MovementError::RateLimited`
 
 Non-retryable errors (immediate failure):
 - 400 Bad Request
@@ -113,7 +113,7 @@ Non-retryable errors (immediate failure):
 The `RetryExecutor` provides fine-grained control over retry behavior:
 
 ```rust
-use aptos_sdk::retry::{RetryConfig, RetryExecutor};
+use movement_sdk::retry::{RetryConfig, RetryExecutor};
 
 let executor = RetryExecutor::new(RetryConfig::default());
 
@@ -128,7 +128,7 @@ let result = executor.execute_with_predicate(
     || async { /* operation */ },
     |error| {
         // Custom logic to determine if we should retry
-        matches!(error, AptosError::RateLimited { .. })
+        matches!(error, MovementError::RateLimited { .. })
     }
 ).await?;
 ```
@@ -136,7 +136,7 @@ let result = executor.execute_with_predicate(
 ### Convenience Functions
 
 ```rust
-use aptos_sdk::retry::{retry, retry_with_config, RetryConfig};
+use movement_sdk::retry::{retry, retry_with_config, RetryConfig};
 
 // Retry with default config
 let result = retry(|| async {
@@ -220,31 +220,31 @@ When all retries are exhausted, the last error is returned. This ensures:
 ## Example Usage
 
 ```rust
-use aptos_sdk::{Aptos, AptosConfig};
-use aptos_sdk::retry::RetryConfig;
+use movement_sdk::{Movement, MovementConfig};
+use movement_sdk::retry::RetryConfig;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Production: conservative retry for stability
-    let mainnet_client = Aptos::new(
-        AptosConfig::mainnet()
+    let mainnet_client = Movement::new(
+        MovementConfig::mainnet()
             .with_retry(RetryConfig::conservative())
     )?;
     
     // Development: aggressive retry for fast iteration
-    let devnet_client = Aptos::new(
-        AptosConfig::devnet()
+    let devnet_client = Movement::new(
+        MovementConfig::devnet()
             .with_retry(RetryConfig::aggressive())
     )?;
     
     // Testing: no retry for predictable behavior
-    let test_client = Aptos::new(
-        AptosConfig::testnet().without_retry()
+    let test_client = Movement::new(
+        MovementConfig::testnet().without_retry()
     )?;
     
     // Custom: specific requirements
-    let custom_client = Aptos::new(
-        AptosConfig::custom("https://my-node.example.com/v1")?
+    let custom_client = Movement::new(
+        MovementConfig::custom("https://my-node.example.com/v1")?
             .with_retry(
                 RetryConfig::builder()
                     .max_retries(10)
@@ -269,7 +269,7 @@ async fn main() -> anyhow::Result<()> {
 - Preset configurations (default, aggressive, conservative, no_retry)
 - Exponential backoff with jitter
 - RetryExecutor for custom retry logic
-- Integration with AptosConfig
+- Integration with MovementConfig
 - Integration with FullnodeClient
 - Integration with FaucetClient
 - Integration with IndexerClient

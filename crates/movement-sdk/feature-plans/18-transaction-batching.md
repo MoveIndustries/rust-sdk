@@ -10,7 +10,7 @@ Transaction batching allows efficient submission of multiple transactions at onc
 2. **Automatic sequence number management** - Handle incrementing sequence numbers
 3. **Flexible submission modes** - Support parallel and sequential submission
 4. **Result tracking** - Track success/failure of each transaction in the batch
-5. **Integration with Aptos client** - Convenience methods on main client
+5. **Integration with Movement client** - Convenience methods on main client
 
 ## API Design
 
@@ -39,8 +39,8 @@ impl TransactionBatchBuilder {
     pub fn expiration_secs(self, secs: u64) -> Self;
     pub fn add_payload(self, payload: TransactionPayload) -> Self;
     pub fn add_payloads(self, payloads: impl IntoIterator<Item = TransactionPayload>) -> Self;
-    pub fn build(self) -> AptosResult<Vec<RawTransaction>>;
-    pub fn build_and_sign<A: Account>(self, account: &A) -> AptosResult<SignedTransactionBatch>;
+    pub fn build(self) -> MovementResult<Vec<RawTransaction>>;
+    pub fn build_and_sign<A: Account>(self, account: &A) -> MovementResult<SignedTransactionBatch>;
 }
 ```
 
@@ -84,7 +84,7 @@ impl SignedTransactionBatch {
 pub struct BatchTransactionResult {
     pub index: usize,
     pub transaction: SignedTransaction,
-    pub result: Result<BatchTransactionStatus, AptosError>,
+    pub result: Result<BatchTransactionStatus, MovementError>,
 }
 
 /// Status of a batch transaction after submission.
@@ -116,10 +116,10 @@ impl BatchSummary {
 }
 ```
 
-### Aptos Client Integration
+### Movement Client Integration
 
 ```rust
-impl Aptos {
+impl Movement {
     /// Returns a batch operations helper.
     pub fn batch(&self) -> BatchOperations<'_>;
 
@@ -128,7 +128,7 @@ impl Aptos {
         &self,
         account: &A,
         payloads: Vec<TransactionPayload>,
-    ) -> AptosResult<Vec<BatchTransactionResult>>;
+    ) -> MovementResult<Vec<BatchTransactionResult>>;
 
     /// Submits and waits for multiple transactions.
     pub async fn submit_batch_and_wait<A: Account>(
@@ -136,14 +136,14 @@ impl Aptos {
         account: &A,
         payloads: Vec<TransactionPayload>,
         timeout: Option<Duration>,
-    ) -> AptosResult<Vec<BatchTransactionResult>>;
+    ) -> MovementResult<Vec<BatchTransactionResult>>;
 
     /// Transfers APT to multiple recipients.
     pub async fn batch_transfer_apt<A: Account>(
         &self,
         sender: &A,
         transfers: Vec<(AccountAddress, u64)>,
-    ) -> AptosResult<Vec<BatchTransactionResult>>;
+    ) -> MovementResult<Vec<BatchTransactionResult>>;
 }
 ```
 
@@ -152,7 +152,7 @@ impl Aptos {
 ### Basic Batch Submission
 
 ```rust
-let aptos = Aptos::testnet()?;
+let movement = Movement::testnet()?;
 
 let payloads = vec![
     EntryFunction::apt_transfer(addr1, 1_000_000)?.into(),
@@ -160,7 +160,7 @@ let payloads = vec![
     EntryFunction::apt_transfer(addr3, 3_000_000)?.into(),
 ];
 
-let results = aptos.submit_batch_and_wait(&sender, payloads, None).await?;
+let results = movement.submit_batch_and_wait(&sender, payloads, None).await?;
 
 let summary = BatchSummary::from_results(&results);
 println!("Succeeded: {}/{}", summary.succeeded, summary.total);
@@ -169,7 +169,7 @@ println!("Succeeded: {}/{}", summary.succeeded, summary.total);
 ### Batch APT Transfers
 
 ```rust
-let results = aptos.batch_transfer_apt(&sender, vec![
+let results = movement.batch_transfer_apt(&sender, vec![
     (addr1, 1_000_000),
     (addr2, 2_000_000),
     (addr3, 3_000_000),
@@ -179,7 +179,7 @@ let results = aptos.batch_transfer_apt(&sender, vec![
 ### Manual Batch Building
 
 ```rust
-let seq_num = aptos.get_sequence_number(sender.address()).await?;
+let seq_num = movement.get_sequence_number(sender.address()).await?;
 
 let batch = TransactionBatchBuilder::new()
     .sender(sender.address())
@@ -192,10 +192,10 @@ let batch = TransactionBatchBuilder::new()
     .build_and_sign(&sender)?;
 
 // Submit all in parallel
-let results = batch.submit_all(&aptos.fullnode()).await;
+let results = batch.submit_all(&movement.fullnode()).await;
 
 // Or submit sequentially (for dependent transactions)
-let results = batch.submit_and_wait_sequential(&aptos.fullnode(), None).await;
+let results = batch.submit_and_wait_sequential(&movement.fullnode(), None).await;
 ```
 
 ### Checking Results
@@ -287,7 +287,7 @@ Each transaction in a batch uses incrementing sequence numbers starting from `st
 
 1. `src/transaction/batch.rs` - New batch module
 2. `src/transaction/mod.rs` - Export batch types
-3. `src/aptos.rs` - Add batch convenience methods
+3. `src/movement.rs` - Add batch convenience methods
 4. `Cargo.toml` - Add `futures` dependency
 5. `feature-plans/18-transaction-batching.md` - This document
 

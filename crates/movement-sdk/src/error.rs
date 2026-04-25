@@ -1,24 +1,24 @@
-//! Error types for the Aptos SDK.
+//! Error types for the Movement SDK.
 //!
-//! This module provides a unified error type [`AptosError`] that encompasses
+//! This module provides a unified error type [`MovementError`] that encompasses
 //! all possible errors that can occur when using the SDK.
 
 use std::fmt;
 use thiserror::Error;
 
-/// A specialized Result type for Aptos SDK operations.
-pub type AptosResult<T> = Result<T, AptosError>;
+/// A specialized Result type for Movement SDK operations.
+pub type MovementResult<T> = Result<T, MovementError>;
 
-/// The main error type for the Aptos SDK.
+/// The main error type for the Movement SDK.
 ///
 /// This enum covers all possible error conditions that can occur when
-/// interacting with the Aptos blockchain through this SDK.
+/// interacting with the Movement blockchain through this SDK.
 ///
 /// # Security: Logging Errors
 ///
 /// **WARNING:** The `Display` implementation on this type may include sensitive
 /// information (e.g., partial key material, JWT tokens, or mnemonic phrases) in
-/// its output. When logging errors, always use [`sanitized_message()`](AptosError::sanitized_message)
+/// its output. When logging errors, always use [`sanitized_message()`](MovementError::sanitized_message)
 /// instead of `to_string()` or `Display`:
 ///
 /// ```rust,ignore
@@ -29,7 +29,7 @@ pub type AptosResult<T> = Result<T, AptosError>;
 /// log::error!("Failed: {}", err.sanitized_message());
 /// ```
 #[derive(Error, Debug)]
-pub enum AptosError {
+pub enum MovementError {
     /// Error occurred during HTTP communication
     #[error("HTTP error: {0}")]
     Http(#[from] reqwest::Error),
@@ -175,7 +175,7 @@ const MAX_ERROR_MESSAGE_LENGTH: usize = 1000;
 ///
 /// # Security
 ///
-/// This list is used by [`AptosError::sanitized_message()`] to redact potentially
+/// This list is used by [`MovementError::sanitized_message()`] to redact potentially
 /// sensitive content from error messages before logging. The check is case-insensitive.
 const SENSITIVE_PATTERNS: &[&str] = &[
     "private_key",
@@ -195,7 +195,7 @@ const SENSITIVE_PATTERNS: &[&str] = &[
     "pepper",
 ];
 
-impl AptosError {
+impl MovementError {
     /// Creates a new BCS error
     pub fn bcs<E: fmt::Display>(err: E) -> Self {
         Self::Bcs(err.to_string())
@@ -271,9 +271,9 @@ impl AptosError {
     /// # Example
     ///
     /// ```rust
-    /// use aptos_sdk::AptosError;
+    /// use movement_sdk::MovementError;
     ///
-    /// let err = AptosError::api(500, "Internal server error with details...");
+    /// let err = MovementError::api(500, "Internal server error with details...");
     /// let safe_msg = err.sanitized_message();
     /// // safe_msg is guaranteed to be safe for logging
     /// ```
@@ -386,68 +386,68 @@ mod tests {
 
     #[test]
     fn test_error_display() {
-        let err = AptosError::InvalidAddress("bad address".to_string());
+        let err = MovementError::InvalidAddress("bad address".to_string());
         assert_eq!(err.to_string(), "Invalid address: bad address");
     }
 
     #[test]
     fn test_is_not_found() {
-        assert!(AptosError::NotFound("test".to_string()).is_not_found());
-        assert!(AptosError::AccountNotFound("0x1".to_string()).is_not_found());
-        assert!(AptosError::api(404, "not found").is_not_found());
-        assert!(!AptosError::api(500, "server error").is_not_found());
+        assert!(MovementError::NotFound("test".to_string()).is_not_found());
+        assert!(MovementError::AccountNotFound("0x1".to_string()).is_not_found());
+        assert!(MovementError::api(404, "not found").is_not_found());
+        assert!(!MovementError::api(500, "server error").is_not_found());
     }
 
     #[test]
     fn test_is_retryable() {
-        assert!(AptosError::api(429, "rate limited").is_retryable());
-        assert!(AptosError::api(503, "unavailable").is_retryable());
-        assert!(AptosError::api(500, "internal error").is_retryable());
-        assert!(AptosError::api(502, "bad gateway").is_retryable());
-        assert!(AptosError::api(504, "timeout").is_retryable());
-        assert!(!AptosError::api(400, "bad request").is_retryable());
+        assert!(MovementError::api(429, "rate limited").is_retryable());
+        assert!(MovementError::api(503, "unavailable").is_retryable());
+        assert!(MovementError::api(500, "internal error").is_retryable());
+        assert!(MovementError::api(502, "bad gateway").is_retryable());
+        assert!(MovementError::api(504, "timeout").is_retryable());
+        assert!(!MovementError::api(400, "bad request").is_retryable());
     }
 
     #[test]
     fn test_is_timeout() {
-        let err = AptosError::TransactionTimeout {
+        let err = MovementError::TransactionTimeout {
             hash: "0x123".to_string(),
             timeout_secs: 30,
         };
         assert!(err.is_timeout());
-        assert!(!AptosError::InvalidAddress("test".to_string()).is_timeout());
+        assert!(!MovementError::InvalidAddress("test".to_string()).is_timeout());
     }
 
     #[test]
     fn test_bcs_error() {
-        let err = AptosError::bcs("serialization failed");
-        assert!(matches!(err, AptosError::Bcs(_)));
+        let err = MovementError::bcs("serialization failed");
+        assert!(matches!(err, MovementError::Bcs(_)));
         assert!(err.to_string().contains("serialization failed"));
     }
 
     #[test]
     fn test_transaction_error() {
-        let err = AptosError::transaction("invalid payload");
-        assert!(matches!(err, AptosError::Transaction(_)));
+        let err = MovementError::transaction("invalid payload");
+        assert!(matches!(err, MovementError::Transaction(_)));
         assert!(err.to_string().contains("invalid payload"));
     }
 
     #[test]
     fn test_api_error() {
-        let err = AptosError::api(400, "bad request");
+        let err = MovementError::api(400, "bad request");
         assert!(err.to_string().contains("400"));
         assert!(err.to_string().contains("bad request"));
     }
 
     #[test]
     fn test_api_error_with_details() {
-        let err = AptosError::api_with_details(
+        let err = MovementError::api_with_details(
             400,
             "invalid argument",
             Some("INVALID_ARGUMENT".to_string()),
             Some(42),
         );
-        if let AptosError::Api {
+        if let MovementError::Api {
             status_code,
             message,
             error_code,
@@ -466,37 +466,37 @@ mod tests {
     #[test]
     fn test_various_error_displays() {
         assert!(
-            AptosError::InvalidPublicKey("bad key".to_string())
+            MovementError::InvalidPublicKey("bad key".to_string())
                 .to_string()
                 .contains("public key")
         );
         assert!(
-            AptosError::InvalidPrivateKey("bad key".to_string())
+            MovementError::InvalidPrivateKey("bad key".to_string())
                 .to_string()
                 .contains("private key")
         );
         assert!(
-            AptosError::InvalidSignature("bad sig".to_string())
+            MovementError::InvalidSignature("bad sig".to_string())
                 .to_string()
                 .contains("signature")
         );
         assert!(
-            AptosError::SignatureVerificationFailed
+            MovementError::SignatureVerificationFailed
                 .to_string()
                 .contains("verification")
         );
         assert!(
-            AptosError::InvalidTypeTag("bad tag".to_string())
+            MovementError::InvalidTypeTag("bad tag".to_string())
                 .to_string()
                 .contains("type tag")
         );
         assert!(
-            AptosError::SimulationFailed("error".to_string())
+            MovementError::SimulationFailed("error".to_string())
                 .to_string()
                 .contains("Simulation")
         );
         assert!(
-            AptosError::SubmissionFailed("error".to_string())
+            MovementError::SubmissionFailed("error".to_string())
                 .to_string()
                 .contains("Submission")
         );
@@ -504,7 +504,7 @@ mod tests {
 
     #[test]
     fn test_execution_failed() {
-        let err = AptosError::ExecutionFailed {
+        let err = MovementError::ExecutionFailed {
             vm_status: "ABORTED".to_string(),
         };
         assert!(err.to_string().contains("ABORTED"));
@@ -512,7 +512,7 @@ mod tests {
 
     #[test]
     fn test_rate_limited() {
-        let err = AptosError::RateLimited {
+        let err = MovementError::RateLimited {
             retry_after_secs: Some(30),
         };
         assert!(err.to_string().contains("Rate limited"));
@@ -520,7 +520,7 @@ mod tests {
 
     #[test]
     fn test_insufficient_signatures() {
-        let err = AptosError::InsufficientSignatures {
+        let err = MovementError::InsufficientSignatures {
             required: 3,
             provided: 1,
         };
@@ -530,44 +530,44 @@ mod tests {
 
     #[test]
     fn test_feature_not_enabled() {
-        let err = AptosError::FeatureNotEnabled("ed25519".to_string());
+        let err = MovementError::FeatureNotEnabled("ed25519".to_string());
         assert!(err.to_string().contains("ed25519"));
         assert!(err.to_string().contains("Cargo.toml"));
     }
 
     #[test]
     fn test_config_error() {
-        let err = AptosError::Config("invalid config".to_string());
+        let err = MovementError::Config("invalid config".to_string());
         assert!(err.to_string().contains("Configuration"));
     }
 
     #[test]
     fn test_internal_error() {
-        let err = AptosError::Internal("bug".to_string());
+        let err = MovementError::Internal("bug".to_string());
         assert!(err.to_string().contains("Internal"));
     }
 
     #[test]
     fn test_invalid_mnemonic() {
-        let err = AptosError::InvalidMnemonic("bad phrase".to_string());
+        let err = MovementError::InvalidMnemonic("bad phrase".to_string());
         assert!(err.to_string().contains("mnemonic"));
     }
 
     #[test]
     fn test_invalid_jwt() {
-        let err = AptosError::InvalidJwt("bad token".to_string());
+        let err = MovementError::InvalidJwt("bad token".to_string());
         assert!(err.to_string().contains("JWT"));
     }
 
     #[test]
     fn test_key_derivation() {
-        let err = AptosError::KeyDerivation("failed".to_string());
+        let err = MovementError::KeyDerivation("failed".to_string());
         assert!(err.to_string().contains("derivation"));
     }
 
     #[test]
     fn test_sanitized_message_basic() {
-        let err = AptosError::api(400, "bad request");
+        let err = MovementError::api(400, "bad request");
         let sanitized = err.sanitized_message();
         assert!(sanitized.contains("bad request"));
     }
@@ -575,7 +575,7 @@ mod tests {
     #[test]
     fn test_sanitized_message_truncates_long_messages() {
         let long_message = "x".repeat(2000);
-        let err = AptosError::api(500, long_message);
+        let err = MovementError::api(500, long_message);
         let sanitized = err.sanitized_message();
         assert!(sanitized.len() < 1200); // Should be truncated
         assert!(sanitized.contains("truncated"));
@@ -583,7 +583,7 @@ mod tests {
 
     #[test]
     fn test_sanitized_message_removes_control_chars() {
-        let err = AptosError::api(400, "bad\x00request\x1f");
+        let err = MovementError::api(400, "bad\x00request\x1f");
         let sanitized = err.sanitized_message();
         assert!(!sanitized.contains('\x00'));
         assert!(!sanitized.contains('\x1f'));
@@ -591,12 +591,12 @@ mod tests {
 
     #[test]
     fn test_sanitized_message_redacts_sensitive_patterns() {
-        let err = AptosError::Internal("private_key: abc123".to_string());
+        let err = MovementError::Internal("private_key: abc123".to_string());
         let sanitized = err.sanitized_message();
         assert!(sanitized.contains("REDACTED"));
         assert!(!sanitized.contains("abc123"));
 
-        let err = AptosError::Internal("mnemonic phrase here".to_string());
+        let err = MovementError::Internal("mnemonic phrase here".to_string());
         let sanitized = err.sanitized_message();
         assert!(sanitized.contains("REDACTED"));
     }
@@ -604,19 +604,19 @@ mod tests {
     #[test]
     fn test_user_message() {
         assert_eq!(
-            AptosError::api(404, "not found").user_message(),
+            MovementError::api(404, "not found").user_message(),
             "Resource not found"
         );
         assert_eq!(
-            AptosError::api(429, "rate limited").user_message(),
+            MovementError::api(429, "rate limited").user_message(),
             "Rate limit exceeded"
         );
         assert_eq!(
-            AptosError::api(500, "internal error").user_message(),
+            MovementError::api(500, "internal error").user_message(),
             "Server error"
         );
         assert_eq!(
-            AptosError::InvalidAddress("bad".to_string()).user_message(),
+            MovementError::InvalidAddress("bad".to_string()).user_message(),
             "Invalid account address"
         );
     }
@@ -625,46 +625,46 @@ mod tests {
     fn test_user_message_all_variants() {
         // Test all user_message variants for coverage
         assert_eq!(
-            AptosError::InvalidPublicKey("bad".to_string()).user_message(),
+            MovementError::InvalidPublicKey("bad".to_string()).user_message(),
             "Invalid public key"
         );
         assert_eq!(
-            AptosError::InvalidPrivateKey("bad".to_string()).user_message(),
+            MovementError::InvalidPrivateKey("bad".to_string()).user_message(),
             "Invalid private key"
         );
         assert_eq!(
-            AptosError::InvalidSignature("bad".to_string()).user_message(),
+            MovementError::InvalidSignature("bad".to_string()).user_message(),
             "Invalid signature"
         );
         assert_eq!(
-            AptosError::SignatureVerificationFailed.user_message(),
+            MovementError::SignatureVerificationFailed.user_message(),
             "Signature verification failed"
         );
         assert_eq!(
-            AptosError::InvalidTypeTag("bad".to_string()).user_message(),
+            MovementError::InvalidTypeTag("bad".to_string()).user_message(),
             "Invalid type format"
         );
         assert_eq!(
-            AptosError::Transaction("bad".to_string()).user_message(),
+            MovementError::Transaction("bad".to_string()).user_message(),
             "Transaction error"
         );
         assert_eq!(
-            AptosError::SimulationFailed("bad".to_string()).user_message(),
+            MovementError::SimulationFailed("bad".to_string()).user_message(),
             "Transaction simulation failed"
         );
         assert_eq!(
-            AptosError::SubmissionFailed("bad".to_string()).user_message(),
+            MovementError::SubmissionFailed("bad".to_string()).user_message(),
             "Transaction submission failed"
         );
         assert_eq!(
-            AptosError::ExecutionFailed {
+            MovementError::ExecutionFailed {
                 vm_status: "ABORTED".to_string()
             }
             .user_message(),
             "Transaction execution failed"
         );
         assert_eq!(
-            AptosError::TransactionTimeout {
+            MovementError::TransactionTimeout {
                 hash: "0x1".to_string(),
                 timeout_secs: 30
             }
@@ -672,42 +672,42 @@ mod tests {
             "Transaction timed out"
         );
         assert_eq!(
-            AptosError::NotFound("x".to_string()).user_message(),
+            MovementError::NotFound("x".to_string()).user_message(),
             "Resource not found"
         );
         assert_eq!(
-            AptosError::RateLimited {
+            MovementError::RateLimited {
                 retry_after_secs: Some(30)
             }
             .user_message(),
             "Rate limit exceeded"
         );
         assert_eq!(
-            AptosError::api(503, "unavailable").user_message(),
+            MovementError::api(503, "unavailable").user_message(),
             "Server error"
         );
         assert_eq!(
-            AptosError::api(400, "bad request").user_message(),
+            MovementError::api(400, "bad request").user_message(),
             "API error"
         );
         assert_eq!(
-            AptosError::AccountNotFound("0x1".to_string()).user_message(),
+            MovementError::AccountNotFound("0x1".to_string()).user_message(),
             "Account not found"
         );
         assert_eq!(
-            AptosError::InvalidMnemonic("bad".to_string()).user_message(),
+            MovementError::InvalidMnemonic("bad".to_string()).user_message(),
             "Invalid recovery phrase"
         );
         assert_eq!(
-            AptosError::InvalidJwt("bad".to_string()).user_message(),
+            MovementError::InvalidJwt("bad".to_string()).user_message(),
             "Invalid authentication token"
         );
         assert_eq!(
-            AptosError::KeyDerivation("bad".to_string()).user_message(),
+            MovementError::KeyDerivation("bad".to_string()).user_message(),
             "Key derivation failed"
         );
         assert_eq!(
-            AptosError::InsufficientSignatures {
+            MovementError::InsufficientSignatures {
                 required: 3,
                 provided: 1
             }
@@ -715,19 +715,19 @@ mod tests {
             "Insufficient signatures"
         );
         assert_eq!(
-            AptosError::FeatureNotEnabled("ed25519".to_string()).user_message(),
+            MovementError::FeatureNotEnabled("ed25519".to_string()).user_message(),
             "Feature not enabled"
         );
         assert_eq!(
-            AptosError::Config("bad".to_string()).user_message(),
+            MovementError::Config("bad".to_string()).user_message(),
             "Configuration error"
         );
         assert_eq!(
-            AptosError::Internal("bug".to_string()).user_message(),
+            MovementError::Internal("bug".to_string()).user_message(),
             "Internal error"
         );
         assert_eq!(
-            AptosError::Other(anyhow::anyhow!("misc")).user_message(),
+            MovementError::Other(anyhow::anyhow!("misc")).user_message(),
             "An error occurred"
         );
     }
@@ -735,8 +735,8 @@ mod tests {
     #[test]
     fn test_is_retryable_http_errors() {
         // We can't easily test reqwest errors, so just ensure non-http errors return false
-        assert!(!AptosError::InvalidAddress("x".to_string()).is_retryable());
-        assert!(!AptosError::Transaction("x".to_string()).is_retryable());
-        assert!(!AptosError::NotFound("x".to_string()).is_retryable());
+        assert!(!MovementError::InvalidAddress("x".to_string()).is_retryable());
+        assert!(!MovementError::Transaction("x".to_string()).is_retryable());
+        assert!(!MovementError::NotFound("x".to_string()).is_retryable());
     }
 }

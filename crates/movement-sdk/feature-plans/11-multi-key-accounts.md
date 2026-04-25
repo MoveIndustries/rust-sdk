@@ -81,35 +81,35 @@ pub struct MultiKeyAccount {
 
 impl MultiKeyAccount {
     /// Create with all private keys (full signing capability).
-    pub fn new(private_keys: Vec<AnyPrivateKey>, threshold: u8) -> AptosResult<Self>;
+    pub fn new(private_keys: Vec<AnyPrivateKey>, threshold: u8) -> MovementResult<Self>;
     
     /// Create with subset of private keys (partial signing).
     pub fn from_keys(
         public_keys: Vec<AnyPublicKey>,
         private_keys: Vec<(u8, AnyPrivateKey)>,
         threshold: u8,
-    ) -> AptosResult<Self>;
+    ) -> MovementResult<Self>;
     
     /// Create view-only account (no signing capability).
-    pub fn view_only(public_keys: Vec<AnyPublicKey>, threshold: u8) -> AptosResult<Self>;
+    pub fn view_only(public_keys: Vec<AnyPublicKey>, threshold: u8) -> MovementResult<Self>;
     
     /// Check if this instance can sign (has enough keys).
     pub fn can_sign(&self) -> bool;
     
     /// Sign a message using owned keys.
-    pub fn sign_message(&self, message: &[u8]) -> AptosResult<MultiKeySignature>;
+    pub fn sign_message(&self, message: &[u8]) -> MovementResult<MultiKeySignature>;
     
     /// Create a signature contribution for distributed signing.
     pub fn create_signature_contribution(
         &self,
         message: &[u8],
         key_index: u8,
-    ) -> AptosResult<(u8, AnySignature)>;
+    ) -> MovementResult<(u8, AnySignature)>;
     
     /// Aggregate individual signatures into a multi-key signature.
     pub fn aggregate_signatures(
         signatures: Vec<(u8, AnySignature)>,
-    ) -> AptosResult<MultiKeySignature>;
+    ) -> MovementResult<MultiKeySignature>;
 }
 
 impl Account for MultiKeyAccount { /* ... */ }
@@ -170,10 +170,10 @@ bitmap: little-endian, bit i = 1 if key i signed
 
 ## Error Handling
 
-- `AptosError::InvalidPublicKey` - Bad public key format
-- `AptosError::InvalidSignature` - Bad signature format
-- `AptosError::InsufficientSignatures` - Not enough signatures for threshold
-- `AptosError::InvalidPrivateKey` - Private key doesn't match public key
+- `MovementError::InvalidPublicKey` - Bad public key format
+- `MovementError::InvalidSignature` - Bad signature format
+- `MovementError::InsufficientSignatures` - Not enough signatures for threshold
+- `MovementError::InvalidPrivateKey` - Private key doesn't match public key
 
 ## Testing Requirements
 

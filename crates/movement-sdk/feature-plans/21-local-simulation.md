@@ -104,36 +104,36 @@ pub struct SimulatedEvent {
 }
 ```
 
-### Aptos Client Methods
+### Movement Client Methods
 
 ```rust
-impl Aptos {
+impl Movement {
     /// Simulates a transaction and returns a parsed result.
     pub async fn simulate<A: Account>(
         &self,
         account: &A,
         payload: TransactionPayload,
-    ) -> AptosResult<SimulationResult>;
+    ) -> MovementResult<SimulationResult>;
 
     /// Simulates a pre-built signed transaction.
     pub async fn simulate_signed(
         &self,
         signed_txn: &SignedTransaction,
-    ) -> AptosResult<SimulationResult>;
+    ) -> MovementResult<SimulationResult>;
 
     /// Estimates gas by simulation (+20% safety margin).
     pub async fn estimate_gas<A: Account>(
         &self,
         account: &A,
         payload: TransactionPayload,
-    ) -> AptosResult<u64>;
+    ) -> MovementResult<u64>;
 
     /// Simulates and submits if successful.
     pub async fn simulate_and_submit<A: Account>(
         &self,
         account: &A,
         payload: TransactionPayload,
-    ) -> AptosResult<AptosResponse<PendingTransaction>>;
+    ) -> MovementResult<MovementResponse<PendingTransaction>>;
 
     /// Simulates, submits, and waits.
     pub async fn simulate_submit_and_wait<A: Account>(
@@ -141,7 +141,7 @@ impl Aptos {
         account: &A,
         payload: TransactionPayload,
         timeout: Option<Duration>,
-    ) -> AptosResult<AptosResponse<serde_json::Value>>;
+    ) -> MovementResult<MovementResponse<serde_json::Value>>;
 }
 ```
 
@@ -150,10 +150,10 @@ impl Aptos {
 ### Basic Simulation
 
 ```rust
-let aptos = Aptos::testnet()?;
+let movement = Movement::testnet()?;
 let payload = InputEntryFunctionData::transfer_apt(recipient, 1_000_000)?;
 
-let result = aptos.simulate(&account, payload).await?;
+let result = movement.simulate(&account, payload).await?;
 
 if result.success() {
     println!("Transaction will succeed!");
@@ -170,7 +170,7 @@ if result.success() {
 ### Gas Estimation
 
 ```rust
-let gas = aptos.estimate_gas(&account, payload).await?;
+let gas = movement.estimate_gas(&account, payload).await?;
 println!("Estimated gas (with 20% buffer): {}", gas);
 
 // Use the estimate in transaction builder
@@ -184,17 +184,17 @@ let txn = TransactionBuilder::new()
 
 ```rust
 // Simulate first, only submit if successful
-let result = aptos.simulate_and_submit(&account, payload).await?;
+let result = movement.simulate_and_submit(&account, payload).await?;
 println!("Submitted: {}", result.data.hash);
 
 // Or simulate, submit, and wait
-let result = aptos.simulate_submit_and_wait(&account, payload, None).await?;
+let result = movement.simulate_submit_and_wait(&account, payload, None).await?;
 ```
 
 ### Error Handling
 
 ```rust
-let result = aptos.simulate(&account, payload).await?;
+let result = movement.simulate(&account, payload).await?;
 
 if result.is_insufficient_balance() {
     println!("Not enough balance!");
@@ -212,7 +212,7 @@ if result.is_insufficient_balance() {
 ### Inspecting State Changes
 
 ```rust
-let result = aptos.simulate(&account, payload).await?;
+let result = movement.simulate(&account, payload).await?;
 
 for change in result.changes() {
     if change.is_write() {
@@ -282,7 +282,7 @@ for event in result.events() {
 
 1. `src/transaction/simulation.rs` - New simulation module
 2. `src/transaction/mod.rs` - Export simulation types
-3. `src/aptos.rs` - Add simulation convenience methods
+3. `src/movement.rs` - Add simulation convenience methods
 4. `feature-plans/21-local-simulation.md` - This document
 
 ## Limitations

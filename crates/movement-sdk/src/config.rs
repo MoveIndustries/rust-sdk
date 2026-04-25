@@ -1,9 +1,9 @@
-//! Network configuration for the Aptos SDK.
+//! Network configuration for the Movement SDK.
 //!
 //! This module provides configuration options for connecting to different
-//! Aptos networks (mainnet, testnet, devnet) or custom endpoints.
+//! Movement networks (mainnet, testnet, devnet) or custom endpoints.
 
-use crate::error::{AptosError, AptosResult};
+use crate::error::{MovementError, MovementResult};
 use crate::retry::RetryConfig;
 use crate::types::ChainId;
 use std::time::Duration;
@@ -19,15 +19,15 @@ use url::Url;
 ///
 /// # Errors
 ///
-/// Returns [`AptosError::Config`] if the URL scheme is not `http` or `https`.
-pub fn validate_url_scheme(url: &Url) -> AptosResult<()> {
+/// Returns [`MovementError::Config`] if the URL scheme is not `http` or `https`.
+pub fn validate_url_scheme(url: &Url) -> MovementResult<()> {
     match url.scheme() {
         "https" => Ok(()),
         "http" => {
             // HTTP is allowed for local development and testing
             Ok(())
         }
-        scheme => Err(AptosError::Config(format!(
+        scheme => Err(MovementError::Config(format!(
             "unsupported URL scheme '{scheme}': only 'http' and 'https' are allowed"
         ))),
     }
@@ -47,17 +47,17 @@ pub fn validate_url_scheme(url: &Url) -> AptosResult<()> {
 ///
 /// # Errors
 ///
-/// Returns [`AptosError::Api`] with error code `RESPONSE_TOO_LARGE` if the
+/// Returns [`MovementError::Api`] with error code `RESPONSE_TOO_LARGE` if the
 /// response body exceeds `max_size` bytes.
 pub async fn read_response_bounded(
     mut response: reqwest::Response,
     max_size: usize,
-) -> AptosResult<Vec<u8>> {
+) -> MovementResult<Vec<u8>> {
     // Pre-check Content-Length header for early rejection (avoids reading any body)
     if let Some(content_length) = response.content_length()
         && content_length > max_size as u64
     {
-        return Err(AptosError::Api {
+        return Err(MovementError::Api {
             status_code: response.status().as_u16(),
             message: format!(
                 "response too large: Content-Length {content_length} bytes exceeds limit of {max_size} bytes"
@@ -72,7 +72,7 @@ pub async fn read_response_bounded(
     let mut body = Vec::with_capacity(std::cmp::min(max_size, 1024 * 1024));
     while let Some(chunk) = response.chunk().await? {
         if body.len().saturating_add(chunk.len()) > max_size {
-            return Err(AptosError::Api {
+            return Err(MovementError::Api {
                 status_code: response.status().as_u16(),
                 message: format!(
                     "response too large: exceeded limit of {max_size} bytes during streaming"
@@ -113,7 +113,7 @@ pub struct PoolConfig {
     /// # Security
     ///
     /// This limit helps prevent memory exhaustion from extremely large responses.
-    /// The Aptos API responses are typically much smaller than this limit.
+    /// The Movement API responses are typically much smaller than this limit.
     pub max_response_size: usize,
 }
 
@@ -123,7 +123,7 @@ pub struct PoolConfig {
 ///
 /// This limit helps prevent memory exhaustion from malicious or compromised
 /// servers sending extremely large responses. The default of 10 MB is generous
-/// for normal Aptos API responses (typically under 1 MB). If you need to
+/// for normal Movement API responses (typically under 1 MB). If you need to
 /// handle larger responses (e.g., bulk data exports), increase this via
 /// [`PoolConfigBuilder::max_response_size`].
 const DEFAULT_MAX_RESPONSE_SIZE: usize = 10 * 1024 * 1024;
@@ -283,30 +283,30 @@ impl PoolConfigBuilder {
     }
 }
 
-/// Configuration for the Aptos client.
+/// Configuration for the Movement client.
 ///
 /// Use the builder methods to customize the configuration, or use one of the
-/// preset configurations like [`AptosConfig::mainnet()`], [`AptosConfig::testnet()`],
-/// or [`AptosConfig::devnet()`].
+/// preset configurations like [`MovementConfig::mainnet()`], [`MovementConfig::testnet()`],
+/// or [`MovementConfig::devnet()`].
 ///
 /// # Example
 ///
 /// ```rust
-/// use aptos_sdk::AptosConfig;
-/// use aptos_sdk::retry::RetryConfig;
-/// use aptos_sdk::config::PoolConfig;
+/// use movement_sdk::MovementConfig;
+/// use movement_sdk::retry::RetryConfig;
+/// use movement_sdk::config::PoolConfig;
 ///
 /// // Use testnet with default settings
-/// let config = AptosConfig::testnet();
+/// let config = MovementConfig::testnet();
 ///
 /// // Custom configuration with retry and connection pooling
-/// let config = AptosConfig::testnet()
+/// let config = MovementConfig::testnet()
 ///     .with_timeout(std::time::Duration::from_secs(30))
 ///     .with_retry(RetryConfig::aggressive())
 ///     .with_pool(PoolConfig::high_throughput());
 /// ```
 #[derive(Debug, Clone)]
-pub struct AptosConfig {
+pub struct MovementConfig {
     /// The network to connect to
     pub(crate) network: Network,
     /// REST API URL (fullnode)
@@ -325,14 +325,14 @@ pub struct AptosConfig {
     pub(crate) api_key: Option<String>,
 }
 
-/// Known Aptos networks.
+/// Known Movement networks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Network {
-    /// Aptos mainnet
+    /// Movement mainnet
     Mainnet,
-    /// Aptos testnet
+    /// Movement testnet
     Testnet,
-    /// Aptos devnet
+    /// Movement devnet
     Devnet,
     /// Local development network
     Local,
@@ -364,64 +364,56 @@ impl Network {
     }
 }
 
-impl Default for AptosConfig {
+impl Default for MovementConfig {
     fn default() -> Self {
         Self::devnet()
     }
 }
 
-impl AptosConfig {
-    /// Creates a configuration for Aptos mainnet.
+impl MovementConfig {
+    /// Creates a configuration for Movement mainnet.
     ///
     /// # Example
     ///
     /// ```rust
-    /// use aptos_sdk::AptosConfig;
+    /// use movement_sdk::MovementConfig;
     ///
-    /// let config = AptosConfig::mainnet();
+    /// let config = MovementConfig::mainnet();
     /// ```
     #[allow(clippy::missing_panics_doc)]
     #[must_use]
     pub fn mainnet() -> Self {
         Self {
             network: Network::Mainnet,
-            fullnode_url: Url::parse("https://fullnode.mainnet.aptoslabs.com/v1")
+            fullnode_url: Url::parse("https://mainnet.movementnetwork.xyz/v1")
                 .expect("valid mainnet URL"),
-            indexer_url: Some(
-                Url::parse("https://indexer.mainnet.aptoslabs.com/v1/graphql")
-                    .expect("valid indexer URL"),
-            ),
-            faucet_url: None, // No faucet on mainnet
+            indexer_url: None,
+            faucet_url: None,
             timeout: Duration::from_secs(30),
-            retry_config: RetryConfig::conservative(), // More conservative for mainnet
+            retry_config: RetryConfig::conservative(),
             pool_config: PoolConfig::default(),
             api_key: None,
         }
     }
 
-    /// Creates a configuration for Aptos testnet.
+    /// Creates a configuration for Movement testnet.
     ///
     /// # Example
     ///
     /// ```rust
-    /// use aptos_sdk::AptosConfig;
+    /// use movement_sdk::MovementConfig;
     ///
-    /// let config = AptosConfig::testnet();
+    /// let config = MovementConfig::testnet();
     /// ```
     #[allow(clippy::missing_panics_doc)]
     #[must_use]
     pub fn testnet() -> Self {
         Self {
             network: Network::Testnet,
-            fullnode_url: Url::parse("https://fullnode.testnet.aptoslabs.com/v1")
+            fullnode_url: Url::parse("https://testnet.movementnetwork.xyz/v1")
                 .expect("valid testnet URL"),
-            indexer_url: Some(
-                Url::parse("https://indexer.testnet.aptoslabs.com/v1/graphql")
-                    .expect("valid indexer URL"),
-            ),
-            faucet_url: Some(
-                Url::parse("https://faucet.testnet.aptoslabs.com").expect("valid faucet URL"),
-            ),
+            indexer_url: None,
+            faucet_url: None,
             timeout: Duration::from_secs(30),
             retry_config: RetryConfig::default(),
             pool_config: PoolConfig::default(),
@@ -429,34 +421,20 @@ impl AptosConfig {
         }
     }
 
-    /// Creates a configuration for Aptos devnet.
+    /// Creates a configuration for Movement devnet.
     ///
     /// # Example
     ///
     /// ```rust
-    /// use aptos_sdk::AptosConfig;
+    /// use movement_sdk::MovementConfig;
     ///
-    /// let config = AptosConfig::devnet();
+    /// let config = MovementConfig::devnet();
     /// ```
     #[allow(clippy::missing_panics_doc)]
     #[must_use]
     pub fn devnet() -> Self {
-        Self {
-            network: Network::Devnet,
-            fullnode_url: Url::parse("https://fullnode.devnet.aptoslabs.com/v1")
-                .expect("valid devnet URL"),
-            indexer_url: Some(
-                Url::parse("https://indexer.devnet.aptoslabs.com/v1/graphql")
-                    .expect("valid indexer URL"),
-            ),
-            faucet_url: Some(
-                Url::parse("https://faucet.devnet.aptoslabs.com").expect("valid faucet URL"),
-            ),
-            timeout: Duration::from_secs(30),
-            retry_config: RetryConfig::default(),
-            pool_config: PoolConfig::default(),
-            api_key: None,
-        }
+        // Movement does not currently expose a public devnet; alias to testnet.
+        Self::testnet()
     }
 
     /// Creates a configuration for a local development network.
@@ -467,9 +445,9 @@ impl AptosConfig {
     /// # Example
     ///
     /// ```rust
-    /// use aptos_sdk::AptosConfig;
+    /// use movement_sdk::MovementConfig;
     ///
-    /// let config = AptosConfig::local();
+    /// let config = MovementConfig::local();
     /// ```
     #[allow(clippy::missing_panics_doc)]
     #[must_use]
@@ -502,11 +480,11 @@ impl AptosConfig {
     /// # Example
     ///
     /// ```rust
-    /// use aptos_sdk::AptosConfig;
+    /// use movement_sdk::MovementConfig;
     ///
-    /// let config = AptosConfig::custom("https://my-node.example.com/v1").unwrap();
+    /// let config = MovementConfig::custom("https://my-node.example.com/v1").unwrap();
     /// ```
-    pub fn custom(fullnode_url: &str) -> AptosResult<Self> {
+    pub fn custom(fullnode_url: &str) -> MovementResult<Self> {
         let url = Url::parse(fullnode_url)?;
         validate_url_scheme(&url)?;
         Ok(Self {
@@ -533,10 +511,10 @@ impl AptosConfig {
     /// # Example
     ///
     /// ```rust
-    /// use aptos_sdk::AptosConfig;
-    /// use aptos_sdk::retry::RetryConfig;
+    /// use movement_sdk::MovementConfig;
+    /// use movement_sdk::retry::RetryConfig;
     ///
-    /// let config = AptosConfig::testnet()
+    /// let config = MovementConfig::testnet()
     ///     .with_retry(RetryConfig::aggressive());
     /// ```
     #[must_use]
@@ -574,10 +552,10 @@ impl AptosConfig {
     /// # Example
     ///
     /// ```rust
-    /// use aptos_sdk::AptosConfig;
-    /// use aptos_sdk::config::PoolConfig;
+    /// use movement_sdk::MovementConfig;
+    /// use movement_sdk::config::PoolConfig;
     ///
-    /// let config = AptosConfig::testnet()
+    /// let config = MovementConfig::testnet()
     ///     .with_pool(PoolConfig::high_throughput());
     /// ```
     #[must_use]
@@ -588,7 +566,7 @@ impl AptosConfig {
 
     /// Sets an API key for authenticated access.
     ///
-    /// This is useful when using Aptos Build or other services that
+    /// This is useful when using Movement Build or other services that
     /// provide higher rate limits with API keys.
     #[must_use]
     pub fn with_api_key(mut self, api_key: impl Into<String>) -> Self {
@@ -606,7 +584,7 @@ impl AptosConfig {
     ///
     /// Returns an error if the `url` cannot be parsed as a valid URL
     /// or uses an unsupported scheme.
-    pub fn with_indexer_url(mut self, url: &str) -> AptosResult<Self> {
+    pub fn with_indexer_url(mut self, url: &str) -> MovementResult<Self> {
         let parsed = Url::parse(url)?;
         validate_url_scheme(&parsed)?;
         self.indexer_url = Some(parsed);
@@ -623,7 +601,7 @@ impl AptosConfig {
     ///
     /// Returns an error if the `url` cannot be parsed as a valid URL
     /// or uses an unsupported scheme.
-    pub fn with_faucet_url(mut self, url: &str) -> AptosResult<Self> {
+    pub fn with_faucet_url(mut self, url: &str) -> MovementResult<Self> {
         let parsed = Url::parse(url)?;
         validate_url_scheme(&parsed)?;
         self.faucet_url = Some(parsed);
@@ -677,7 +655,7 @@ mod tests {
 
     #[test]
     fn test_mainnet_config() {
-        let config = AptosConfig::mainnet();
+        let config = MovementConfig::mainnet();
         assert_eq!(config.network(), Network::Mainnet);
         assert!(config.fullnode_url().as_str().contains("mainnet"));
         assert!(config.faucet_url().is_none());
@@ -685,24 +663,23 @@ mod tests {
 
     #[test]
     fn test_testnet_config() {
-        let config = AptosConfig::testnet();
+        let config = MovementConfig::testnet();
         assert_eq!(config.network(), Network::Testnet);
         assert!(config.fullnode_url().as_str().contains("testnet"));
-        assert!(config.faucet_url().is_some());
+        assert!(config.faucet_url().is_none());
     }
 
     #[test]
     fn test_devnet_config() {
-        let config = AptosConfig::devnet();
-        assert_eq!(config.network(), Network::Devnet);
-        assert!(config.fullnode_url().as_str().contains("devnet"));
-        assert!(config.faucet_url().is_some());
-        assert!(config.indexer_url().is_some());
+        // devnet aliases to testnet for Movement.
+        let config = MovementConfig::devnet();
+        assert_eq!(config.network(), Network::Testnet);
+        assert!(config.fullnode_url().as_str().contains("testnet"));
     }
 
     #[test]
     fn test_local_config() {
-        let config = AptosConfig::local();
+        let config = MovementConfig::local();
         assert_eq!(config.network(), Network::Local);
         assert!(config.fullnode_url().as_str().contains("127.0.0.1"));
         assert!(config.faucet_url().is_some());
@@ -711,7 +688,7 @@ mod tests {
 
     #[test]
     fn test_custom_config() {
-        let config = AptosConfig::custom("https://custom.example.com/v1").unwrap();
+        let config = MovementConfig::custom("https://custom.example.com/v1").unwrap();
         assert_eq!(config.network(), Network::Custom);
         assert_eq!(
             config.fullnode_url().as_str(),
@@ -721,13 +698,13 @@ mod tests {
 
     #[test]
     fn test_custom_config_invalid_url() {
-        let result = AptosConfig::custom("not a valid url");
+        let result = MovementConfig::custom("not a valid url");
         assert!(result.is_err());
     }
 
     #[test]
     fn test_builder_methods() {
-        let config = AptosConfig::testnet()
+        let config = MovementConfig::testnet()
             .with_timeout(Duration::from_secs(60))
             .with_max_retries(5)
             .with_api_key("test-key");
@@ -739,23 +716,23 @@ mod tests {
 
     #[test]
     fn test_retry_config() {
-        let config = AptosConfig::testnet().with_retry(RetryConfig::aggressive());
+        let config = MovementConfig::testnet().with_retry(RetryConfig::aggressive());
 
         assert_eq!(config.retry_config.max_retries, 5);
         assert_eq!(config.retry_config.initial_delay_ms, 50);
 
-        let config = AptosConfig::testnet().without_retry();
+        let config = MovementConfig::testnet().without_retry();
         assert_eq!(config.retry_config.max_retries, 0);
     }
 
     #[test]
     fn test_network_retry_defaults() {
         // Mainnet should be conservative
-        let mainnet = AptosConfig::mainnet();
+        let mainnet = MovementConfig::mainnet();
         assert_eq!(mainnet.retry_config.max_retries, 3);
 
         // Local should be aggressive
-        let local = AptosConfig::local();
+        let local = MovementConfig::local();
         assert_eq!(local.retry_config.max_retries, 5);
     }
 
@@ -815,15 +792,15 @@ mod tests {
     }
 
     #[test]
-    fn test_aptos_config_with_pool() {
-        let config = AptosConfig::testnet().with_pool(PoolConfig::high_throughput());
+    fn test_movement_config_with_pool() {
+        let config = MovementConfig::testnet().with_pool(PoolConfig::high_throughput());
 
         assert_eq!(config.pool_config.max_idle_total, 256);
     }
 
     #[test]
-    fn test_aptos_config_with_indexer_url() {
-        let config = AptosConfig::testnet()
+    fn test_movement_config_with_indexer_url() {
+        let config = MovementConfig::testnet()
             .with_indexer_url("https://custom-indexer.example.com/graphql")
             .unwrap();
         assert_eq!(
@@ -833,8 +810,8 @@ mod tests {
     }
 
     #[test]
-    fn test_aptos_config_with_faucet_url() {
-        let config = AptosConfig::mainnet()
+    fn test_movement_config_with_faucet_url() {
+        let config = MovementConfig::mainnet()
             .with_faucet_url("https://custom-faucet.example.com")
             .unwrap();
         assert_eq!(
@@ -844,9 +821,10 @@ mod tests {
     }
 
     #[test]
-    fn test_aptos_config_default() {
-        let config = AptosConfig::default();
-        assert_eq!(config.network(), Network::Devnet);
+    fn test_movement_config_default() {
+        let config = MovementConfig::default();
+        // default() -> devnet() -> testnet()
+        assert_eq!(config.network(), Network::Testnet);
     }
 
     #[test]
@@ -868,8 +846,8 @@ mod tests {
     }
 
     #[test]
-    fn test_aptos_config_getters() {
-        let config = AptosConfig::testnet();
+    fn test_movement_config_getters() {
+        let config = MovementConfig::testnet();
 
         assert_eq!(config.timeout(), Duration::from_secs(30));
         assert!(config.retry_config().max_retries > 0);

@@ -1,8 +1,8 @@
-# Aptos Rust SDK v2 - Development Plan
+# Movement Rust SDK v2 - Development Plan
 
 ## Overview
 
-This document outlines the comprehensive plan for building `aptos-sdk`, a user-friendly, idiomatic Rust SDK that provides feature parity with the `@aptos-labs/ts-sdk` TypeScript SDK.
+This document outlines the comprehensive plan for building `movement-sdk`, a user-friendly, idiomatic Rust SDK that provides feature parity with the `@aptos-labs/ts-sdk` TypeScript SDK.
 
 ### Goals
 
@@ -18,7 +18,7 @@ This document outlines the comprehensive plan for building `aptos-sdk`, a user-f
 ## Phase 1: Project Foundation ✅
 
 ### 1.1 Project Structure
-- [x] Create workspace member `crates/aptos-sdk`
+- [x] Create workspace member `crates/movement-sdk`
 - [x] Setup `Cargo.toml` with workspace dependencies
 - [x] Define feature flags for optional functionality
 - [x] Create module structure
@@ -77,7 +77,7 @@ This document outlines the comprehensive plan for building `aptos-sdk`, a user-f
 ### 3.3 Key Derivation
 - [x] BIP-39 mnemonic support
 - [x] BIP-44 HD derivation paths
-- [x] Aptos derivation path (`m/44'/637'/0'/0'/0'`)
+- [x] Movement derivation path (`m/44'/637'/0'/0'/0'`)
 
 ---
 
@@ -130,7 +130,7 @@ This document outlines the comprehensive plan for building `aptos-sdk`, a user-f
 ## Phase 6: API Clients ✅
 
 ### 6.1 Fullnode REST Client
-- [x] `AptosFullnodeClient` - REST API interactions
+- [x] `MovementFullnodeClient` - REST API interactions
 - [x] Account queries (resources, modules, balance)
 - [x] Transaction queries (by hash, version)
 - [x] Block queries (by height, version)
@@ -142,18 +142,18 @@ This document outlines the comprehensive plan for building `aptos-sdk`, a user-f
 - [x] Events queries
 
 ### 6.2 Faucet Client (Feature: `faucet`)
-- [x] `AptosFaucetClient` - Testnet/devnet funding
+- [x] `MovementFaucetClient` - Testnet/devnet funding
 - [x] Fund accounts with test tokens
 
 ### 6.3 Indexer Client (Feature: `indexer`)
-- [x] `AptosIndexerClient` - GraphQL queries
+- [x] `MovementIndexerClient` - GraphQL queries
 - [x] Token/NFT queries
 - [x] Fungible asset queries
 - [x] Account activity queries
 
 ### 6.4 High-Level Client
-- [x] `Aptos` - Unified client combining all APIs
-- [x] `AptosConfig` - Network configuration
+- [x] `Movement` - Unified client combining all APIs
+- [x] `MovementConfig` - Network configuration
 - [x] Convenience methods for common operations
 
 ---
@@ -178,13 +178,13 @@ This document outlines the comprehensive plan for building `aptos-sdk`, a user-f
 ## Phase 8: Error Handling ✅
 
 ### 8.1 Error Types
-- [x] `AptosError` - Main SDK error type
+- [x] `MovementError` - Main SDK error type
 - [x] Rich error context (source, location)
 - [x] Conversion from external errors
 - [x] HTTP status code handling
 
 ### 8.2 Result Types
-- [x] `AptosResult<T>` - SDK result alias
+- [x] `MovementResult<T>` - SDK result alias
 - [x] Proper error propagation
 
 ---
@@ -206,7 +206,7 @@ This document outlines the comprehensive plan for building `aptos-sdk`, a user-f
 - [x] Multi-key distributed signing
 
 ### 9.3 E2E Tests Against Localnet ✅
-- [x] Setup localnet using Aptos CLI (documented)
+- [x] Setup localnet using Movement CLI (documented)
 - [x] Account funding via faucet
 - [x] Token transfers (single and multiple)
 - [x] View function calls (timestamp, balance, account exists)
@@ -288,7 +288,7 @@ This document outlines the comprehensive plan for building `aptos-sdk`, a user-f
 ### 13.1 TypeScript SDK Parity (Remaining)
 - [ ] `InputGenerateTransactionPayloadData` builders
 - [x] `InputEntryFunctionData` type-safe builders ✅
-- [x] ANS (Aptos Names Service) integration ✅
+- [x] ANS (Movement Names Service) integration ✅
 - [x] Passkey/WebAuthn authentication (Secp256r1Account) ✅
 - [x] Sponsored transaction helpers ✅
 
@@ -302,7 +302,7 @@ This document outlines the comprehensive plan for building `aptos-sdk`, a user-f
 ### 13.3 Developer Experience
 - [ ] CLI tool for common operations
 - [x] Code generation from ABI ✅
-- [x] CLI tool for codegen (`aptos-codegen` binary) ✅
+- [x] CLI tool for codegen (`movement-codegen` binary) ✅
 - [x] Type-safe contract bindings (proc macro) ✅
 - [ ] Wallet adapter integration
 
@@ -353,7 +353,7 @@ The `Account` trait allows:
 
 ## References
 
-- [Aptos TypeScript SDK](https://github.com/aptos-labs/aptos-ts-sdk)
-- [Aptos Developer Documentation](https://aptos.dev)
+- [Movement TypeScript SDK](https://github.com/aptos-labs/aptos-ts-sdk)
+- [Movement Developer Documentation](https://docs.movementnetwork.xyz)
 - [Move Language](https://move-language.github.io/move/)
 - [BCS Specification](https://github.com/diem/bcs)

@@ -180,13 +180,13 @@ impl MoveTypeMapper {
         if !rust_type.needs_bcs {
             // Primitives that don't need special handling
             return format!(
-                "aptos_bcs::to_bytes(&{var_name}).map_err(|e| AptosError::Bcs(e.to_string()))?"
+                "aptos_bcs::to_bytes(&{var_name}).map_err(|e| MovementError::Bcs(e.to_string()))?"
             );
         }
 
         // SECURITY: Use error propagation instead of .unwrap() to prevent
         // panics in generated code if BCS serialization fails.
-        format!("aptos_bcs::to_bytes(&{var_name}).map_err(|e| AptosError::Bcs(e.to_string()))?")
+        format!("aptos_bcs::to_bytes(&{var_name}).map_err(|e| MovementError::Bcs(e.to_string()))?")
     }
 
     /// Determines if a parameter should be excluded from the function signature.

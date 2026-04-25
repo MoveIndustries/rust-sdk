@@ -16,7 +16,7 @@ This feature adds configurable HTTP connection pooling for all API clients, impr
 ### PoolConfig
 
 ```rust
-use aptos_sdk::config::PoolConfig;
+use movement_sdk::config::PoolConfig;
 
 // Default configuration
 let config = PoolConfig::default();
@@ -36,20 +36,20 @@ let custom = PoolConfig::builder()
     .build();
 ```
 
-### Integration with AptosConfig
+### Integration with MovementConfig
 
 ```rust
-use aptos_sdk::{Aptos, AptosConfig};
-use aptos_sdk::config::PoolConfig;
+use movement_sdk::{Movement, MovementConfig};
+use movement_sdk::config::PoolConfig;
 
 // Configure pool at client level
-let aptos = Aptos::new(
-    AptosConfig::testnet()
+let movement = Movement::new(
+    MovementConfig::testnet()
         .with_pool(PoolConfig::high_throughput())
 )?;
 
 // Network-specific defaults are applied automatically
-let aptos = Aptos::new(AptosConfig::local())?;  // Uses low_latency preset
+let movement = Movement::new(MovementConfig::local())?;  // Uses low_latency preset
 ```
 
 ### Network-Specific Defaults
@@ -132,7 +132,7 @@ Connection pooling is applied to all API clients:
 - Default configuration values
 - Preset configurations
 - Builder pattern
-- Integration with `AptosConfig`
+- Integration with `MovementConfig`
 
 ## Performance Considerations
 
@@ -152,7 +152,7 @@ Connection pooling is applied to all API clients:
 ✅ **Implemented**
 - PoolConfig with builder pattern
 - Preset configurations (default, high_throughput, low_latency, minimal)
-- Integration with AptosConfig
+- Integration with MovementConfig
 - Applied to all API clients (Fullnode, Faucet, Indexer)
 - Comprehensive unit tests
 

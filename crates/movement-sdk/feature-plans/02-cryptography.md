@@ -2,11 +2,11 @@
 
 ## Overview
 
-The cryptography module provides signature schemes, key generation, and hashing functions required for Aptos transactions. All cryptographic operations are feature-gated to allow minimal builds.
+The cryptography module provides signature schemes, key generation, and hashing functions required for Movement transactions. All cryptographic operations are feature-gated to allow minimal builds.
 
 ## Goals
 
-1. Support all Aptos signature schemes (Ed25519, Secp256k1, Secp256r1, BLS)
+1. Support all Movement signature schemes (Ed25519, Secp256k1, Secp256r1, BLS)
 2. Provide secure key generation and derivation
 3. Enable mnemonic-based account recovery
 4. Minimize binary size via feature flags
@@ -76,10 +76,10 @@ pub mod ed25519 {
         pub fn generate() -> Self;
         
         /// Create from raw bytes.
-        pub fn from_bytes(bytes: &[u8]) -> Result<Self, AptosError>;
+        pub fn from_bytes(bytes: &[u8]) -> Result<Self, MovementError>;
         
         /// Create from hex string.
-        pub fn from_hex(hex: &str) -> Result<Self, AptosError>;
+        pub fn from_hex(hex: &str) -> Result<Self, MovementError>;
         
         /// Derive public key.
         pub fn public_key(&self) -> Ed25519PublicKey;
@@ -101,7 +101,7 @@ pub mod ed25519 {
     pub struct Ed25519PublicKey([u8; 32]);
     
     impl Ed25519PublicKey {
-        pub fn from_bytes(bytes: &[u8]) -> Result<Self, AptosError>;
+        pub fn from_bytes(bytes: &[u8]) -> Result<Self, MovementError>;
         pub fn to_bytes(&self) -> [u8; 32];
         pub fn verify(&self, message: &[u8], signature: &Ed25519Signature) -> bool;
     }
@@ -110,7 +110,7 @@ pub mod ed25519 {
     pub struct Ed25519Signature([u8; 64]);
     
     impl Ed25519Signature {
-        pub fn from_bytes(bytes: &[u8]) -> Result<Self, AptosError>;
+        pub fn from_bytes(bytes: &[u8]) -> Result<Self, MovementError>;
         pub fn to_bytes(&self) -> [u8; 64];
     }
 }
@@ -125,7 +125,7 @@ pub mod secp256k1 {
     
     impl Secp256k1PrivateKey {
         pub fn generate() -> Self;
-        pub fn from_bytes(bytes: &[u8]) -> Result<Self, AptosError>;
+        pub fn from_bytes(bytes: &[u8]) -> Result<Self, MovementError>;
         pub fn public_key(&self) -> Secp256k1PublicKey;
         pub fn sign(&self, message: &[u8]) -> Secp256k1Signature;
     }
@@ -134,7 +134,7 @@ pub mod secp256k1 {
     pub struct Secp256k1PublicKey { ... }
     
     impl Secp256k1PublicKey {
-        pub fn from_bytes(bytes: &[u8]) -> Result<Self, AptosError>;
+        pub fn from_bytes(bytes: &[u8]) -> Result<Self, MovementError>;
         pub fn to_bytes(&self) -> Vec<u8>;  // 33 bytes compressed
         pub fn verify(&self, message: &[u8], signature: &Secp256k1Signature) -> bool;
     }
@@ -170,7 +170,7 @@ pub mod bls12381 {
     
     impl BlsPrivateKey {
         pub fn generate() -> Self;
-        pub fn from_bytes(bytes: &[u8]) -> Result<Self, AptosError>;
+        pub fn from_bytes(bytes: &[u8]) -> Result<Self, MovementError>;
         pub fn public_key(&self) -> BlsPublicKey;
         pub fn sign(&self, message: &[u8]) -> BlsSignature;
     }
@@ -208,10 +208,10 @@ pub struct Mnemonic {
 
 impl Mnemonic {
     /// Generate a new random mnemonic (12, 15, 18, 21, or 24 words).
-    pub fn generate(word_count: usize) -> Result<Self, AptosError>;
+    pub fn generate(word_count: usize) -> Result<Self, MovementError>;
     
     /// Parse from space-separated words.
-    pub fn from_phrase(phrase: &str) -> Result<Self, AptosError>;
+    pub fn from_phrase(phrase: &str) -> Result<Self, MovementError>;
     
     /// Get the phrase as a string.
     pub fn phrase(&self) -> &str;
@@ -221,14 +221,14 @@ impl Mnemonic {
     
     /// Derive Ed25519 key at path.
     #[cfg(feature = "ed25519")]
-    pub fn derive_ed25519(&self, path: &str) -> Result<Ed25519PrivateKey, AptosError>;
+    pub fn derive_ed25519(&self, path: &str) -> Result<Ed25519PrivateKey, MovementError>;
     
     /// Derive Secp256k1 key at path.
     #[cfg(feature = "secp256k1")]
-    pub fn derive_secp256k1(&self, path: &str) -> Result<Secp256k1PrivateKey, AptosError>;
+    pub fn derive_secp256k1(&self, path: &str) -> Result<Secp256k1PrivateKey, MovementError>;
 }
 
-/// Standard Aptos derivation path.
+/// Standard Movement derivation path.
 pub const APTOS_DERIVATION_PATH: &str = "m/44'/637'/0'/0'/0'";
 ```
 
@@ -274,9 +274,9 @@ For existing accounts, the address may differ from the authentication key if the
 ```
 m / purpose' / coin_type' / account' / change' / address_index'
 
-Aptos: m/44'/637'/0'/0'/0'
+Movement: m/44'/637'/0'/0'/0'
 - purpose: 44 (BIP-44)
-- coin_type: 637 (Aptos)
+- coin_type: 637 (Movement)
 - account: 0 (first account)
 - change: 0 (external)
 - address_index: 0 (first address)
@@ -343,7 +343,7 @@ fn test_auth_key_derivation() {
 Include test vectors from:
 - RFC 8032 (Ed25519)
 - BIP-39 test vectors
-- Aptos-specific test vectors from TypeScript SDK
+- Movement-specific test vectors from TypeScript SDK
 
 ---
 

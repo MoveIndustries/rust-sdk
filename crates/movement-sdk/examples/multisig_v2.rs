@@ -1,6 +1,6 @@
 //! Example: On-chain Multisig Accounts (Multisig V2)
 //!
-//! This example demonstrates how to work with Aptos on-chain multisig accounts.
+//! This example demonstrates how to work with Movement on-chain multisig accounts.
 //! Unlike MultiEd25519Account (client-side threshold signing), on-chain multisig
 //! uses the `0x1::multisig_account` module for governance-style proposals.
 //!
@@ -12,8 +12,8 @@
 //!
 //! Run with: `cargo run --example multisig_v2 --features "ed25519,faucet"`
 
-use aptos_sdk::{
-    Aptos, AptosConfig,
+use movement_sdk::{
+    Movement, MovementConfig,
     account::Ed25519Account,
     transaction::{
         EntryFunction, InputEntryFunctionData, TransactionBuilder, TransactionPayload,
@@ -27,8 +27,8 @@ async fn main() -> anyhow::Result<()> {
     println!("=== On-chain Multisig Account Example ===\n");
 
     // Connect to testnet
-    let aptos = Aptos::new(AptosConfig::testnet())?;
-    println!("Connected to testnet (chain_id: {})", aptos.chain_id());
+    let movement = Movement::new(MovementConfig::testnet())?;
+    println!("Connected to testnet (chain_id: {})", movement.chain_id());
 
     // ==== Part 1: Understanding On-chain Multisig ====
     println!("\n--- Part 1: Understanding On-chain Multisig ---");
@@ -49,9 +49,9 @@ async fn main() -> anyhow::Result<()> {
     println!("\n--- Part 2: Creating Owner Accounts ---");
 
     // Create 3 owner accounts
-    let owner1 = aptos.create_funded_account(100_000_000).await?;
-    let owner2 = aptos.create_funded_account(100_000_000).await?;
-    let owner3 = aptos.create_funded_account(100_000_000).await?;
+    let owner1 = movement.create_funded_account(100_000_000).await?;
+    let owner2 = movement.create_funded_account(100_000_000).await?;
+    let owner3 = movement.create_funded_account(100_000_000).await?;
 
     println!("Owner 1: {}", owner1.address());
     println!("Owner 2: {}", owner2.address());
@@ -74,7 +74,7 @@ async fn main() -> anyhow::Result<()> {
         .build()?;
 
     println!("Creating 2-of-3 multisig account...");
-    let result = aptos
+    let result = movement
         .sign_submit_and_wait(&owner1, create_payload, None)
         .await?;
 
@@ -84,10 +84,10 @@ async fn main() -> anyhow::Result<()> {
 
     // Fund the multisig account
     println!("\nFunding multisig account...");
-    aptos.fund_account(multisig_address, 100_000_000).await?;
+    movement.fund_account(multisig_address, 100_000_000).await?;
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
-    let balance = aptos.get_balance(multisig_address).await?;
+    let balance = movement.get_balance(multisig_address).await?;
     println!("Multisig balance: {} APT", balance as f64 / 100_000_000.0);
 
     // ==== Part 4: Create a Transaction Proposal ====
@@ -107,7 +107,7 @@ async fn main() -> anyhow::Result<()> {
         .build()?;
 
     println!("Owner 1 creating transaction proposal...");
-    let proposal_result = aptos
+    let proposal_result = movement
         .sign_submit_and_wait(&owner1, proposal_payload, None)
         .await?;
 
@@ -132,7 +132,7 @@ async fn main() -> anyhow::Result<()> {
         .build()?;
 
     println!("Owner 2 approving proposal...");
-    let approve_result = aptos
+    let approve_result = movement
         .sign_submit_and_wait(&owner2, approve_payload, None)
         .await?;
 
@@ -159,21 +159,21 @@ async fn main() -> anyhow::Result<()> {
 
     // Build and submit the execution transaction
     // Any owner (or even non-owner) can execute once threshold is met
-    let seq = aptos.get_sequence_number(owner3.address()).await?;
+    let seq = movement.get_sequence_number(owner3.address()).await?;
     let raw_txn = TransactionBuilder::new()
         .sender(owner3.address())
         .sequence_number(seq)
         .payload(multisig_payload)
-        .chain_id(aptos.chain_id())
+        .chain_id(movement.chain_id())
         .max_gas_amount(200_000)
         .gas_unit_price(100)
         .expiration_from_now(600)
         .build()?;
 
-    let signed = aptos_sdk::transaction::builder::sign_transaction(&raw_txn, &owner3)?;
+    let signed = movement_sdk::transaction::builder::sign_transaction(&raw_txn, &owner3)?;
 
     println!("Owner 3 executing approved transaction...");
-    let exec_result = aptos.submit_and_wait(&signed, None).await?;
+    let exec_result = movement.submit_and_wait(&signed, None).await?;
 
     let success = exec_result
         .data
@@ -184,7 +184,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Verify the transfer
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-    let recipient_balance = aptos.get_balance(recipient.address()).await.unwrap_or(0);
+    let recipient_balance = movement.get_balance(recipient.address()).await.unwrap_or(0);
     println!(
         "Recipient received: {} APT",
         recipient_balance as f64 / 100_000_000.0
@@ -194,7 +194,7 @@ async fn main() -> anyhow::Result<()> {
     println!("\n--- Part 7: Querying Multisig Account State ---");
 
     // Query the multisig account configuration
-    query_multisig_state(&aptos, multisig_address).await?;
+    query_multisig_state(&movement, multisig_address).await?;
 
     // ==== Part 8: Reject a Proposal ====
     println!("\n--- Part 8: Rejecting a Proposal ---");
@@ -208,7 +208,7 @@ async fn main() -> anyhow::Result<()> {
             .build()?;
 
     println!("Owner 1 creating another proposal...");
-    aptos
+    movement
         .sign_submit_and_wait(&owner1, proposal2_payload, None)
         .await?;
     let sequence_number_2 = 2u64;
@@ -220,7 +220,7 @@ async fn main() -> anyhow::Result<()> {
         .build()?;
 
     println!("Owner 2 rejecting proposal #2...");
-    let reject_result = aptos
+    let reject_result = movement
         .sign_submit_and_wait(&owner2, reject_payload, None)
         .await?;
 
@@ -238,7 +238,7 @@ async fn main() -> anyhow::Result<()> {
         .build()?;
 
     println!("Owner 3 also rejecting proposal #2...");
-    aptos
+    movement
         .sign_submit_and_wait(&owner3, reject_payload_3, None)
         .await?;
 
@@ -249,7 +249,7 @@ async fn main() -> anyhow::Result<()> {
     println!("\n--- Part 9: Managing Owners ---");
 
     // Create a new potential owner
-    let new_owner = aptos.create_funded_account(10_000_000).await?;
+    let new_owner = movement.create_funded_account(10_000_000).await?;
     println!("New potential owner: {}", new_owner.address());
 
     // To add a new owner, you need to create a proposal that calls add_owner
@@ -328,11 +328,11 @@ fn extract_multisig_address(data: &serde_json::Value) -> anyhow::Result<AccountA
 
 /// Query and display multisig account state
 async fn query_multisig_state(
-    aptos: &Aptos,
+    movement: &Movement,
     multisig_address: AccountAddress,
 ) -> anyhow::Result<()> {
     // Get the MultisigAccount resource
-    let resource = aptos
+    let resource = movement
         .fullnode()
         .get_account_resource(multisig_address, "0x1::multisig_account::MultisigAccount")
         .await;

@@ -1,12 +1,12 @@
 //! Chain ID type.
 //!
-//! The chain ID identifies which Aptos network a transaction is intended for,
+//! The chain ID identifies which Movement network a transaction is intended for,
 //! preventing replay attacks across networks.
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-/// A chain identifier for an Aptos network.
+/// A chain identifier for an Movement network.
 ///
 /// The chain ID is included in every transaction to ensure transactions
 /// cannot be replayed across different networks.
@@ -21,7 +21,7 @@ use std::fmt;
 /// # Example
 ///
 /// ```rust
-/// use aptos_sdk::ChainId;
+/// use movement_sdk::ChainId;
 ///
 /// let mainnet = ChainId::mainnet();
 /// assert_eq!(mainnet.id(), 1);

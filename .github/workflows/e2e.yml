@@ -30,17 +30,17 @@ jobs:
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
 
-      - name: Install Aptos CLI
+      - name: Install Movement CLI
         run: |
-          curl -fsSL "https://aptos.dev/scripts/install_cli.py" | python3
+          curl -fsSL "https://docs.movementnetwork.xyz/scripts/install_cli.py" | python3
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: Verify Aptos CLI installation
-        run: aptos --version
+      - name: Verify Movement CLI installation
+        run: movement --version
 
       - name: Start localnet
         run: |
-          aptos node run-localnet --with-faucet --force-restart > "${{ runner.temp }}/localnet.log" 2>&1 &
+          movement node run-localnet --with-faucet --force-restart > "${{ runner.temp }}/localnet.log" 2>&1 &
           echo "LOCALNET_PID=$!" >> $GITHUB_ENV
           # Wait for localnet to be ready
           for i in $(seq 1 90); do
@@ -73,7 +73,7 @@ jobs:
         env:
           APTOS_LOCAL_FAUCET_URL: http://127.0.0.1:8081
           APTOS_LOCAL_NODE_URL: http://127.0.0.1:8080/v1
-        run: cargo test -p aptos-sdk --features "e2e,full" -- --ignored
+        run: cargo test -p movement-sdk --features "e2e,full" -- --ignored
 
       - name: Print localnet logs on failure
         if: failure()
@@ -83,4 +83,4 @@ jobs:
         if: always()
         run: |
           kill "$LOCALNET_PID" 2>/dev/null || true
-          pkill -f "aptos node" || true
+          pkill -f "movement node" || true

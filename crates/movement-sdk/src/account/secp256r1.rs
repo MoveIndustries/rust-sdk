@@ -7,7 +7,7 @@ use crate::account::account::{Account, AuthenticationKey};
 use crate::crypto::{
     SINGLE_KEY_SCHEME, Secp256r1PrivateKey, Secp256r1PublicKey, derive_authentication_key,
 };
-use crate::error::AptosResult;
+use crate::error::MovementResult;
 use crate::types::AccountAddress;
 use std::fmt;
 
@@ -19,7 +19,7 @@ use std::fmt;
 /// # Example
 ///
 /// ```rust
-/// use aptos_sdk::account::Secp256r1Account;
+/// use movement_sdk::account::Secp256r1Account;
 ///
 /// let account = Secp256r1Account::generate();
 /// println!("Address: {}", account.address());
@@ -54,7 +54,7 @@ impl Secp256r1Account {
     /// # Errors
     ///
     /// Returns an error if the bytes are not a valid Secp256r1 private key (must be exactly 32 bytes and a valid curve point).
-    pub fn from_private_key_bytes(bytes: &[u8]) -> AptosResult<Self> {
+    pub fn from_private_key_bytes(bytes: &[u8]) -> MovementResult<Self> {
         let private_key = Secp256r1PrivateKey::from_bytes(bytes)?;
         Ok(Self::from_private_key(private_key))
     }
@@ -66,7 +66,7 @@ impl Secp256r1Account {
     /// This function will return an error if:
     /// - The hex string is invalid or cannot be decoded
     /// - The decoded bytes are not a valid Secp256r1 private key
-    pub fn from_private_key_hex(hex_str: &str) -> AptosResult<Self> {
+    pub fn from_private_key_hex(hex_str: &str) -> MovementResult<Self> {
         let private_key = Secp256r1PrivateKey::from_hex(hex_str)?;
         Ok(Self::from_private_key(private_key))
     }
@@ -108,12 +108,12 @@ impl Account for Secp256r1Account {
         AuthenticationKey::new(key)
     }
 
-    fn sign(&self, message: &[u8]) -> crate::error::AptosResult<Vec<u8>> {
+    fn sign(&self, message: &[u8]) -> crate::error::MovementResult<Vec<u8>> {
         Ok(self.private_key.sign(message).to_bytes().to_vec())
     }
 
     fn public_key_bytes(&self) -> Vec<u8> {
-        // Return uncompressed format (65 bytes) as required by Aptos protocol
+        // Return uncompressed format (65 bytes) as required by Movement protocol
         self.public_key.to_uncompressed_bytes()
     }
 
@@ -170,7 +170,7 @@ mod tests {
         assert_eq!(sig_bytes.len(), 64); // P-256 signature is 64 bytes
 
         let pub_key_bytes = account.public_key_bytes();
-        assert_eq!(pub_key_bytes.len(), 65); // Uncompressed P-256 pubkey is 65 bytes (required by Aptos protocol)
+        assert_eq!(pub_key_bytes.len(), 65); // Uncompressed P-256 pubkey is 65 bytes (required by Movement protocol)
 
         assert!(!account.authentication_key().as_bytes().is_empty());
     }

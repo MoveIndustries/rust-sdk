@@ -8,8 +8,8 @@
 //!
 //! Run with: `cargo run --example simulation --features "ed25519,faucet"`
 
-use aptos_sdk::{
-    Aptos, AptosConfig,
+use movement_sdk::{
+    Movement, MovementConfig,
     account::Ed25519Account,
     transaction::{EntryFunction, TransactionBuilder},
     types::TypeTag,
@@ -20,7 +20,7 @@ async fn main() -> anyhow::Result<()> {
     println!("=== Transaction Simulation Example ===\n");
 
     // Setup
-    let aptos = Aptos::new(AptosConfig::testnet())?;
+    let movement = Movement::new(MovementConfig::testnet())?;
     println!("Connected to testnet");
 
     // Create and fund accounts
@@ -31,10 +31,10 @@ async fn main() -> anyhow::Result<()> {
 
     // Fund the sender
     println!("\nFunding sender account...");
-    aptos.fund_account(sender.address(), 100_000_000).await?;
+    movement.fund_account(sender.address(), 100_000_000).await?;
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
-    let balance = aptos.get_balance(sender.address()).await?;
+    let balance = movement.get_balance(sender.address()).await?;
     println!("Sender balance: {} APT", balance as f64 / 100_000_000.0);
 
     // 1. Simulate a valid transfer
@@ -47,7 +47,7 @@ async fn main() -> anyhow::Result<()> {
             "Simulating transfer of {} APT...",
             transfer_amount as f64 / 100_000_000.0
         );
-        let result = aptos.simulate(&sender, payload.into()).await?;
+        let result = movement.simulate(&sender, payload.into()).await?;
 
         println!("\nSimulation Result:");
         println!("  Success:      {}", result.success());
@@ -76,7 +76,7 @@ async fn main() -> anyhow::Result<()> {
             "Simulating transfer of {} APT (more than balance)...",
             huge_amount as f64 / 100_000_000.0
         );
-        let result = aptos.simulate(&sender, payload.into()).await?;
+        let result = movement.simulate(&sender, payload.into()).await?;
 
         println!("\nSimulation Result:");
         println!("  Success:    {}", result.success());
@@ -92,24 +92,24 @@ async fn main() -> anyhow::Result<()> {
     println!("\n--- 3. Simulation with Custom Gas Settings ---");
     {
         let payload = EntryFunction::apt_transfer(recipient.address(), 1_000_000)?;
-        let seq_num = aptos.get_sequence_number(sender.address()).await?;
+        let seq_num = movement.get_sequence_number(sender.address()).await?;
 
         // Build transaction with custom gas
         let raw_txn = TransactionBuilder::new()
             .sender(sender.address())
             .sequence_number(seq_num)
             .payload(payload.into())
-            .chain_id(aptos.chain_id())
+            .chain_id(movement.chain_id())
             .max_gas_amount(500) // Intentionally low
             .gas_unit_price(100)
             .expiration_from_now(600)
             .build()?;
 
         // Sign it
-        let signed = aptos_sdk::transaction::builder::sign_transaction(&raw_txn, &sender)?;
+        let signed = movement_sdk::transaction::builder::sign_transaction(&raw_txn, &sender)?;
 
         println!("Simulating with very low max_gas_amount (500 units)...");
-        let result = aptos.simulate_signed(&signed).await?;
+        let result = movement.simulate_signed(&signed).await?;
 
         println!("\nSimulation Result:");
         println!("  Success:        {}", result.success());
@@ -131,14 +131,14 @@ async fn main() -> anyhow::Result<()> {
         let payload = EntryFunction::apt_transfer(recipient.address(), 5_000_000)?;
 
         println!("Getting gas estimate for transfer...");
-        let estimated_gas = aptos.estimate_gas(&sender, payload.clone().into()).await?;
+        let estimated_gas = movement.estimate_gas(&sender, payload.clone().into()).await?;
 
         println!("\nGas Estimation:");
         println!("  Estimated gas (with 20% buffer): {} units", estimated_gas);
 
         // Now submit the transaction
         println!("\nSubmitting transaction...");
-        let txn_result = aptos
+        let txn_result = movement
             .sign_submit_and_wait(&sender, payload.into(), None)
             .await?;
 
@@ -165,7 +165,7 @@ async fn main() -> anyhow::Result<()> {
         );
 
         println!("Checking if APT coin store needs registration...");
-        let result = aptos.simulate(&sender, payload.into()).await?;
+        let result = movement.simulate(&sender, payload.into()).await?;
 
         if result.success() {
             println!("  Coin store registration would succeed (not yet registered)");

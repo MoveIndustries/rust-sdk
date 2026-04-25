@@ -7,7 +7,7 @@ use syn::{
     parse::{Parse, ParseStream},
 };
 
-/// Input for the `aptos_contract!` macro.
+/// Input for the `movement_contract!` macro.
 pub struct ContractInput {
     /// The name of the generated struct.
     pub name: Ident,
@@ -62,7 +62,7 @@ impl Parse for ContractInput {
     }
 }
 
-/// Input for the `aptos_contract_file!` macro.
+/// Input for the `movement_contract_file!` macro.
 pub struct FileInput {
     /// Path to the ABI file.
     pub path: String,

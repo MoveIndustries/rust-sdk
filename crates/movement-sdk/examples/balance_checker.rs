@@ -7,7 +7,7 @@
 //!
 //! Run with: `cargo run --example balance_checker --features "ed25519,faucet"`
 
-use aptos_sdk::{Aptos, AptosConfig, account::Ed25519Account, types::AccountAddress};
+use movement_sdk::{Movement, MovementConfig, account::Ed25519Account, types::AccountAddress};
 use std::time::Duration;
 
 const OCTAS_PER_APT: f64 = 100_000_000.0;
@@ -16,31 +16,31 @@ const OCTAS_PER_APT: f64 = 100_000_000.0;
 async fn main() -> anyhow::Result<()> {
     println!("=== Balance Checker Utility ===\n");
 
-    let aptos = Aptos::new(AptosConfig::testnet())?;
+    let movement = Movement::new(MovementConfig::testnet())?;
     println!("Connected to testnet\n");
 
     // 1. Check balance of a known address
     println!("--- 1. Check Single Address ---");
     {
-        // Aptos Framework address
+        // Movement Framework address
         let framework_addr = AccountAddress::ONE;
-        check_balance(&aptos, framework_addr, "Aptos Framework").await?;
+        check_balance(&movement, framework_addr, "Movement Framework").await?;
     }
 
     // 2. Check multiple addresses
     println!("\n--- 2. Check Multiple Addresses ---");
     {
         let addresses = vec![
-            (AccountAddress::ONE, "Aptos Framework (0x1)"),
-            (AccountAddress::THREE, "Aptos Token (0x3)"),
-            (AccountAddress::FOUR, "Aptos Token Objects (0x4)"),
+            (AccountAddress::ONE, "Movement Framework (0x1)"),
+            (AccountAddress::THREE, "Movement Token (0x3)"),
+            (AccountAddress::FOUR, "Movement Token Objects (0x4)"),
         ];
 
         println!("Checking {} addresses...\n", addresses.len());
 
         let mut total = 0u64;
         for (addr, name) in addresses {
-            if let Ok(balance) = aptos.get_balance(addr).await {
+            if let Ok(balance) = movement.get_balance(addr).await {
                 println!("  {}: {} APT", name, format_apt(balance));
                 total += balance;
             } else {
@@ -60,21 +60,21 @@ async fn main() -> anyhow::Result<()> {
 
         // Fund it
         println!("Funding account with 1 APT...");
-        aptos.fund_account(account.address(), 100_000_000).await?;
+        movement.fund_account(account.address(), 100_000_000).await?;
         tokio::time::sleep(Duration::from_secs(2)).await;
 
-        let initial_balance = aptos.get_balance(account.address()).await.unwrap_or(0);
+        let initial_balance = movement.get_balance(account.address()).await.unwrap_or(0);
         println!("Initial balance: {} APT", format_apt(initial_balance));
 
         // Do a transfer to change balance
         let recipient = Ed25519Account::generate();
         println!("\nTransferring 0.1 APT...");
-        aptos
+        movement
             .transfer_apt(&account, recipient.address(), 10_000_000)
             .await?;
 
         // Check new balance
-        let new_balance = aptos.get_balance(account.address()).await.unwrap_or(0);
+        let new_balance = movement.get_balance(account.address()).await.unwrap_or(0);
         println!("New balance: {} APT", format_apt(new_balance));
 
         let change = initial_balance as i64 - new_balance as i64;
@@ -88,10 +88,10 @@ async fn main() -> anyhow::Result<()> {
     println!("\n--- 4. Account Details ---");
     {
         let account = Ed25519Account::generate();
-        aptos.fund_account(account.address(), 50_000_000).await?;
+        movement.fund_account(account.address(), 50_000_000).await?;
         tokio::time::sleep(Duration::from_secs(2)).await;
 
-        print_account_details(&aptos, account.address()).await?;
+        print_account_details(&movement, account.address()).await?;
     }
 
     // 5. Check if account exists
@@ -99,12 +99,12 @@ async fn main() -> anyhow::Result<()> {
     {
         // Check a real account
         let real_addr = AccountAddress::ONE;
-        let exists = check_account_exists(&aptos, real_addr).await;
+        let exists = check_account_exists(&movement, real_addr).await;
         println!("  0x1 exists: {}", exists);
 
         // Check a random (likely non-existent) account
         let random_account = Ed25519Account::generate();
-        let exists = check_account_exists(&aptos, random_account.address()).await;
+        let exists = check_account_exists(&movement, random_account.address()).await;
         println!("  Random address exists: {}", exists);
     }
 
@@ -131,8 +131,8 @@ fn format_apt(octas: u64) -> String {
     }
 }
 
-async fn check_balance(aptos: &Aptos, address: AccountAddress, name: &str) -> anyhow::Result<u64> {
-    match aptos.get_balance(address).await {
+async fn check_balance(movement: &Movement, address: AccountAddress, name: &str) -> anyhow::Result<u64> {
+    match movement.get_balance(address).await {
         Ok(balance) => {
             println!("  {}", name);
             println!("    Address: {}", address);
@@ -152,20 +152,20 @@ async fn check_balance(aptos: &Aptos, address: AccountAddress, name: &str) -> an
     }
 }
 
-async fn print_account_details(aptos: &Aptos, address: AccountAddress) -> anyhow::Result<()> {
+async fn print_account_details(movement: &Movement, address: AccountAddress) -> anyhow::Result<()> {
     println!("Account: {}", address);
 
     // Get balance
-    let balance = aptos.get_balance(address).await.unwrap_or(0);
+    let balance = movement.get_balance(address).await.unwrap_or(0);
     println!("  Balance: {} APT", format_apt(balance));
 
     // Get sequence number
-    let seq_num = aptos.get_sequence_number(address).await.unwrap_or(0);
+    let seq_num = movement.get_sequence_number(address).await.unwrap_or(0);
     println!("  Sequence Number: {}", seq_num);
 
     Ok(())
 }
 
-async fn check_account_exists(aptos: &Aptos, address: AccountAddress) -> bool {
-    aptos.get_sequence_number(address).await.is_ok()
+async fn check_account_exists(movement: &Movement, address: AccountAddress) -> bool {
+    movement.get_sequence_number(address).await.is_ok()
 }

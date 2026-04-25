@@ -1,8 +1,8 @@
-//! Test module for the Aptos SDK.
+//! Test module for the Movement SDK.
 
 #[cfg(test)]
 mod integration_tests {
-    use crate::config::AptosConfig;
+    use crate::config::MovementConfig;
     use crate::types::AccountAddress;
 
     #[test]
@@ -19,8 +19,7 @@ mod integration_tests {
 
     #[test]
     fn test_config_creation() {
-        let config = AptosConfig::testnet();
+        let config = MovementConfig::testnet();
         assert!(config.fullnode_url().as_str().contains("testnet"));
-        assert!(config.faucet_url().is_some());
     }
 }

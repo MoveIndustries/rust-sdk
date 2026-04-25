@@ -1,28 +1,28 @@
-//! # Aptos Rust SDK v2
+//! # Movement Rust SDK v2
 //!
-//! A user-friendly, idiomatic Rust SDK for the Aptos blockchain.
+//! A user-friendly, idiomatic Rust SDK for the Movement blockchain.
 //!
-//! This SDK provides a complete interface for interacting with the Aptos blockchain,
+//! This SDK provides a complete interface for interacting with the Movement blockchain,
 //! including account management, transaction building and signing, and API clients
 //! for both the fullnode REST API and the indexer GraphQL API.
 //!
 //! ## Quick Start
 //!
 //! ```rust,ignore
-//! use aptos_sdk::{Aptos, AptosConfig};
-//! use aptos_sdk::account::{Account, Ed25519Account};
+//! use movement_sdk::{Movement, MovementConfig};
+//! use movement_sdk::account::{Account, Ed25519Account};
 //!
 //! #[tokio::main]
 //! async fn main() -> anyhow::Result<()> {
 //!     // Connect to testnet
-//!     let aptos = Aptos::new(AptosConfig::testnet())?;
+//!     let movement = Movement::new(MovementConfig::testnet())?;
 //!
 //!     // Create a new account
 //!     let account = Ed25519Account::generate();
 //!     println!("Address: {}", account.address());
 //!
 //!     // Get balance (after funding)
-//!     let balance = aptos.get_balance(account.address()).await?;
+//!     let balance = movement.get_balance(account.address()).await?;
 //!     println!("Balance: {} octas", balance);
 //!
 //!     Ok(())
@@ -51,7 +51,7 @@
 //! - [`crypto`] - Cryptographic primitives and signature schemes
 //! - [`transaction`] - Transaction building and signing
 //! - [`api`] - REST and GraphQL API clients
-//! - [`types`] - Core Aptos types
+//! - [`types`] - Core Movement types
 //! - [`codegen`] - Code generation from Move ABIs
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
@@ -79,19 +79,19 @@ pub mod retry;
 pub mod transaction;
 pub mod types;
 
-mod aptos;
+mod movement;
 
 // Re-export main entry points
-pub use aptos::Aptos;
-pub use config::AptosConfig;
-pub use error::{AptosError, AptosResult};
+pub use movement::Movement;
+pub use config::MovementConfig;
+pub use error::{MovementError, MovementResult};
 
 // Re-export commonly used types
 pub use types::{AccountAddress, ChainId, HashValue};
 
 // Re-export proc macros when the feature is enabled
 #[cfg(feature = "macros")]
-pub use aptos_sdk_macros::{MoveStruct, aptos_contract, aptos_contract_file};
+pub use movement_sdk_macros::{MoveStruct, movement_contract, movement_contract_file};
 
 // Re-export aptos_bcs for use by the MoveStruct derive macro
 // This allows downstream users to use the derive macro without adding aptos-bcs as a dependency

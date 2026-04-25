@@ -1,7 +1,7 @@
 //! Transaction builder.
 
 use crate::account::Account;
-use crate::error::{AptosError, AptosResult};
+use crate::error::{MovementError, MovementResult};
 use crate::transaction::authenticator::{AccountAuthenticator, TransactionAuthenticator};
 use crate::transaction::payload::TransactionPayload;
 use crate::transaction::types::{
@@ -22,8 +22,8 @@ pub const DEFAULT_EXPIRATION_SECONDS: u64 = 600; // 10 minutes
 /// # Example
 ///
 /// ```rust,no_run
-/// use aptos_sdk::transaction::{TransactionBuilder, EntryFunction};
-/// use aptos_sdk::types::{AccountAddress, ChainId};
+/// use movement_sdk::transaction::{TransactionBuilder, EntryFunction};
+/// use movement_sdk::types::{AccountAddress, ChainId};
 ///
 /// let payload = EntryFunction::apt_transfer(
 ///     AccountAddress::from_hex("0x123").unwrap(),
@@ -141,19 +141,19 @@ impl TransactionBuilder {
     /// - `sequence_number` is required
     /// - `payload` is required
     /// - `chain_id` is required
-    pub fn build(self) -> AptosResult<RawTransaction> {
+    pub fn build(self) -> MovementResult<RawTransaction> {
         let sender = self
             .sender
-            .ok_or_else(|| AptosError::transaction("sender is required"))?;
+            .ok_or_else(|| MovementError::transaction("sender is required"))?;
         let sequence_number = self
             .sequence_number
-            .ok_or_else(|| AptosError::transaction("sequence_number is required"))?;
+            .ok_or_else(|| MovementError::transaction("sequence_number is required"))?;
         let payload = self
             .payload
-            .ok_or_else(|| AptosError::transaction("payload is required"))?;
+            .ok_or_else(|| MovementError::transaction("payload is required"))?;
         let chain_id = self
             .chain_id
-            .ok_or_else(|| AptosError::transaction("chain_id is required"))?;
+            .ok_or_else(|| MovementError::transaction("chain_id is required"))?;
 
         let expiration_timestamp_secs = self.expiration_timestamp_secs.unwrap_or_else(|| {
             SystemTime::now()
@@ -180,7 +180,7 @@ impl TransactionBuilder {
     ///
     /// Returns an error if the transaction cannot be built or signed.
     #[cfg(feature = "ed25519")]
-    pub fn build_and_sign<A: Account>(self, account: &A) -> AptosResult<SignedTransaction> {
+    pub fn build_and_sign<A: Account>(self, account: &A) -> MovementResult<SignedTransaction> {
         let sender = self.sender.unwrap_or_else(|| account.address());
         let raw_txn = Self {
             sender: Some(sender),
@@ -200,7 +200,7 @@ impl TransactionBuilder {
 pub fn sign_transaction<A: Account>(
     raw_txn: &RawTransaction,
     account: &A,
-) -> AptosResult<SignedTransaction> {
+) -> MovementResult<SignedTransaction> {
     let signing_message = raw_txn.signing_message()?;
     let signature = account.sign(&signing_message)?;
     let public_key = account.public_key_bytes();
@@ -220,7 +220,7 @@ fn make_transaction_authenticator(
     scheme: u8,
     public_key: Vec<u8>,
     signature: Vec<u8>,
-) -> AptosResult<TransactionAuthenticator> {
+) -> MovementResult<TransactionAuthenticator> {
     match scheme {
         crate::crypto::ED25519_SCHEME => {
             Ok(TransactionAuthenticator::ed25519(public_key, signature))
@@ -250,7 +250,7 @@ fn make_transaction_authenticator(
                 AccountAuthenticator::keyless(public_key, signature),
             ))
         }
-        _ => Err(AptosError::InvalidSignature(format!(
+        _ => Err(MovementError::InvalidSignature(format!(
             "unknown signature scheme: {scheme}"
         ))),
     }
@@ -265,7 +265,7 @@ fn make_account_authenticator(
     scheme: u8,
     public_key: Vec<u8>,
     signature: Vec<u8>,
-) -> AptosResult<AccountAuthenticator> {
+) -> MovementResult<AccountAuthenticator> {
     match scheme {
         crate::crypto::ED25519_SCHEME => Ok(AccountAuthenticator::ed25519(public_key, signature)),
         crate::crypto::MULTI_ED25519_SCHEME => Ok(AccountAuthenticator::MultiEd25519 {
@@ -280,7 +280,7 @@ fn make_account_authenticator(
         }
         #[cfg(feature = "keyless")]
         crate::crypto::KEYLESS_SCHEME => Ok(AccountAuthenticator::keyless(public_key, signature)),
-        _ => Err(AptosError::InvalidSignature(format!(
+        _ => Err(MovementError::InvalidSignature(format!(
             "unknown signature scheme: {scheme}"
         ))),
     }
@@ -295,7 +295,7 @@ pub fn sign_multi_agent_transaction<A: Account>(
     multi_agent: &MultiAgentRawTransaction,
     sender: &A,
     secondary_signers: &[&dyn Account],
-) -> AptosResult<SignedTransaction> {
+) -> MovementResult<SignedTransaction> {
     let signing_message = multi_agent.signing_message()?;
 
     // Sign with sender
@@ -341,7 +341,7 @@ pub fn sign_fee_payer_transaction<A: Account>(
     sender: &A,
     secondary_signers: &[&dyn Account],
     fee_payer: &dyn Account,
-) -> AptosResult<SignedTransaction> {
+) -> MovementResult<SignedTransaction> {
     let signing_message = fee_payer_txn.signing_message()?;
 
     // Sign with sender

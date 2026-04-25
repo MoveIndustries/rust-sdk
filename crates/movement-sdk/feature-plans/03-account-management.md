@@ -2,7 +2,7 @@
 
 ## Overview
 
-The account management module provides abstractions for Aptos accounts, including key management, address derivation, and signing capabilities. It wraps cryptographic primitives with a user-friendly interface.
+The account management module provides abstractions for Movement accounts, including key management, address derivation, and signing capabilities. It wraps cryptographic primitives with a user-friendly interface.
 
 ## Goals
 
@@ -92,19 +92,19 @@ impl Ed25519Account {
     pub fn from_private_key(private_key: Ed25519PrivateKey) -> Self;
     
     /// Create from private key hex string.
-    pub fn from_private_key_hex(hex: &str) -> Result<Self, AptosError>;
+    pub fn from_private_key_hex(hex: &str) -> Result<Self, MovementError>;
     
     /// Create from private key bytes.
-    pub fn from_private_key_bytes(bytes: &[u8]) -> Result<Self, AptosError>;
+    pub fn from_private_key_bytes(bytes: &[u8]) -> Result<Self, MovementError>;
     
     /// Create from mnemonic with default path.
-    pub fn from_mnemonic(mnemonic: &Mnemonic) -> Result<Self, AptosError>;
+    pub fn from_mnemonic(mnemonic: &Mnemonic) -> Result<Self, MovementError>;
     
     /// Create from mnemonic with custom derivation path.
     pub fn from_mnemonic_with_path(
         mnemonic: &Mnemonic,
         path: &str,
-    ) -> Result<Self, AptosError>;
+    ) -> Result<Self, MovementError>;
     
     /// Get the address.
     pub fn address(&self) -> AccountAddress;
@@ -141,10 +141,10 @@ impl Secp256k1Account {
     pub fn from_private_key(private_key: Secp256k1PrivateKey) -> Self;
     
     /// Create from private key hex string.
-    pub fn from_private_key_hex(hex: &str) -> Result<Self, AptosError>;
+    pub fn from_private_key_hex(hex: &str) -> Result<Self, MovementError>;
     
     /// Create from mnemonic with default path.
-    pub fn from_mnemonic(mnemonic: &Mnemonic) -> Result<Self, AptosError>;
+    pub fn from_mnemonic(mnemonic: &Mnemonic) -> Result<Self, MovementError>;
     
     // ... same interface as Ed25519Account
 }
@@ -222,7 +222,7 @@ Account (as above)
 ### Creating Accounts
 
 ```rust
-use aptos_sdk::account::{Ed25519Account, Mnemonic, Account};
+use movement_sdk::account::{Ed25519Account, Mnemonic, Account};
 
 // Generate random
 let account = Ed25519Account::generate();
@@ -261,7 +261,7 @@ let sig2 = sign_message(&secp, b"hello");
 ### Dynamic Account Selection
 
 ```rust
-use aptos_sdk::account::AnyAccount;
+use movement_sdk::account::AnyAccount;
 
 fn load_account(config: &Config) -> AnyAccount {
     match config.key_type.as_str() {

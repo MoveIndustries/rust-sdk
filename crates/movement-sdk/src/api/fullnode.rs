@@ -1,10 +1,10 @@
 //! Fullnode REST API client.
 
 use crate::api::response::{
-    AccountData, AptosResponse, GasEstimation, LedgerInfo, MoveModule, PendingTransaction, Resource,
+    AccountData, MovementResponse, GasEstimation, LedgerInfo, MoveModule, PendingTransaction, Resource,
 };
-use crate::config::AptosConfig;
-use crate::error::{AptosError, AptosResult};
+use crate::config::MovementConfig;
+use crate::error::{MovementError, MovementResult};
 use crate::retry::{RetryConfig, RetryExecutor};
 use crate::transaction::types::SignedTransaction;
 use crate::types::{AccountAddress, HashValue};
@@ -14,6 +14,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use url::Url;
 
+// Wire-protocol identifier defined by the Aptos-derived fullnode; do not rebrand.
 const BCS_CONTENT_TYPE: &str = "application/x.aptos.signed_transaction+bcs";
 const BCS_VIEW_CONTENT_TYPE: &str = "application/x-bcs";
 const JSON_CONTENT_TYPE: &str = "application/json";
@@ -27,31 +28,31 @@ const DEFAULT_TRANSACTION_WAIT_TIMEOUT_SECS: u64 = 30;
 /// large error response bodies.
 const MAX_ERROR_BODY_SIZE: usize = 8 * 1024;
 
-/// Client for the Aptos fullnode REST API.
+/// Client for the Movement fullnode REST API.
 ///
 /// The client supports automatic retry with exponential backoff for transient
-/// failures. Configure retry behavior via [`AptosConfig::with_retry`].
+/// failures. Configure retry behavior via [`MovementConfig::with_retry`].
 ///
 /// # Example
 ///
 /// ```rust,no_run
-/// use aptos_sdk::api::FullnodeClient;
-/// use aptos_sdk::config::AptosConfig;
-/// use aptos_sdk::retry::RetryConfig;
+/// use movement_sdk::api::FullnodeClient;
+/// use movement_sdk::config::MovementConfig;
+/// use movement_sdk::retry::RetryConfig;
 ///
 /// #[tokio::main]
 /// async fn main() -> anyhow::Result<()> {
 ///     // Default retry configuration
-///     let client = FullnodeClient::new(AptosConfig::testnet())?;
+///     let client = FullnodeClient::new(MovementConfig::testnet())?;
 ///     
 ///     // Aggressive retry for unstable networks
 ///     let client = FullnodeClient::new(
-///         AptosConfig::testnet().with_retry(RetryConfig::aggressive())
+///         MovementConfig::testnet().with_retry(RetryConfig::aggressive())
 ///     )?;
 ///     
 ///     // Disable retry for debugging
 ///     let client = FullnodeClient::new(
-///         AptosConfig::testnet().without_retry()
+///         MovementConfig::testnet().without_retry()
 ///     )?;
 ///     
 ///     let ledger_info = client.get_ledger_info().await?;
@@ -61,7 +62,7 @@ const MAX_ERROR_BODY_SIZE: usize = 8 * 1024;
 /// ```
 #[derive(Debug, Clone)]
 pub struct FullnodeClient {
-    config: AptosConfig,
+    config: MovementConfig,
     client: Client,
     retry_config: Arc<RetryConfig>,
 }
@@ -76,7 +77,7 @@ impl FullnodeClient {
     /// - Requires valid TLS certificates for HTTPS connections
     /// - Uses secure TLS versions (TLS 1.2+)
     ///
-    /// All Aptos network endpoints (mainnet, testnet, devnet) use HTTPS with
+    /// All Movement network endpoints (mainnet, testnet, devnet) use HTTPS with
     /// valid certificates. The local configuration uses HTTP for development.
     ///
     /// For custom deployments requiring custom CA certificates, use the
@@ -86,12 +87,12 @@ impl FullnodeClient {
     /// # Errors
     ///
     /// Returns an error if the HTTP client fails to build (e.g., invalid TLS configuration).
-    pub fn new(config: AptosConfig) -> AptosResult<Self> {
+    pub fn new(config: MovementConfig) -> MovementResult<Self> {
         let pool = config.pool_config();
 
         // SECURITY: TLS certificate validation is enabled by default via reqwest.
         // The client will reject connections to servers with invalid certificates.
-        // All production Aptos endpoints use HTTPS with valid certificates.
+        // All production Movement endpoints use HTTPS with valid certificates.
         let mut builder = Client::builder()
             .timeout(config.timeout)
             .pool_max_idle_per_host(pool.max_idle_per_host.unwrap_or(usize::MAX))
@@ -102,7 +103,7 @@ impl FullnodeClient {
             builder = builder.tcp_keepalive(keepalive);
         }
 
-        let client = builder.build().map_err(AptosError::Http)?;
+        let client = builder.build().map_err(MovementError::Http)?;
 
         let retry_config = Arc::new(config.retry_config().clone());
 
@@ -131,7 +132,7 @@ impl FullnodeClient {
     ///
     /// Returns an error if the HTTP request fails, the API returns an error status code,
     /// or the response cannot be parsed as JSON.
-    pub async fn get_ledger_info(&self) -> AptosResult<AptosResponse<LedgerInfo>> {
+    pub async fn get_ledger_info(&self) -> MovementResult<MovementResponse<LedgerInfo>> {
         let url = self.build_url("");
         self.get_json(url).await
     }
@@ -147,7 +148,7 @@ impl FullnodeClient {
     pub async fn get_account(
         &self,
         address: AccountAddress,
-    ) -> AptosResult<AptosResponse<AccountData>> {
+    ) -> MovementResult<MovementResponse<AccountData>> {
         let url = self.build_url(&format!("accounts/{address}"));
         self.get_json(url).await
     }
@@ -158,12 +159,12 @@ impl FullnodeClient {
     ///
     /// Returns an error if fetching the account fails, the account is not found (404),
     /// or the sequence number cannot be parsed from the account data.
-    pub async fn get_sequence_number(&self, address: AccountAddress) -> AptosResult<u64> {
+    pub async fn get_sequence_number(&self, address: AccountAddress) -> MovementResult<u64> {
         let account = self.get_account(address).await?;
         account
             .data
             .sequence_number()
-            .map_err(|e| AptosError::Internal(format!("failed to parse sequence number: {e}")))
+            .map_err(|e| MovementError::Internal(format!("failed to parse sequence number: {e}")))
     }
 
     /// Gets all resources for an account.
@@ -175,7 +176,7 @@ impl FullnodeClient {
     pub async fn get_account_resources(
         &self,
         address: AccountAddress,
-    ) -> AptosResult<AptosResponse<Vec<Resource>>> {
+    ) -> MovementResult<MovementResponse<Vec<Resource>>> {
         let url = self.build_url(&format!("accounts/{address}/resources"));
         self.get_json(url).await
     }
@@ -190,7 +191,7 @@ impl FullnodeClient {
         &self,
         address: AccountAddress,
         resource_type: &str,
-    ) -> AptosResult<AptosResponse<Resource>> {
+    ) -> MovementResult<MovementResponse<Resource>> {
         let url = self.build_url(&format!(
             "accounts/{}/resource/{}",
             address,
@@ -208,7 +209,7 @@ impl FullnodeClient {
     pub async fn get_account_modules(
         &self,
         address: AccountAddress,
-    ) -> AptosResult<AptosResponse<Vec<MoveModule>>> {
+    ) -> MovementResult<MovementResponse<Vec<MoveModule>>> {
         let url = self.build_url(&format!("accounts/{address}/modules"));
         self.get_json(url).await
     }
@@ -223,7 +224,7 @@ impl FullnodeClient {
         &self,
         address: AccountAddress,
         module_name: &str,
-    ) -> AptosResult<AptosResponse<MoveModule>> {
+    ) -> MovementResult<MovementResponse<MoveModule>> {
         let url = self.build_url(&format!("accounts/{address}/module/{module_name}"));
         self.get_json(url).await
     }
@@ -236,7 +237,7 @@ impl FullnodeClient {
     ///
     /// Returns an error if the view function call fails, the response cannot be parsed,
     /// or the balance value cannot be converted to u64.
-    pub async fn get_account_balance(&self, address: AccountAddress) -> AptosResult<u64> {
+    pub async fn get_account_balance(&self, address: AccountAddress) -> MovementResult<u64> {
         // Use the coin::balance view function which works with both legacy CoinStore
         // and the newer Fungible Asset standard
         let result = self
@@ -252,11 +253,11 @@ impl FullnodeClient {
             .data
             .first()
             .and_then(|v| v.as_str())
-            .ok_or_else(|| AptosError::Internal("failed to parse balance response".into()))?;
+            .ok_or_else(|| MovementError::Internal("failed to parse balance response".into()))?;
 
         balance_str
             .parse()
-            .map_err(|_| AptosError::Internal("failed to parse balance as u64".into()))
+            .map_err(|_| MovementError::Internal("failed to parse balance as u64".into()))
     }
 
     // === Transactions ===
@@ -273,7 +274,7 @@ impl FullnodeClient {
     pub async fn submit_transaction(
         &self,
         signed_txn: &SignedTransaction,
-    ) -> AptosResult<AptosResponse<PendingTransaction>> {
+    ) -> MovementResult<MovementResponse<PendingTransaction>> {
         let url = self.build_url("transactions");
         let bcs_bytes = signed_txn.to_bcs()?;
         let client = self.client.clone();
@@ -311,7 +312,7 @@ impl FullnodeClient {
         &self,
         signed_txn: &SignedTransaction,
         timeout: Option<Duration>,
-    ) -> AptosResult<AptosResponse<serde_json::Value>> {
+    ) -> MovementResult<MovementResponse<serde_json::Value>> {
         let pending = self.submit_transaction(signed_txn).await?;
         self.wait_for_transaction(&pending.data.hash, timeout).await
     }
@@ -325,7 +326,7 @@ impl FullnodeClient {
     pub async fn get_transaction_by_hash(
         &self,
         hash: &HashValue,
-    ) -> AptosResult<AptosResponse<serde_json::Value>> {
+    ) -> MovementResult<MovementResponse<serde_json::Value>> {
         let url = self.build_url(&format!("transactions/by_hash/{hash}"));
         self.get_json(url).await
     }
@@ -342,7 +343,7 @@ impl FullnodeClient {
         &self,
         hash: &HashValue,
         timeout: Option<Duration>,
-    ) -> AptosResult<AptosResponse<serde_json::Value>> {
+    ) -> MovementResult<MovementResponse<serde_json::Value>> {
         let timeout = timeout.unwrap_or(Duration::from_secs(DEFAULT_TRANSACTION_WAIT_TIMEOUT_SECS));
         let start = std::time::Instant::now();
 
@@ -368,12 +369,12 @@ impl FullnodeClient {
                                 .and_then(|v| v.as_str())
                                 .unwrap_or("unknown")
                                 .to_string();
-                            return Err(AptosError::ExecutionFailed { vm_status });
+                            return Err(MovementError::ExecutionFailed { vm_status });
                         }
                         return Ok(response);
                     }
                 }
-                Err(AptosError::Api {
+                Err(MovementError::Api {
                     status_code: 404, ..
                 }) => {
                     // Transaction not found yet, continue waiting
@@ -382,7 +383,7 @@ impl FullnodeClient {
             }
 
             if start.elapsed() >= timeout {
-                return Err(AptosError::TransactionTimeout {
+                return Err(MovementError::TransactionTimeout {
                     hash: hash.to_string(),
                     timeout_secs: timeout.as_secs(),
                 });
@@ -404,7 +405,7 @@ impl FullnodeClient {
     pub async fn simulate_transaction(
         &self,
         signed_txn: &SignedTransaction,
-    ) -> AptosResult<AptosResponse<Vec<serde_json::Value>>> {
+    ) -> MovementResult<MovementResponse<Vec<serde_json::Value>>> {
         let url = self.build_url("transactions/simulate");
         let bcs_bytes = signed_txn.to_bcs()?;
         let client = self.client.clone();
@@ -440,7 +441,7 @@ impl FullnodeClient {
     ///
     /// Returns an error if the HTTP request fails, the API returns an error status code,
     /// or the response cannot be parsed as JSON.
-    pub async fn estimate_gas_price(&self) -> AptosResult<AptosResponse<GasEstimation>> {
+    pub async fn estimate_gas_price(&self) -> MovementResult<MovementResponse<GasEstimation>> {
         let url = self.build_url("estimate_gas_price");
         self.get_json(url).await
     }
@@ -458,7 +459,7 @@ impl FullnodeClient {
         function: &str,
         type_args: Vec<String>,
         args: Vec<serde_json::Value>,
-    ) -> AptosResult<AptosResponse<Vec<serde_json::Value>>> {
+    ) -> MovementResult<MovementResponse<Vec<serde_json::Value>>> {
         let url = self.build_url("view");
 
         let body = serde_json::json!({
@@ -518,11 +519,11 @@ impl FullnodeClient {
         function: &str,
         type_args: Vec<String>,
         args: Vec<Vec<u8>>,
-    ) -> AptosResult<AptosResponse<Vec<u8>>> {
+    ) -> MovementResult<MovementResponse<Vec<u8>>> {
         let url = self.build_url("view");
 
         // Convert BCS args to hex strings for the JSON request body.
-        // The Aptos API accepts hex-encoded BCS bytes in the arguments array.
+        // The Movement API accepts hex-encoded BCS bytes in the arguments array.
         let hex_args: Vec<serde_json::Value> = args
             .iter()
             .map(|bytes| serde_json::json!(const_hex::encode_prefixed(bytes)))
@@ -565,7 +566,7 @@ impl FullnodeClient {
                         let error_text = error_bytes
                             .and_then(|b| String::from_utf8(b).ok())
                             .unwrap_or_default();
-                        return Err(AptosError::Api {
+                        return Err(MovementError::Api {
                             status_code: status.as_u16(),
                             message: Self::truncate_error_body(error_text),
                             error_code: None,
@@ -577,7 +578,7 @@ impl FullnodeClient {
                     // from malicious responses (including chunked encoding).
                     let bytes =
                         crate::config::read_response_bounded(response, max_response_size).await?;
-                    Ok(AptosResponse::new(bytes))
+                    Ok(MovementResponse::new(bytes))
                 }
             })
             .await
@@ -598,7 +599,7 @@ impl FullnodeClient {
         field_name: &str,
         start: Option<u64>,
         limit: Option<u64>,
-    ) -> AptosResult<AptosResponse<Vec<serde_json::Value>>> {
+    ) -> MovementResult<MovementResponse<Vec<serde_json::Value>>> {
         let mut url = self.build_url(&format!(
             "accounts/{}/events/{}/{}",
             address,
@@ -631,7 +632,7 @@ impl FullnodeClient {
         &self,
         height: u64,
         with_transactions: bool,
-    ) -> AptosResult<AptosResponse<serde_json::Value>> {
+    ) -> MovementResult<MovementResponse<serde_json::Value>> {
         let mut url = self.build_url(&format!("blocks/by_height/{height}"));
         url.query_pairs_mut()
             .append_pair("with_transactions", &with_transactions.to_string());
@@ -648,7 +649,7 @@ impl FullnodeClient {
         &self,
         version: u64,
         with_transactions: bool,
-    ) -> AptosResult<AptosResponse<serde_json::Value>> {
+    ) -> MovementResult<MovementResponse<serde_json::Value>> {
         let mut url = self.build_url(&format!("blocks/by_version/{version}"));
         url.query_pairs_mut()
             .append_pair("with_transactions", &with_transactions.to_string());
@@ -678,7 +679,7 @@ impl FullnodeClient {
     async fn get_json<T: for<'de> serde::Deserialize<'de>>(
         &self,
         url: Url,
-    ) -> AptosResult<AptosResponse<T>> {
+    ) -> MovementResult<MovementResponse<T>> {
         let client = self.client.clone();
         let url_clone = url.clone();
         let retry_config = self.retry_config.clone();
@@ -734,7 +735,7 @@ impl FullnodeClient {
     async fn handle_response_static<T: for<'de> serde::Deserialize<'de>>(
         response: reqwest::Response,
         max_response_size: usize,
-    ) -> AptosResult<AptosResponse<T>> {
+    ) -> MovementResult<MovementResponse<T>> {
         let status = response.status();
 
         // Extract headers before consuming response body
@@ -781,7 +782,7 @@ impl FullnodeClient {
             // from malicious responses (including chunked encoding).
             let bytes = crate::config::read_response_bounded(response, max_response_size).await?;
             let data: T = serde_json::from_slice(&bytes)?;
-            Ok(AptosResponse {
+            Ok(MovementResponse {
                 data,
                 ledger_version,
                 ledger_timestamp,
@@ -793,7 +794,7 @@ impl FullnodeClient {
         } else if status.as_u16() == 429 {
             // SECURITY: Return specific RateLimited error with Retry-After info
             // This allows callers to respect the server's rate limiting
-            Err(AptosError::RateLimited { retry_after_secs })
+            Err(MovementError::RateLimited { retry_after_secs })
         } else {
             // SECURITY: Bound error body reads to prevent OOM from malicious
             // servers sending huge error responses (including chunked encoding).
@@ -818,7 +819,7 @@ impl FullnodeClient {
                 .get("vm_error_code")
                 .and_then(serde_json::Value::as_u64);
 
-            Err(AptosError::api_with_details(
+            Err(MovementError::api_with_details(
                 status.as_u16(),
                 message,
                 error_code,
@@ -832,7 +833,7 @@ impl FullnodeClient {
     async fn handle_response<T: for<'de> serde::Deserialize<'de>>(
         &self,
         response: reqwest::Response,
-    ) -> AptosResult<AptosResponse<T>> {
+    ) -> MovementResult<MovementResponse<T>> {
         let max_response_size = self.config.pool_config().max_response_size;
         Self::handle_response_static(response, max_response_size).await
     }
@@ -848,7 +849,7 @@ mod tests {
 
     #[test]
     fn test_build_url() {
-        let client = FullnodeClient::new(AptosConfig::testnet()).unwrap();
+        let client = FullnodeClient::new(MovementConfig::testnet()).unwrap();
         let url = client.build_url("accounts/0x1");
         assert!(url.as_str().contains("accounts/0x1"));
     }
@@ -856,7 +857,7 @@ mod tests {
     fn create_mock_client(server: &MockServer) -> FullnodeClient {
         // The mock server URL needs to include /v1 since that's part of the base URL
         let url = format!("{}/v1", server.uri());
-        let config = AptosConfig::custom(&url).unwrap().without_retry();
+        let config = MovementConfig::custom(&url).unwrap().without_retry();
         FullnodeClient::new(config).unwrap()
     }
 
@@ -1127,7 +1128,7 @@ mod tests {
             .await;
 
         let url = format!("{}/v1", server.uri());
-        let config = AptosConfig::custom(&url).unwrap().without_retry();
+        let config = MovementConfig::custom(&url).unwrap().without_retry();
         let client = FullnodeClient::new(config).unwrap();
         let result = client.get_ledger_info().await;
 
@@ -1153,7 +1154,7 @@ mod tests {
             .await;
 
         let url = format!("{}/v1", server.uri());
-        let config = AptosConfig::custom(&url).unwrap().without_retry();
+        let config = MovementConfig::custom(&url).unwrap().without_retry();
         let client = FullnodeClient::new(config).unwrap();
         let result = client.get_ledger_info().await;
 
@@ -1196,7 +1197,7 @@ mod tests {
             .await;
 
         let client = create_mock_client(&server);
-        let result: AptosResponse<Vec<serde_json::Value>> = client
+        let result: MovementResponse<Vec<serde_json::Value>> = client
             .view(
                 "0x1::coin::balance",
                 vec!["0x1::aptos_coin::AptosCoin".to_string()],

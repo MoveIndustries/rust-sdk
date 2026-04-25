@@ -1,9 +1,9 @@
 //! Account address type.
 //!
-//! Aptos account addresses are 32-byte values, typically displayed as
+//! Movement account addresses are 32-byte values, typically displayed as
 //! 64 hexadecimal characters with a `0x` prefix.
 
-use crate::error::{AptosError, AptosResult};
+use crate::error::{MovementError, MovementResult};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 use std::str::FromStr;
@@ -11,9 +11,9 @@ use std::str::FromStr;
 /// The length of an account address in bytes.
 pub const ADDRESS_LENGTH: usize = 32;
 
-/// A 32-byte Aptos account address.
+/// A 32-byte Movement account address.
 ///
-/// Account addresses on Aptos are derived from public keys through a
+/// Account addresses on Movement are derived from public keys through a
 /// specific derivation scheme that includes an authentication key prefix.
 ///
 /// # Display Format (AIP-40)
@@ -28,7 +28,7 @@ pub const ADDRESS_LENGTH: usize = 32;
 /// # Example
 ///
 /// ```rust
-/// use aptos_sdk::AccountAddress;
+/// use movement_sdk::AccountAddress;
 ///
 /// // Parse from hex string
 /// let addr = AccountAddress::from_hex("0x1").unwrap();
@@ -89,12 +89,12 @@ impl AccountAddress {
     /// Returns an error if the input is empty, contains invalid UTF-8, has no hex digits
     /// after the prefix, exceeds the maximum length (64 hex characters), or contains
     /// invalid hex characters.
-    pub fn from_hex<T: AsRef<[u8]>>(hex_str: T) -> AptosResult<Self> {
+    pub fn from_hex<T: AsRef<[u8]>>(hex_str: T) -> MovementResult<Self> {
         let hex_str = hex_str.as_ref();
 
         // Reject empty input
         if hex_str.is_empty() {
-            return Err(AptosError::InvalidAddress(
+            return Err(MovementError::InvalidAddress(
                 "address cannot be empty".to_string(),
             ));
         }
@@ -107,17 +107,17 @@ impl AccountAddress {
 
         // Handle short addresses by zero-padding
         let hex_string =
-            std::str::from_utf8(hex_str).map_err(|e| AptosError::InvalidAddress(e.to_string()))?;
+            std::str::from_utf8(hex_str).map_err(|e| MovementError::InvalidAddress(e.to_string()))?;
 
         // Reject empty hex string (e.g., just "0x" prefix with no digits)
         if hex_string.is_empty() {
-            return Err(AptosError::InvalidAddress(
+            return Err(MovementError::InvalidAddress(
                 "address must contain at least one hex digit".to_string(),
             ));
         }
 
         if hex_string.len() > ADDRESS_LENGTH * 2 {
-            return Err(AptosError::InvalidAddress(format!(
+            return Err(MovementError::InvalidAddress(format!(
                 "address too long: {} characters (max {})",
                 hex_string.len(),
                 ADDRESS_LENGTH * 2
@@ -138,10 +138,10 @@ impl AccountAddress {
     /// # Errors
     ///
     /// Returns an error if the byte slice is not exactly 32 bytes long.
-    pub fn from_bytes<T: AsRef<[u8]>>(bytes: T) -> AptosResult<Self> {
+    pub fn from_bytes<T: AsRef<[u8]>>(bytes: T) -> MovementResult<Self> {
         let bytes = bytes.as_ref();
         if bytes.len() != ADDRESS_LENGTH {
-            return Err(AptosError::InvalidAddress(format!(
+            return Err(MovementError::InvalidAddress(format!(
                 "expected {} bytes, got {}",
                 ADDRESS_LENGTH,
                 bytes.len()
@@ -244,7 +244,7 @@ impl fmt::Display for AccountAddress {
 }
 
 impl FromStr for AccountAddress {
-    type Err = AptosError;
+    type Err = MovementError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Self::from_hex(s)

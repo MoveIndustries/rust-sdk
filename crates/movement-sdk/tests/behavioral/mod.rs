@@ -5,7 +5,7 @@
 
 #[cfg(feature = "ed25519")]
 mod crypto_tests {
-    use aptos_sdk::crypto::Ed25519PrivateKey;
+    use movement_sdk::crypto::Ed25519PrivateKey;
 
     #[test]
     fn test_sign_verify_roundtrip() {
@@ -80,7 +80,7 @@ mod crypto_tests {
 
 #[cfg(all(feature = "ed25519", feature = "secp256k1"))]
 mod multi_scheme_crypto_tests {
-    use aptos_sdk::crypto::{Ed25519PrivateKey, Secp256k1PrivateKey};
+    use movement_sdk::crypto::{Ed25519PrivateKey, Secp256k1PrivateKey};
 
     #[test]
     fn test_ed25519_and_secp256k1_produce_different_signatures() {
@@ -107,7 +107,7 @@ mod multi_scheme_crypto_tests {
 
         // This should fail because the signature format doesn't match
         let ed_sig_bytes = ed_sig.to_bytes();
-        let secp_sig_result = aptos_sdk::crypto::Secp256k1Signature::from_bytes(&ed_sig_bytes);
+        let secp_sig_result = movement_sdk::crypto::Secp256k1Signature::from_bytes(&ed_sig_bytes);
         assert!(
             secp_sig_result.is_err()
                 || secp_pub.verify(message, &secp_sig_result.unwrap()).is_err()
@@ -118,8 +118,8 @@ mod multi_scheme_crypto_tests {
 #[cfg(feature = "ed25519")]
 mod account_tests {
     #[cfg(feature = "mnemonic")]
-    use aptos_sdk::account::Mnemonic;
-    use aptos_sdk::account::{Account, Ed25519Account};
+    use movement_sdk::account::Mnemonic;
+    use movement_sdk::account::{Account, Ed25519Account};
 
     #[test]
     #[cfg(feature = "mnemonic")]
@@ -208,8 +208,8 @@ mod account_tests {
 
 #[cfg(feature = "ed25519")]
 mod multi_ed25519_tests {
-    use aptos_sdk::account::MultiEd25519Account;
-    use aptos_sdk::crypto::Ed25519PrivateKey;
+    use movement_sdk::account::MultiEd25519Account;
+    use movement_sdk::crypto::Ed25519PrivateKey;
 
     #[test]
     fn test_multi_ed25519_2_of_3() {
@@ -279,8 +279,8 @@ mod multi_ed25519_tests {
 
 #[cfg(all(feature = "ed25519", feature = "secp256k1"))]
 mod multi_key_tests {
-    use aptos_sdk::account::{Account, AnyPrivateKey, MultiKeyAccount};
-    use aptos_sdk::crypto::{AnyPublicKey, Ed25519PrivateKey, Secp256k1PrivateKey};
+    use movement_sdk::account::{Account, AnyPrivateKey, MultiKeyAccount};
+    use movement_sdk::crypto::{AnyPublicKey, Ed25519PrivateKey, Secp256k1PrivateKey};
 
     #[test]
     fn test_multi_key_mixed_types_2_of_3() {
@@ -400,8 +400,8 @@ mod multi_key_tests {
 }
 
 mod transaction_tests {
-    use aptos_sdk::transaction::{EntryFunction, TransactionBuilder, TransactionPayload};
-    use aptos_sdk::types::{AccountAddress, ChainId};
+    use movement_sdk::transaction::{EntryFunction, TransactionBuilder, TransactionPayload};
+    use movement_sdk::types::{AccountAddress, ChainId};
 
     #[test]
     fn test_transaction_builder_requires_all_fields() {
@@ -507,11 +507,11 @@ mod transaction_tests {
 
 #[cfg(feature = "ed25519")]
 mod signing_flow_tests {
-    use aptos_sdk::account::Ed25519Account;
-    use aptos_sdk::transaction::{
+    use movement_sdk::account::Ed25519Account;
+    use movement_sdk::transaction::{
         EntryFunction, TransactionBuilder, TransactionPayload, builder::sign_transaction,
     };
-    use aptos_sdk::types::{AccountAddress, ChainId};
+    use movement_sdk::types::{AccountAddress, ChainId};
 
     #[test]
     fn test_sign_transaction_flow() {
@@ -536,7 +536,7 @@ mod signing_flow_tests {
         // Should have an authenticator
         // The authenticator type depends on the account type
         match &signed_txn.authenticator {
-            aptos_sdk::transaction::TransactionAuthenticator::Ed25519 {
+            movement_sdk::transaction::TransactionAuthenticator::Ed25519 {
                 public_key,
                 signature,
             } => {
@@ -569,10 +569,10 @@ mod signing_flow_tests {
         // Same transaction + same account = same signature
         match (&signed1.authenticator, &signed2.authenticator) {
             (
-                aptos_sdk::transaction::TransactionAuthenticator::Ed25519 {
+                movement_sdk::transaction::TransactionAuthenticator::Ed25519 {
                     signature: sig1, ..
                 },
-                aptos_sdk::transaction::TransactionAuthenticator::Ed25519 {
+                movement_sdk::transaction::TransactionAuthenticator::Ed25519 {
                     signature: sig2, ..
                 },
             ) => {
@@ -584,7 +584,7 @@ mod signing_flow_tests {
 }
 
 mod types_tests {
-    use aptos_sdk::types::{AccountAddress, ChainId, HashValue, TypeTag};
+    use movement_sdk::types::{AccountAddress, ChainId, HashValue, TypeTag};
 
     #[test]
     fn test_address_parsing() {
@@ -670,28 +670,28 @@ mod types_tests {
 }
 
 mod error_tests {
-    use aptos_sdk::error::AptosError;
+    use movement_sdk::error::MovementError;
 
     #[test]
     fn test_error_is_not_found() {
-        assert!(AptosError::NotFound("test".into()).is_not_found());
-        assert!(AptosError::AccountNotFound("0x1".into()).is_not_found());
-        assert!(AptosError::api(404, "not found").is_not_found());
-        assert!(!AptosError::api(500, "server error").is_not_found());
+        assert!(MovementError::NotFound("test".into()).is_not_found());
+        assert!(MovementError::AccountNotFound("0x1".into()).is_not_found());
+        assert!(MovementError::api(404, "not found").is_not_found());
+        assert!(!MovementError::api(500, "server error").is_not_found());
     }
 
     #[test]
     fn test_error_is_retryable() {
-        assert!(AptosError::api(429, "rate limited").is_retryable());
-        assert!(AptosError::api(500, "server error").is_retryable());
-        assert!(AptosError::api(503, "unavailable").is_retryable());
-        assert!(!AptosError::api(400, "bad request").is_retryable());
-        assert!(!AptosError::api(401, "unauthorized").is_retryable());
+        assert!(MovementError::api(429, "rate limited").is_retryable());
+        assert!(MovementError::api(500, "server error").is_retryable());
+        assert!(MovementError::api(503, "unavailable").is_retryable());
+        assert!(!MovementError::api(400, "bad request").is_retryable());
+        assert!(!MovementError::api(401, "unauthorized").is_retryable());
     }
 
     #[test]
     fn test_insufficient_signatures_error() {
-        let err = AptosError::InsufficientSignatures {
+        let err = MovementError::InsufficientSignatures {
             required: 3,
             provided: 2,
         };
@@ -701,7 +701,7 @@ mod error_tests {
 }
 
 mod bcs_serialization_tests {
-    use aptos_sdk::types::{AccountAddress, ChainId};
+    use movement_sdk::types::{AccountAddress, ChainId};
 
     #[test]
     fn test_address_serialization() {
@@ -739,11 +739,11 @@ mod bcs_serialization_tests {
 
 #[cfg(feature = "ed25519")]
 mod transaction_bcs_tests {
-    use aptos_sdk::account::Ed25519Account;
-    use aptos_sdk::transaction::{
+    use movement_sdk::account::Ed25519Account;
+    use movement_sdk::transaction::{
         EntryFunction, TransactionBuilder, TransactionPayload, builder::sign_transaction,
     };
-    use aptos_sdk::types::{AccountAddress, ChainId};
+    use movement_sdk::types::{AccountAddress, ChainId};
 
     #[test]
     fn test_raw_transaction_fields() {
@@ -809,12 +809,12 @@ mod transaction_bcs_tests {
 /// Authentication key derivation cross-validation tests.
 ///
 /// These tests verify that authentication key derivation produces the expected
-/// results according to the Aptos specification. The expected values can be
+/// results according to the Movement specification. The expected values can be
 /// validated against aptos-core implementations.
 #[cfg(all(feature = "ed25519", feature = "secp256k1", feature = "secp256r1"))]
 mod auth_key_tests {
-    use aptos_sdk::account::{Account, Ed25519Account, Ed25519SingleKeyAccount};
-    use aptos_sdk::crypto::{
+    use movement_sdk::account::{Account, Ed25519Account, Ed25519SingleKeyAccount};
+    use movement_sdk::crypto::{
         ED25519_SCHEME, Ed25519PrivateKey, SINGLE_KEY_SCHEME, Secp256k1PrivateKey,
         Secp256r1PrivateKey, derive_authentication_key,
     };
@@ -973,7 +973,7 @@ mod auth_key_tests {
     /// Test that scheme bytes are correct
     #[test]
     fn test_scheme_byte_values() {
-        use aptos_sdk::crypto::{KEYLESS_SCHEME, MULTI_ED25519_SCHEME, MULTI_KEY_SCHEME};
+        use movement_sdk::crypto::{KEYLESS_SCHEME, MULTI_ED25519_SCHEME, MULTI_KEY_SCHEME};
 
         assert_eq!(ED25519_SCHEME, 0, "Ed25519 scheme should be 0");
         assert_eq!(MULTI_ED25519_SCHEME, 1, "MultiEd25519 scheme should be 1");

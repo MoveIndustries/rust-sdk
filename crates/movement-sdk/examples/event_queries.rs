@@ -6,14 +6,14 @@
 //!
 //! Run with: `cargo run --example event_queries --features "ed25519,faucet"`
 
-use aptos_sdk::{Aptos, AptosConfig, account::Ed25519Account, types::AccountAddress};
+use movement_sdk::{Movement, MovementConfig, account::Ed25519Account, types::AccountAddress};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     println!("=== Event Queries Example ===\n");
 
     // Setup
-    let aptos = Aptos::new(AptosConfig::testnet())?;
+    let movement = Movement::new(MovementConfig::testnet())?;
     println!("Connected to testnet");
 
     // Create and fund accounts
@@ -24,8 +24,8 @@ async fn main() -> anyhow::Result<()> {
 
     // Fund both accounts
     println!("\nFunding accounts...");
-    aptos.fund_account(sender.address(), 100_000_000).await?;
-    aptos.fund_account(recipient.address(), 10_000_000).await?;
+    movement.fund_account(sender.address(), 100_000_000).await?;
+    movement.fund_account(recipient.address(), 10_000_000).await?;
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     // 1. Execute a transfer and get events from the result
@@ -37,7 +37,7 @@ async fn main() -> anyhow::Result<()> {
             "Executing transfer of {} APT...",
             transfer_amount as f64 / 100_000_000.0
         );
-        let result = aptos
+        let result = movement
             .transfer_apt(&sender, recipient.address(), transfer_amount)
             .await?;
 
@@ -78,7 +78,7 @@ async fn main() -> anyhow::Result<()> {
     println!("\n--- 2. Query Deposit Events by Handle ---");
     {
         println!("Querying deposit events for recipient...");
-        match aptos
+        match movement
             .fullnode()
             .get_events_by_event_handle(
                 recipient.address(),
@@ -110,7 +110,7 @@ async fn main() -> anyhow::Result<()> {
     println!("\n--- 3. Query Withdraw Events by Handle ---");
     {
         println!("Querying withdraw events for sender...");
-        match aptos
+        match movement
             .fullnode()
             .get_events_by_event_handle(
                 sender.address(),
@@ -142,10 +142,10 @@ async fn main() -> anyhow::Result<()> {
     println!("\n--- 4. Account Activity Summary ---");
     {
         println!("\nSender account:");
-        print_account_event_summary(&aptos, sender.address()).await?;
+        print_account_event_summary(&movement, sender.address()).await?;
 
         println!("\nRecipient account:");
-        print_account_event_summary(&aptos, recipient.address()).await?;
+        print_account_event_summary(&movement, recipient.address()).await?;
     }
 
     println!("\n--- Summary ---");
@@ -160,9 +160,9 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn print_account_event_summary(aptos: &Aptos, address: AccountAddress) -> anyhow::Result<()> {
+async fn print_account_event_summary(movement: &Movement, address: AccountAddress) -> anyhow::Result<()> {
     // Count deposits
-    let deposits = aptos
+    let deposits = movement
         .fullnode()
         .get_events_by_event_handle(
             address,
@@ -176,7 +176,7 @@ async fn print_account_event_summary(aptos: &Aptos, address: AccountAddress) -> 
         .unwrap_or(0);
 
     // Count withdrawals
-    let withdrawals = aptos
+    let withdrawals = movement
         .fullnode()
         .get_events_by_event_handle(
             address,

@@ -5,8 +5,8 @@
 //!
 //! Run with: `cargo run --example multi_agent --features "ed25519,faucet"`
 
-use aptos_sdk::{
-    Aptos, AptosConfig,
+use movement_sdk::{
+    Movement, MovementConfig,
     account::{Account, Ed25519Account},
     transaction::{
         EntryFunction, TransactionBuilder, TransactionPayload,
@@ -18,7 +18,7 @@ use aptos_sdk::{
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Create client for testnet
-    let aptos = Aptos::new(AptosConfig::testnet())?;
+    let movement = Movement::new(MovementConfig::testnet())?;
     println!("Connected to testnet");
 
     // Generate accounts
@@ -30,10 +30,10 @@ async fn main() -> anyhow::Result<()> {
 
     // Fund both accounts
     println!("\nFunding accounts...");
-    aptos
+    movement
         .fund_account(primary_signer.address(), 100_000_000)
         .await?;
-    aptos
+    movement
         .fund_account(secondary_signer.address(), 100_000_000)
         .await?;
 
@@ -65,14 +65,14 @@ async fn main() -> anyhow::Result<()> {
     });
 
     // Get sequence number
-    let sequence_number = aptos.get_sequence_number(primary_signer.address()).await?;
+    let sequence_number = movement.get_sequence_number(primary_signer.address()).await?;
 
     // Build the raw transaction
     let raw_txn = TransactionBuilder::new()
         .sender(primary_signer.address())
         .sequence_number(sequence_number)
         .payload(payload)
-        .chain_id(aptos.chain_id())
+        .chain_id(movement.chain_id())
         .expiration_from_now(600)
         .build()?;
 
@@ -88,7 +88,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Submit the transaction
     println!("\nSubmitting multi-agent transaction...");
-    let result = aptos.submit_and_wait(&signed_txn, None).await?;
+    let result = movement.submit_and_wait(&signed_txn, None).await?;
 
     let success = result.data.get("success").and_then(|v| v.as_bool());
     if success == Some(true) {

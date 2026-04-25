@@ -8,7 +8,7 @@ use crate::crypto::{
     AnyPublicKey, AnyPublicKeyVariant, AnySignature, MULTI_KEY_SCHEME, MultiKeyPublicKey,
     MultiKeySignature,
 };
-use crate::error::{AptosError, AptosResult};
+use crate::error::{MovementError, MovementResult};
 use crate::types::AccountAddress;
 use std::fmt;
 
@@ -120,8 +120,8 @@ impl fmt::Debug for AnyPrivateKey {
 /// # Example
 ///
 /// ```rust,ignore
-/// use aptos_sdk::account::{MultiKeyAccount, AnyPrivateKey};
-/// use aptos_sdk::crypto::{Ed25519PrivateKey, Secp256k1PrivateKey};
+/// use movement_sdk::account::{MultiKeyAccount, AnyPrivateKey};
+/// use movement_sdk::crypto::{Ed25519PrivateKey, Secp256k1PrivateKey};
 ///
 /// // Create a 2-of-3 multisig with mixed key types
 /// let keys = vec![
@@ -160,14 +160,14 @@ impl MultiKeyAccount {
     /// - No private keys are provided
     /// - The threshold exceeds the number of keys
     /// - The multi-key public key creation fails (e.g., too many keys, invalid threshold)
-    pub fn new(private_keys: Vec<AnyPrivateKey>, threshold: u8) -> AptosResult<Self> {
+    pub fn new(private_keys: Vec<AnyPrivateKey>, threshold: u8) -> MovementResult<Self> {
         if private_keys.is_empty() {
-            return Err(AptosError::InvalidPrivateKey(
+            return Err(MovementError::InvalidPrivateKey(
                 "at least one private key is required".into(),
             ));
         }
         if (threshold as usize) > private_keys.len() {
-            return Err(AptosError::InvalidPrivateKey(format!(
+            return Err(MovementError::InvalidPrivateKey(format!(
                 "threshold {} exceeds number of keys {}",
                 threshold,
                 private_keys.len()
@@ -213,27 +213,27 @@ impl MultiKeyAccount {
         public_keys: Vec<AnyPublicKey>,
         private_keys: Vec<(u8, AnyPrivateKey)>,
         threshold: u8,
-    ) -> AptosResult<Self> {
+    ) -> MovementResult<Self> {
         let multi_public_key = MultiKeyPublicKey::new(public_keys, threshold)?;
 
         // Validate private key indices and types
         for (index, key) in &private_keys {
             if *index as usize >= multi_public_key.num_keys() {
-                return Err(AptosError::InvalidPrivateKey(format!(
+                return Err(MovementError::InvalidPrivateKey(format!(
                     "private key index {index} out of bounds"
                 )));
             }
 
             // Verify the private key matches the public key at that index
             let Some(expected_pk) = multi_public_key.get(*index as usize) else {
-                return Err(AptosError::InvalidPrivateKey(format!(
+                return Err(MovementError::InvalidPrivateKey(format!(
                     "private key index {index} out of bounds"
                 )));
             };
 
             let actual_pk = key.public_key();
             if expected_pk.variant != actual_pk.variant || expected_pk.bytes != actual_pk.bytes {
-                return Err(AptosError::InvalidPrivateKey(format!(
+                return Err(MovementError::InvalidPrivateKey(format!(
                     "private key at index {index} doesn't match public key"
                 )));
             }
@@ -253,7 +253,7 @@ impl MultiKeyAccount {
     /// # Errors
     ///
     /// Returns an error if the multi-key public key creation fails (e.g., no keys provided, too many keys, invalid threshold).
-    pub fn view_only(public_keys: Vec<AnyPublicKey>, threshold: u8) -> AptosResult<Self> {
+    pub fn view_only(public_keys: Vec<AnyPublicKey>, threshold: u8) -> MovementResult<Self> {
         let multi_public_key = MultiKeyPublicKey::new(public_keys, threshold)?;
         let address = multi_public_key.to_address();
 
@@ -315,10 +315,10 @@ impl MultiKeyAccount {
     /// # Errors
     ///
     /// Returns an error if we don't have enough private keys to meet the threshold.
-    pub fn sign_message(&self, message: &[u8]) -> AptosResult<MultiKeySignature> {
+    pub fn sign_message(&self, message: &[u8]) -> MovementResult<MultiKeySignature> {
         let threshold = self.threshold() as usize;
         if self.private_keys.len() < threshold {
-            return Err(AptosError::InsufficientSignatures {
+            return Err(MovementError::InsufficientSignatures {
                 required: threshold,
                 provided: self.private_keys.len(),
             });
@@ -344,9 +344,9 @@ impl MultiKeyAccount {
         &self,
         message: &[u8],
         indices: &[u8],
-    ) -> AptosResult<MultiKeySignature> {
+    ) -> MovementResult<MultiKeySignature> {
         if indices.len() < self.threshold() as usize {
-            return Err(AptosError::InsufficientSignatures {
+            return Err(MovementError::InsufficientSignatures {
                 required: self.threshold() as usize,
                 provided: indices.len(),
             });
@@ -360,7 +360,7 @@ impl MultiKeyAccount {
                 .iter()
                 .find(|(i, _)| *i == index)
                 .ok_or_else(|| {
-                    AptosError::InvalidPrivateKey(format!(
+                    MovementError::InvalidPrivateKey(format!(
                         "don't have private key at index {index}"
                     ))
                 })?;
@@ -376,7 +376,7 @@ impl MultiKeyAccount {
     /// # Errors
     ///
     /// Returns an error if signature verification fails (e.g., invalid signature, insufficient signatures, signature mismatch).
-    pub fn verify(&self, message: &[u8], signature: &MultiKeySignature) -> AptosResult<()> {
+    pub fn verify(&self, message: &[u8], signature: &MultiKeySignature) -> MovementResult<()> {
         self.public_key.verify(message, signature)
     }
 
@@ -395,7 +395,7 @@ impl MultiKeyAccount {
     /// - Signer indices are out of bounds or duplicated
     pub fn aggregate_signatures(
         signatures: Vec<(u8, AnySignature)>,
-    ) -> AptosResult<MultiKeySignature> {
+    ) -> MovementResult<MultiKeySignature> {
         MultiKeySignature::new(signatures)
     }
 
@@ -408,13 +408,13 @@ impl MultiKeyAccount {
         &self,
         message: &[u8],
         key_index: u8,
-    ) -> AptosResult<(u8, AnySignature)> {
+    ) -> MovementResult<(u8, AnySignature)> {
         let key = self
             .private_keys
             .iter()
             .find(|(i, _)| *i == key_index)
             .ok_or_else(|| {
-                AptosError::InvalidPrivateKey(format!(
+                MovementError::InvalidPrivateKey(format!(
                     "don't have private key at index {key_index}"
                 ))
             })?;
@@ -432,7 +432,7 @@ impl Account for MultiKeyAccount {
         self.public_key.to_bytes()
     }
 
-    fn sign(&self, message: &[u8]) -> AptosResult<Vec<u8>> {
+    fn sign(&self, message: &[u8]) -> MovementResult<Vec<u8>> {
         let sig = self.sign_message(message)?;
         Ok(sig.to_bytes())
     }

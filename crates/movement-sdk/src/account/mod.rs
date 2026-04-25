@@ -1,4 +1,4 @@
-//! Account management for the Aptos SDK.
+//! Account management for the Movement SDK.
 #![allow(clippy::module_inception)] // account::account is intentional naming
 #![allow(rustdoc::broken_intra_doc_links)] // Docs don't use one of the features
 //!
@@ -18,7 +18,7 @@
 //! # Example
 //!
 //! ```rust,ignore
-//! use aptos_sdk::account::Ed25519Account;
+//! use movement_sdk::account::Ed25519Account;
 //!
 //! // Generate a new random account
 //! let account = Ed25519Account::generate();

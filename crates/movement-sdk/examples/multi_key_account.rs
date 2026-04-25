@@ -6,8 +6,8 @@
 //!
 //! Run with: `cargo run --example multi_key_account --features "ed25519,secp256k1,faucet"`
 
-use aptos_sdk::{
-    Aptos, AptosConfig,
+use movement_sdk::{
+    Movement, MovementConfig,
     account::{AnyPrivateKey, MultiKeyAccount},
     crypto::{AnyPublicKey, Ed25519PrivateKey, Secp256k1PrivateKey},
     transaction::{EntryFunction, TransactionBuilder},
@@ -17,10 +17,10 @@ use aptos_sdk::{
 async fn main() -> anyhow::Result<()> {
     println!("=== Multi-Key Account Example ===\n");
 
-    // 1. Setup Aptos client for testnet
-    let config = AptosConfig::testnet();
-    let aptos = Aptos::new(config)?;
-    println!("Connected to testnet (chain_id: {})", aptos.chain_id().id());
+    // 1. Setup Movement client for testnet
+    let config = MovementConfig::testnet();
+    let movement = Movement::new(config)?;
+    println!("Connected to testnet (chain_id: {})", movement.chain_id().id());
 
     // 2. Generate individual private keys of different types
     println!("\n--- Creating Mixed Key Types ---");
@@ -54,12 +54,12 @@ async fn main() -> anyhow::Result<()> {
 
     // 4. Fund the multi-key account
     println!("\n--- Funding Account ---");
-    aptos
+    movement
         .fund_account(multi_key_account.address(), 100_000_000)
         .await?;
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
-    let balance = aptos.get_balance(multi_key_account.address()).await?;
+    let balance = movement.get_balance(multi_key_account.address()).await?;
     println!(
         "Balance: {} octas ({} APT)",
         balance,
@@ -67,7 +67,7 @@ async fn main() -> anyhow::Result<()> {
     );
 
     // 5. Create a recipient account
-    let recipient = aptos.create_funded_account(0).await?;
+    let recipient = movement.create_funded_account(0).await?;
     println!("\nRecipient: {}", recipient.address());
 
     // 6. Build and sign a transfer transaction
@@ -75,7 +75,7 @@ async fn main() -> anyhow::Result<()> {
     let transfer_amount = 10_000_000; // 0.1 APT
     let payload = EntryFunction::apt_transfer(recipient.address(), transfer_amount)?;
 
-    let sequence_number = aptos
+    let sequence_number = movement
         .get_sequence_number(multi_key_account.address())
         .await?;
 
@@ -83,7 +83,7 @@ async fn main() -> anyhow::Result<()> {
         .sender(multi_key_account.address())
         .sequence_number(sequence_number)
         .payload(payload.into())
-        .chain_id(aptos.chain_id())
+        .chain_id(movement.chain_id())
         .max_gas_amount(100_000)
         .gas_unit_price(100)
         .build()?;
@@ -95,17 +95,17 @@ async fn main() -> anyhow::Result<()> {
         multi_key_account.num_keys()
     );
     let signed_txn =
-        aptos_sdk::transaction::builder::sign_transaction(&raw_txn, &multi_key_account)?;
+        movement_sdk::transaction::builder::sign_transaction(&raw_txn, &multi_key_account)?;
 
     // 8. Submit and wait for confirmation
     println!("Submitting transaction...");
-    let result = aptos.submit_and_wait(&signed_txn, None).await?;
+    let result = movement.submit_and_wait(&signed_txn, None).await?;
     println!("Transaction successful!");
     println!("Result: {:?}", result.data);
 
     // 9. Verify recipient received funds
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-    let recipient_balance = aptos.get_balance(recipient.address()).await?;
+    let recipient_balance = movement.get_balance(recipient.address()).await?;
     println!("\nRecipient balance: {} octas", recipient_balance);
 
     // 10. Demonstrate distributed signing scenario
@@ -119,7 +119,7 @@ async fn main() -> anyhow::Result<()> {
 /// Demonstrates how different parties can sign independently
 /// and combine signatures later.
 async fn demonstrate_distributed_signing() -> anyhow::Result<()> {
-    use aptos_sdk::types::ChainId;
+    use movement_sdk::types::ChainId;
 
     // Scenario: 3 parties each have one key, need 2-of-3 to sign
 
@@ -156,7 +156,7 @@ async fn demonstrate_distributed_signing() -> anyhow::Result<()> {
     // Build a real transaction that each party will sign
     // In production, this would be shared among all parties (e.g., via a JSON payload)
     println!("\n--- Building Transaction for Distributed Signing ---");
-    let recipient = aptos_sdk::AccountAddress::ZERO; // Placeholder recipient
+    let recipient = movement_sdk::AccountAddress::ZERO; // Placeholder recipient
     let payload = EntryFunction::apt_transfer(recipient, 1000)?;
 
     let raw_txn = TransactionBuilder::new()

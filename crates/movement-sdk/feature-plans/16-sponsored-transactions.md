@@ -23,8 +23,8 @@ This feature provides high-level utilities for creating and managing sponsored (
 ### SponsoredTransactionBuilder
 
 ```rust
-use aptos_sdk::transaction::{SponsoredTransactionBuilder, EntryFunction};
-use aptos_sdk::types::ChainId;
+use movement_sdk::transaction::{SponsoredTransactionBuilder, EntryFunction};
+use movement_sdk::types::ChainId;
 
 // Build and sign in one step
 let signed_txn = SponsoredTransactionBuilder::new()
@@ -59,7 +59,7 @@ let signed = sign_sponsored_transaction(
 For scenarios where signers are in different systems/processes:
 
 ```rust
-use aptos_sdk::transaction::PartiallySigned;
+use movement_sdk::transaction::PartiallySigned;
 
 // Create transaction structure
 let fee_payer_txn = SponsoredTransactionBuilder::new()
@@ -91,7 +91,7 @@ let signed = partial.finalize()?;
 Extension trait for accounts to easily sponsor transactions:
 
 ```rust
-use aptos_sdk::transaction::Sponsor;
+use movement_sdk::transaction::Sponsor;
 
 // Any account can sponsor another
 let signed = sponsor_account.sponsor(
@@ -117,7 +117,7 @@ let signed = sponsor_account.sponsor_with_gas(
 For simple cases:
 
 ```rust
-use aptos_sdk::transaction::sponsor_transaction;
+use movement_sdk::transaction::sponsor_transaction;
 
 let signed = sponsor_transaction(
     &sender_account,
@@ -167,7 +167,7 @@ pub trait Sponsor: Account + Sized {
         sender_sequence_number: u64,
         payload: TransactionPayload,
         chain_id: ChainId,
-    ) -> AptosResult<SignedTransaction>;
+    ) -> MovementResult<SignedTransaction>;
 
     fn sponsor_with_gas<S: Account>(
         &self,
@@ -177,7 +177,7 @@ pub trait Sponsor: Account + Sized {
         chain_id: ChainId,
         max_gas_amount: u64,
         gas_unit_price: u64,
-    ) -> AptosResult<SignedTransaction>;
+    ) -> MovementResult<SignedTransaction>;
 }
 ```
 

@@ -7,8 +7,8 @@
 //!
 //! Run with: `cargo run --example call_contract --features "ed25519,faucet"`
 
-use aptos_sdk::{
-    Aptos, AptosConfig,
+use movement_sdk::{
+    Movement, MovementConfig,
     account::Ed25519Account,
     transaction::{EntryFunction, TransactionBuilder, TransactionPayload},
     types::{AccountAddress, MoveModuleId, TypeTag},
@@ -17,11 +17,11 @@ use aptos_sdk::{
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Create client for testnet
-    let aptos = Aptos::new(AptosConfig::testnet())?;
+    let movement = Movement::new(MovementConfig::testnet())?;
     println!("Connected to testnet");
 
     // Generate and fund an account
-    let account = aptos.create_funded_account(100_000_000).await?;
+    let account = movement.create_funded_account(100_000_000).await?;
     println!("Account: {}", account.address());
 
     // Example 1: Call 0x1::aptos_account::transfer (simple APT transfer)
@@ -40,7 +40,7 @@ async fn main() -> anyhow::Result<()> {
             ],
         );
 
-        let result = aptos
+        let result = movement
             .sign_submit_and_wait(&account, payload.into(), None)
             .await?;
 
@@ -78,7 +78,7 @@ async fn main() -> anyhow::Result<()> {
             ],
         );
 
-        let result = aptos
+        let result = movement
             .sign_submit_and_wait(&account, payload.into(), None)
             .await?;
 
@@ -96,7 +96,7 @@ async fn main() -> anyhow::Result<()> {
     println!("\n=== Example 3: Register Coin (if not already registered) ===");
     {
         // Check if already registered
-        let resource_result = aptos
+        let resource_result = movement
             .fullnode()
             .get_account_resource(
                 account.address(),
@@ -115,7 +115,7 @@ async fn main() -> anyhow::Result<()> {
                     vec![], // No arguments besides type arg
                 );
 
-                let result = aptos
+                let result = movement
                     .sign_submit_and_wait(&account, payload.into(), None)
                     .await?;
 
@@ -185,7 +185,7 @@ async fn main() -> anyhow::Result<()> {
         let recipient = Ed25519Account::generate();
 
         // Get current gas price
-        let gas_estimate = aptos.fullnode().estimate_gas_price().await?;
+        let gas_estimate = movement.fullnode().estimate_gas_price().await?;
         println!(
             "  Current gas estimate: {} octas",
             gas_estimate.data.gas_estimate
@@ -193,7 +193,7 @@ async fn main() -> anyhow::Result<()> {
 
         // Build transaction with custom settings
         let payload = EntryFunction::apt_transfer(recipient.address(), 100_000)?;
-        let sequence_number = aptos.get_sequence_number(account.address()).await?;
+        let sequence_number = movement.get_sequence_number(account.address()).await?;
 
         let raw_txn = TransactionBuilder::new()
             .sender(account.address())
@@ -201,14 +201,14 @@ async fn main() -> anyhow::Result<()> {
             .payload(TransactionPayload::EntryFunction(payload))
             .max_gas_amount(50_000) // Lower than default
             .gas_unit_price(gas_estimate.data.high()) // Use high priority gas
-            .chain_id(aptos.chain_id())
+            .chain_id(movement.chain_id())
             .expiration_from_now(300) // 5 minutes
             .build()?;
 
-        let signed = aptos_sdk::transaction::builder::sign_transaction(&raw_txn, &account)?;
+        let signed = movement_sdk::transaction::builder::sign_transaction(&raw_txn, &account)?;
 
         // Simulate first to check gas
-        let simulation = aptos.simulate_transaction(&signed).await?;
+        let simulation = movement.simulate_transaction(&signed).await?;
         if let Some(sim_result) = simulation.data.first() {
             println!(
                 "  Simulation gas used: {}",
@@ -225,7 +225,7 @@ async fn main() -> anyhow::Result<()> {
         }
 
         // Submit the real transaction
-        let result = aptos.submit_and_wait(&signed, None).await?;
+        let result = movement.submit_and_wait(&signed, None).await?;
         println!(
             "  Actual gas used: {}",
             result

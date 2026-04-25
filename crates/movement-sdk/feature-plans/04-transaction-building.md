@@ -2,7 +2,7 @@
 
 ## Overview
 
-The transaction building module provides types and utilities for constructing, signing, and serializing Aptos transactions. It supports various transaction types including entry functions, scripts, and multi-signature transactions.
+The transaction building module provides types and utilities for constructing, signing, and serializing Movement transactions. It supports various transaction types including entry functions, scripts, and multi-signature transactions.
 
 ## Goals
 
@@ -108,14 +108,14 @@ impl EntryFunction {
     ) -> Self;
     
     /// Create an APT transfer.
-    pub fn apt_transfer(to: AccountAddress, amount: u64) -> Result<Self, AptosError>;
+    pub fn apt_transfer(to: AccountAddress, amount: u64) -> Result<Self, MovementError>;
     
     /// Create a coin transfer.
     pub fn coin_transfer(
         coin_type: TypeTag,
         to: AccountAddress,
         amount: u64,
-    ) -> Result<Self, AptosError>;
+    ) -> Result<Self, MovementError>;
     
     /// Get the module ID.
     pub fn module(&self) -> &MoveModuleId;
@@ -305,7 +305,7 @@ impl TransactionBuilder {
     pub fn chain_id(self, chain_id: ChainId) -> Self;
     
     /// Build the raw transaction.
-    pub fn build(self) -> Result<RawTransaction, AptosError>;
+    pub fn build(self) -> Result<RawTransaction, MovementError>;
 }
 
 impl Default for TransactionBuilder {
@@ -330,14 +330,14 @@ impl Default for TransactionBuilder {
 pub fn sign_transaction(
     raw_txn: &RawTransaction,
     signer: &impl Account,
-) -> Result<SignedTransaction, AptosError>;
+) -> Result<SignedTransaction, MovementError>;
 
 /// Sign a multi-agent transaction.
 pub fn sign_multi_agent_transaction(
     raw_txn: &RawTransaction,
     sender: &impl Account,
     secondary_signers: &[&dyn Account],
-) -> Result<SignedTransaction, AptosError>;
+) -> Result<SignedTransaction, MovementError>;
 
 /// Sign a fee payer transaction.
 pub fn sign_fee_payer_transaction(
@@ -345,7 +345,7 @@ pub fn sign_fee_payer_transaction(
     sender: &impl Account,
     secondary_signers: &[&dyn Account],
     fee_payer: &impl Account,
-) -> Result<SignedTransaction, AptosError>;
+) -> Result<SignedTransaction, MovementError>;
 ```
 
 ---
@@ -411,7 +411,7 @@ Transaction fields are serialized in this exact order:
 ### Simple Transfer
 
 ```rust
-use aptos_sdk::transaction::{TransactionBuilder, EntryFunction};
+use movement_sdk::transaction::{TransactionBuilder, EntryFunction};
 
 // Create payload
 let payload = EntryFunction::apt_transfer(recipient, 1_000_000)?;

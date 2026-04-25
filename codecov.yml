@@ -1,4 +1,4 @@
-# Codecov configuration for aptos-sdk
+# Codecov configuration for movement-sdk
 # https://docs.codecov.com/docs/codecovyml-reference
 
 coverage:
@@ -36,13 +36,13 @@ comment:
 flags:
   unittests:
     paths:
-      - crates/aptos-sdk/src/
+      - crates/movement-sdk/src/
     carryforward: true
 
 # Ignore certain paths from coverage
 ignore:
-  - "crates/aptos-sdk/examples/**"
-  - "crates/aptos-sdk/tests/**"
+  - "crates/movement-sdk/examples/**"
+  - "crates/movement-sdk/tests/**"
   - "**/tests/**"
   - "**/*_test.rs"
 

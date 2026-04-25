@@ -8,7 +8,7 @@
 //! All parsing functions enforce length limits to prevent denial-of-service
 //! attacks via excessive memory allocation or CPU usage.
 
-use crate::error::{AptosError, AptosResult};
+use crate::error::{MovementError, MovementResult};
 use crate::types::AccountAddress;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -44,11 +44,11 @@ impl Identifier {
     ///
     /// Returns an error if the identifier is empty, exceeds 128 characters, does not start
     /// with a letter or underscore, or contains characters that are not alphanumeric or underscore.
-    pub fn new(s: impl Into<String>) -> AptosResult<Self> {
+    pub fn new(s: impl Into<String>) -> MovementResult<Self> {
         let s = s.into();
         // Security: enforce length limit to prevent DoS
         if s.len() > MAX_IDENTIFIER_LENGTH {
-            return Err(AptosError::InvalidTypeTag(format!(
+            return Err(MovementError::InvalidTypeTag(format!(
                 "identifier too long: {} bytes (max {})",
                 s.len(),
                 MAX_IDENTIFIER_LENGTH
@@ -56,18 +56,18 @@ impl Identifier {
         }
         let maybe_first = s.chars().next();
         let Some(first) = maybe_first else {
-            return Err(AptosError::InvalidTypeTag(
+            return Err(MovementError::InvalidTypeTag(
                 "identifier cannot be empty".into(),
             ));
         };
 
         if !first.is_ascii_alphabetic() && first != '_' {
-            return Err(AptosError::InvalidTypeTag(format!(
+            return Err(MovementError::InvalidTypeTag(format!(
                 "identifier must start with letter or underscore: {s}"
             )));
         }
         if !s.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
-            return Err(AptosError::InvalidTypeTag(format!(
+            return Err(MovementError::InvalidTypeTag(format!(
                 "identifier contains invalid characters: {s}"
             )));
         }
@@ -92,7 +92,7 @@ impl fmt::Display for Identifier {
 }
 
 impl FromStr for Identifier {
-    type Err = AptosError;
+    type Err = MovementError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Self::new(s)
@@ -120,10 +120,10 @@ impl MoveModuleId {
     ///
     /// Returns an error if the string is not in the format `address::module_name`, the address
     /// is invalid, or the module name is not a valid identifier.
-    pub fn from_str_strict(s: &str) -> AptosResult<Self> {
+    pub fn from_str_strict(s: &str) -> MovementResult<Self> {
         let parts: Vec<&str> = s.split("::").collect();
         if parts.len() != 2 {
-            return Err(AptosError::InvalidTypeTag(format!(
+            return Err(MovementError::InvalidTypeTag(format!(
                 "invalid module ID format: {s}"
             )));
         }
@@ -140,7 +140,7 @@ impl fmt::Display for MoveModuleId {
 }
 
 impl FromStr for MoveModuleId {
-    type Err = AptosError;
+    type Err = MovementError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Self::from_str_strict(s)
@@ -188,7 +188,7 @@ impl StructTag {
         address: AccountAddress,
         module: impl Into<String>,
         name: impl Into<String>,
-    ) -> AptosResult<Self> {
+    ) -> MovementResult<Self> {
         Ok(Self {
             address,
             module: Identifier::new(module)?,
@@ -329,18 +329,18 @@ impl TypeTag {
     /// # Example
     ///
     /// ```rust
-    /// use aptos_sdk::types::TypeTag;
+    /// use movement_sdk::types::TypeTag;
     ///
     /// let tag = TypeTag::from_str_strict("0x1::aptos_coin::AptosCoin").unwrap();
     /// let tag = TypeTag::from_str_strict("u64").unwrap();
     /// let tag = TypeTag::from_str_strict("vector<u8>").unwrap();
     /// ```
-    pub fn from_str_strict(s: &str) -> AptosResult<Self> {
+    pub fn from_str_strict(s: &str) -> MovementResult<Self> {
         let s = s.trim();
 
         // Security: enforce length limit to prevent DoS
         if s.len() > MAX_TYPE_TAG_LENGTH {
-            return Err(AptosError::InvalidTypeTag(format!(
+            return Err(MovementError::InvalidTypeTag(format!(
                 "type tag too long: {} bytes (max {})",
                 s.len(),
                 MAX_TYPE_TAG_LENGTH
@@ -351,10 +351,10 @@ impl TypeTag {
     }
 
     /// Internal parser with depth tracking to prevent stack overflow.
-    fn parse_type_tag_with_depth(s: &str, depth: usize) -> AptosResult<Self> {
+    fn parse_type_tag_with_depth(s: &str, depth: usize) -> MovementResult<Self> {
         // Security: prevent excessive nesting depth
         if depth > MAX_TYPE_NESTING_DEPTH {
-            return Err(AptosError::InvalidTypeTag(format!(
+            return Err(MovementError::InvalidTypeTag(format!(
                 "type tag nesting too deep: {depth} levels (max {MAX_TYPE_NESTING_DEPTH})"
             )));
         }
@@ -391,13 +391,13 @@ impl TypeTag {
     }
 
     /// Parses a struct type tag with depth tracking.
-    fn parse_struct_type_with_depth(s: &str, depth: usize) -> AptosResult<Self> {
+    fn parse_struct_type_with_depth(s: &str, depth: usize) -> MovementResult<Self> {
         // Find the opening < for generics (if any)
         let generic_start = s.find('<');
 
         let (base, type_args_str) = if let Some(idx) = generic_start {
             if !s.ends_with('>') {
-                return Err(AptosError::InvalidTypeTag(format!(
+                return Err(MovementError::InvalidTypeTag(format!(
                     "malformed generic type: {s}"
                 )));
             }
@@ -409,7 +409,7 @@ impl TypeTag {
         // Parse the base struct (address::module::name)
         let parts: Vec<&str> = base.split("::").collect();
         if parts.len() != 3 {
-            return Err(AptosError::InvalidTypeTag(format!(
+            return Err(MovementError::InvalidTypeTag(format!(
                 "invalid struct type format (expected address::module::name): {s}"
             )));
         }
@@ -434,7 +434,7 @@ impl TypeTag {
     }
 
     /// Parses comma-separated type arguments with depth tracking.
-    fn parse_type_args_with_depth(s: &str, depth: usize) -> AptosResult<Vec<TypeTag>> {
+    fn parse_type_args_with_depth(s: &str, depth: usize) -> MovementResult<Vec<TypeTag>> {
         if s.trim().is_empty() {
             return Ok(vec![]);
         }
@@ -513,10 +513,10 @@ impl EntryFunctionId {
     ///
     /// Returns an error if the string is not in the format `address::module::function`, the address
     /// is invalid, or the module or function name is not a valid identifier.
-    pub fn from_str_strict(s: &str) -> AptosResult<Self> {
+    pub fn from_str_strict(s: &str) -> MovementResult<Self> {
         let parts: Vec<&str> = s.split("::").collect();
         if parts.len() != 3 {
-            return Err(AptosError::InvalidTypeTag(format!(
+            return Err(MovementError::InvalidTypeTag(format!(
                 "invalid entry function ID format: {s}"
             )));
         }
@@ -537,7 +537,7 @@ impl fmt::Display for EntryFunctionId {
 }
 
 impl FromStr for EntryFunctionId {
-    type Err = AptosError;
+    type Err = MovementError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Self::from_str_strict(s)

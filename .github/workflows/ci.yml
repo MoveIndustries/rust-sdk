@@ -42,13 +42,13 @@ jobs:
         uses: Swatinem/rust-cache@v2
       
       - name: Run Clippy (default features)
-        run: cargo clippy -p aptos-sdk --all-targets -- -D warnings
+        run: cargo clippy -p movement-sdk --all-targets -- -D warnings
       
       - name: Run Clippy (all features)
-        run: cargo clippy -p aptos-sdk --all-targets --all-features -- -D warnings
+        run: cargo clippy -p movement-sdk --all-targets --all-features -- -D warnings
       
       - name: Run Clippy (no default features)
-        run: cargo clippy -p aptos-sdk --no-default-features -- -D warnings
+        run: cargo clippy -p movement-sdk --no-default-features -- -D warnings
 
   test:
     name: Test
@@ -70,13 +70,13 @@ jobs:
         uses: Swatinem/rust-cache@v2
       
       - name: Build
-        run: cargo build -p aptos-sdk --all-targets
+        run: cargo build -p movement-sdk --all-targets
       
       - name: Run tests
-        run: cargo test -p aptos-sdk --all-targets
+        run: cargo test -p movement-sdk --all-targets
       
       - name: Run tests (all features)
-        run: cargo test -p aptos-sdk --all-targets --all-features
+        run: cargo test -p movement-sdk --all-targets --all-features
 
   test-linux-arm:
     name: Test (Linux ARM64)
@@ -93,13 +93,13 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Build
-        run: cargo build -p aptos-sdk --all-targets
+        run: cargo build -p movement-sdk --all-targets
 
       - name: Run tests
-        run: cargo test -p aptos-sdk --all-targets
+        run: cargo test -p movement-sdk --all-targets
 
       - name: Run tests (all features)
-        run: cargo test -p aptos-sdk --all-targets --all-features
+        run: cargo test -p movement-sdk --all-targets --all-features
 
   test-macos-intel:
     name: Test (macOS x86)
@@ -116,13 +116,13 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Build
-        run: cargo build -p aptos-sdk --all-targets
+        run: cargo build -p movement-sdk --all-targets
 
       - name: Run tests
-        run: cargo test -p aptos-sdk --all-targets
+        run: cargo test -p movement-sdk --all-targets
 
       - name: Run tests (all features)
-        run: cargo test -p aptos-sdk --all-targets --all-features
+        run: cargo test -p movement-sdk --all-targets --all-features
 
   test-no-simd:
     name: Test (Linux No SIMD - Docker Compatible)
@@ -146,16 +146,16 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Build (default features)
-        run: cargo build -p aptos-sdk --all-targets
+        run: cargo build -p movement-sdk --all-targets
 
       - name: Run tests (default features)
-        run: cargo test -p aptos-sdk --all-targets
+        run: cargo test -p movement-sdk --all-targets
 
       - name: Build (all features)
-        run: cargo build -p aptos-sdk --all-targets --all-features
+        run: cargo build -p movement-sdk --all-targets --all-features
 
       - name: Run tests (all features)
-        run: cargo test -p aptos-sdk --all-targets --all-features
+        run: cargo test -p movement-sdk --all-targets --all-features
 
   test-features:
     name: Test Feature Combinations
@@ -172,25 +172,25 @@ jobs:
         uses: Swatinem/rust-cache@v2
       
       - name: Test with only ed25519
-        run: cargo test -p aptos-sdk --no-default-features --features ed25519
+        run: cargo test -p movement-sdk --no-default-features --features ed25519
       
       - name: Test with only secp256k1
-        run: cargo test -p aptos-sdk --no-default-features --features secp256k1
+        run: cargo test -p movement-sdk --no-default-features --features secp256k1
       
       - name: Test with secp256r1
-        run: cargo test -p aptos-sdk --features secp256r1
+        run: cargo test -p movement-sdk --features secp256r1
       
       - name: Test with bls
-        run: cargo test -p aptos-sdk --features bls
+        run: cargo test -p movement-sdk --features bls
       
       - name: Test with faucet
-        run: cargo test -p aptos-sdk --features faucet
+        run: cargo test -p movement-sdk --features faucet
       
       - name: Test with indexer
-        run: cargo test -p aptos-sdk --features indexer
+        run: cargo test -p movement-sdk --features indexer
       
       - name: Test with full features
-        run: cargo test -p aptos-sdk --features full
+        run: cargo test -p movement-sdk --features full
 
   # Spec tests (behavioral tests from specifications)
   # TODO: Re-enable once specification tests are stabilized
@@ -225,12 +225,12 @@ jobs:
       - name: Check documentation (docs.rs parity)
         env:
           RUSTDOCFLAGS: --cfg docsrs -D warnings
-        run: cargo +nightly doc -p aptos-sdk --no-deps --all-features
+        run: cargo +nightly doc -p movement-sdk --no-deps --all-features
       
       - name: Check macros documentation
         env:
           RUSTDOCFLAGS: --cfg docsrs -D warnings
-        run: cargo +nightly doc -p aptos-sdk-macros --no-deps --all-features
+        run: cargo +nightly doc -p movement-sdk-macros --no-deps --all-features
 
   # Deploy docs to GitHub Pages on main branch
   deploy-docs:
@@ -257,11 +257,11 @@ jobs:
       - name: Build documentation
         env:
           RUSTDOCFLAGS: --cfg docsrs
-        run: cargo +nightly doc -p aptos-sdk --no-deps --all-features
+        run: cargo +nightly doc -p movement-sdk --no-deps --all-features
       
       - name: Add redirect to main crate
         run: |
-          echo '<meta http-equiv="refresh" content="0; url=aptos_sdk/index.html">' > target/doc/index.html
+          echo '<meta http-equiv="refresh" content="0; url=movement_sdk/index.html">' > target/doc/index.html
       
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -290,7 +290,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
       
       - name: Check MSRV
-        run: cargo check -p aptos-sdk
+        run: cargo check -p movement-sdk
 
   coverage:
     name: Code Coverage
@@ -311,16 +311,16 @@ jobs:
       
       - name: Run coverage
         run: |
-          cargo tarpaulin -p aptos-sdk --features "full" --skip-clean --out Xml --out Html --output-dir target/coverage
-        working-directory: crates/aptos-sdk
+          cargo tarpaulin -p movement-sdk --features "full" --skip-clean --out Xml --out Html --output-dir target/coverage
+        working-directory: crates/movement-sdk
       
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: crates/aptos-sdk/target/coverage/cobertura.xml
+          files: crates/movement-sdk/target/coverage/cobertura.xml
           flags: unittests
-          name: aptos-sdk-coverage
+          name: movement-sdk-coverage
           fail_ci_if_error: false
           verbose: true
 

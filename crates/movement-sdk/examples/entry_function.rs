@@ -8,8 +8,8 @@
 //!
 //! Run with: `cargo run --example entry_function --features "ed25519,faucet"`
 
-use aptos_sdk::{
-    Aptos, AptosConfig,
+use movement_sdk::{
+    Movement, MovementConfig,
     account::Ed25519Account,
     transaction::{
         EntryFunction, InputEntryFunctionData, TransactionPayload, functions, move_none, move_some,
@@ -23,11 +23,11 @@ async fn main() -> anyhow::Result<()> {
     println!("=== Entry Function Transaction Examples ===\n");
 
     // Connect to testnet
-    let aptos = Aptos::new(AptosConfig::testnet())?;
-    println!("Connected to testnet (chain_id: {})", aptos.chain_id());
+    let movement = Movement::new(MovementConfig::testnet())?;
+    println!("Connected to testnet (chain_id: {})", movement.chain_id());
 
     // Create and fund accounts
-    let sender = aptos.create_funded_account(100_000_000).await?;
+    let sender = movement.create_funded_account(100_000_000).await?;
     let recipient = Ed25519Account::generate();
     println!("Sender: {}", sender.address());
     println!("Recipient: {}", recipient.address());
@@ -46,7 +46,7 @@ async fn main() -> anyhow::Result<()> {
     println!("  Arguments: [recipient, amount]");
 
     // Submit and wait for the transaction
-    let result = aptos.sign_submit_and_wait(&sender, payload1, None).await?;
+    let result = movement.sign_submit_and_wait(&sender, payload1, None).await?;
     let success = result
         .data
         .get("success")
@@ -68,7 +68,7 @@ async fn main() -> anyhow::Result<()> {
     println!("  Function: 0x1::coin::transfer<0x1::aptos_coin::AptosCoin>");
     println!("  Type arg parsed from string");
 
-    let result = aptos.sign_submit_and_wait(&sender, payload2, None).await?;
+    let result = movement.sign_submit_and_wait(&sender, payload2, None).await?;
     let success = result
         .data
         .get("success")
@@ -83,7 +83,7 @@ async fn main() -> anyhow::Result<()> {
     let payload3 = InputEntryFunctionData::transfer_apt(recipient.address(), 250_000)?;
     println!("InputEntryFunctionData::transfer_apt() - Quick APT transfer");
 
-    let result = aptos.sign_submit_and_wait(&sender, payload3, None).await?;
+    let result = movement.sign_submit_and_wait(&sender, payload3, None).await?;
     println!(
         "  Transaction success: {}",
         result
@@ -101,7 +101,7 @@ async fn main() -> anyhow::Result<()> {
     )?;
     println!("InputEntryFunctionData::transfer_coin() - Generic coin transfer");
 
-    let result = aptos.sign_submit_and_wait(&sender, payload4, None).await?;
+    let result = movement.sign_submit_and_wait(&sender, payload4, None).await?;
     println!(
         "  Transaction success: {}",
         result
@@ -129,7 +129,7 @@ async fn main() -> anyhow::Result<()> {
     println!("EntryFunction::new() - Manual construction");
     println!("  Requires manual BCS encoding of arguments");
 
-    let result = aptos.sign_submit_and_wait(&sender, payload5, None).await?;
+    let result = movement.sign_submit_and_wait(&sender, payload5, None).await?;
     println!(
         "  Transaction success: {}",
         result
@@ -166,7 +166,7 @@ async fn main() -> anyhow::Result<()> {
     );
 
     println!("\nAvailable type constants:");
-    println!("  aptos_sdk::transaction::types::APT_COIN = \"0x1::aptos_coin::AptosCoin\"");
+    println!("  movement_sdk::transaction::types::APT_COIN = \"0x1::aptos_coin::AptosCoin\"");
 
     // Using constants
     let payload6 = InputEntryFunctionData::new(functions::APT_TRANSFER)
@@ -174,7 +174,7 @@ async fn main() -> anyhow::Result<()> {
         .arg(50_000u64)
         .build()?;
 
-    let result = aptos.sign_submit_and_wait(&sender, payload6, None).await?;
+    let result = movement.sign_submit_and_wait(&sender, payload6, None).await?;
     println!("\nUsing functions::APT_TRANSFER constant:");
     println!(
         "  Transaction success: {}",
@@ -240,7 +240,7 @@ async fn main() -> anyhow::Result<()> {
         .arg(25_000u64)
         .build()?;
 
-    let result = aptos.sign_submit_and_wait(&sender, payload7, None).await?;
+    let result = movement.sign_submit_and_wait(&sender, payload7, None).await?;
     println!("\nUsing type_arg_typed():");
     println!(
         "  Transaction success: {}",
@@ -264,7 +264,7 @@ async fn main() -> anyhow::Result<()> {
     println!("InputEntryFunctionData::from_parts():");
     println!("  Useful when module ID is already parsed");
 
-    let result = aptos.sign_submit_and_wait(&sender, payload8, None).await?;
+    let result = movement.sign_submit_and_wait(&sender, payload8, None).await?;
     println!(
         "  Transaction success: {}",
         result
@@ -293,7 +293,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Convert to payload manually
     let payload9 = TransactionPayload::EntryFunction(entry_fn);
-    let result = aptos.sign_submit_and_wait(&sender, payload9, None).await?;
+    let result = movement.sign_submit_and_wait(&sender, payload9, None).await?;
     println!(
         "  Transaction success: {}",
         result
@@ -333,8 +333,8 @@ async fn main() -> anyhow::Result<()> {
     println!("  5. Use move_vec(), move_some(), move_none() for complex types");
 
     // Final balance check
-    let sender_balance = aptos.get_balance(sender.address()).await?;
-    let recipient_balance = aptos.get_balance(recipient.address()).await?;
+    let sender_balance = movement.get_balance(sender.address()).await?;
+    let recipient_balance = movement.get_balance(recipient.address()).await?;
     println!("\nFinal balances:");
     println!("  Sender: {} APT", sender_balance as f64 / 100_000_000.0);
     println!(

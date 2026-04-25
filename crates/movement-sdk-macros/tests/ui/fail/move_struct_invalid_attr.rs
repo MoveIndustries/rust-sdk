@@ -1,6 +1,6 @@
 //! Test that MoveStruct derive rejects unknown attributes.
 
-use aptos_sdk_macros::MoveStruct;
+use movement_sdk_macros::MoveStruct;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, MoveStruct)]
