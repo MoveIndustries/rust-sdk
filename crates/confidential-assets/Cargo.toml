@@ -1,0 +1,44 @@
+[package]
+name = "confidential-assets"
+version = "0.1.0"
+description = "Rust SDK for Movement Network confidential assets — ZK proofs, Twisted ElGamal encryption, and confidential transfers on MoveVM"
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+publish = false
+repository.workspace = true
+rust-version.workspace = true
+readme = "README.md"
+
+[features]
+e2e = []
+
+[dependencies]
+movement-sdk = { workspace = true }
+aptos-bcs = { workspace = true }
+tokio = { workspace = true }
+
+curve25519-dalek = { version = "4", features = ["serde"] }
+sha2 = "0.10"
+sha3 = "0.10"
+rand = "0.8"
+thiserror = { workspace = true }
+serde = { workspace = true }
+hex = "0.4"
+num-bigint = "0.4"
+num-traits = "0.2"
+
+# Upstream crypto shared with the TS SDK (built as WASM there, linked as rlib here).
+movement_rp_wasm = { git = "https://github.com/moveindustries/confidential-asset-wasm-bindings", branch = "main" }
+movement_pollard_kangaroo_wasm = { git = "https://github.com/moveindustries/confidential-asset-wasm-bindings", branch = "main" }
+# Same versions the upstream wrappers pin to; needed for the verify path
+# (the upstream `_batch_range_proof` only exposes the prover natively).
+bulletproofs = "4.0.0"
+merlin = "3"
+curve25519-dalek-ng = "4"
+pollard-kangaroo = { git = "https://github.com/distributed-lab/pollard-kangaroo.git", branch = "main", features = ["table48", "table32", "presets"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["full"] }
+serde_json = { workspace = true }

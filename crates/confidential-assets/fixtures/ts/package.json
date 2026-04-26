@@ -1,0 +1,15 @@
+{
+  "name": "confidential-assets-rs-fixture-gen",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "tsx generate.ts"
+  },
+  "dependencies": {
+    "@moveindustries/confidential-assets": "file:../../../ts-sdk/confidential-assets"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.3",
+    "tsx": "^4.20.5"
+  }
+}

@@ -4,6 +4,7 @@ resolver = "2"
 members = [
     "crates/movement-sdk",
     "crates/movement-sdk-macros",
+    "crates/confidential-assets",
 ]
 
 # NOTE: default-members is the complete list of binaries that form the "production Movement codebase". These members should
@@ -31,6 +32,7 @@ rust-version = "1.90.0"
 # Please do not add any test features here: they should be declared by the individual crate.
 movement-sdk = { version = "0.4.1", path = "crates/movement-sdk" }
 movement-sdk-macros = { version = "0.2.1", path = "crates/movement-sdk-macros" }
+confidential-assets = { version = "0.1.0", path = "crates/confidential-assets" }
 
 # External crate dependencies.
 # Please do not add any test features here: they should be declared by the individual crate.

@@ -1,0 +1,27 @@
+# Rust / Cargo
+/target/
+**/*.rs.bk
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# IDE / editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# TS fixture generator (see fixtures/ts/README.md)
+fixtures/ts/node_modules/
+
+# Debugging / profiling
+*.dSYM/
+*.pdb
+*.prof*

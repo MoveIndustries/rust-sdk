@@ -629,9 +629,15 @@ impl Movement {
         type_args: Vec<String>,
         args: Vec<Vec<u8>>,
     ) -> MovementResult<T> {
+        // The /view endpoint returns BCS-encoded `Vec<MoveValue>` — even when the function
+        // has a single return. Decode the list and take the first element.
         let response = self.fullnode.view_bcs(function, type_args, args).await?;
         let bytes = response.into_inner();
-        aptos_bcs::from_bytes(&bytes).map_err(|e| MovementError::Bcs(e.to_string()))
+        let mut values: Vec<T> = aptos_bcs::from_bytes(&bytes)
+            .map_err(|e| MovementError::Bcs(e.to_string()))?;
+        values
+            .pop()
+            .ok_or_else(|| MovementError::Bcs("view returned empty result list".into()))
     }
 
     /// Calls a view function with BCS inputs and returns raw BCS bytes.
