@@ -120,7 +120,10 @@ impl Mnemonic {
     ///
     /// Returns an error if key derivation fails or the derived key is invalid.
     #[cfg(feature = "ed25519")]
-    pub fn derive_ed25519_key(&self, index: u32) -> MovementResult<crate::crypto::Ed25519PrivateKey> {
+    pub fn derive_ed25519_key(
+        &self,
+        index: u32,
+    ) -> MovementResult<crate::crypto::Ed25519PrivateKey> {
         let mut seed = self.to_seed()?;
         let result = derive_ed25519_from_seed(&seed, index);
         // SECURITY: Zeroize seed after use

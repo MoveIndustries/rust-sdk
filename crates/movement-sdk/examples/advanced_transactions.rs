@@ -87,7 +87,9 @@ async fn sponsored_multi_agent_example(movement: &Movement) -> anyhow::Result<()
     movement
         .fund_account(secondary_signer.address(), 50_000_000)
         .await?;
-    movement.fund_account(fee_payer.address(), 100_000_000).await?;
+    movement
+        .fund_account(fee_payer.address(), 100_000_000)
+        .await?;
 
     // Build the transaction payload
     // In a real multi-agent scenario, this would be a function requiring multiple signers
@@ -95,7 +97,9 @@ async fn sponsored_multi_agent_example(movement: &Movement) -> anyhow::Result<()
     let payload = EntryFunction::apt_transfer(recipient.address(), 1_000_000)?;
 
     // Get sequence number for primary signer
-    let sequence_number = movement.get_sequence_number(primary_signer.address()).await?;
+    let sequence_number = movement
+        .get_sequence_number(primary_signer.address())
+        .await?;
 
     // Build the raw transaction
     let raw_txn = TransactionBuilder::new()
@@ -190,7 +194,9 @@ async fn sponsored_multikey_example(movement: &Movement) -> anyhow::Result<()> {
     movement
         .fund_account(multi_key_account.address(), 50_000_000)
         .await?;
-    movement.fund_account(fee_payer.address(), 100_000_000).await?;
+    movement
+        .fund_account(fee_payer.address(), 100_000_000)
+        .await?;
 
     // Build payload
     let payload = EntryFunction::apt_transfer(recipient.address(), 5_000_000)?;
@@ -275,7 +281,9 @@ async fn sponsored_multisig_example(movement: &Movement) -> anyhow::Result<()> {
     movement
         .fund_account(multi_ed_account.address(), 50_000_000)
         .await?;
-    movement.fund_account(fee_payer.address(), 100_000_000).await?;
+    movement
+        .fund_account(fee_payer.address(), 100_000_000)
+        .await?;
 
     // Build payload
     let payload = EntryFunction::apt_transfer(recipient.address(), 3_000_000)?;
@@ -363,7 +371,9 @@ async fn batch_multisig_example(movement: &Movement) -> anyhow::Result<()> {
     ];
 
     // Get sequence number
-    let starting_seq = movement.get_sequence_number(multi_account.address()).await?;
+    let starting_seq = movement
+        .get_sequence_number(multi_account.address())
+        .await?;
 
     // Build batch
     let batch = TransactionBatchBuilder::new()
@@ -395,9 +405,18 @@ async fn batch_multisig_example(movement: &Movement) -> anyhow::Result<()> {
     println!("Batch results: {} succeeded, {} failed", succeeded, failed);
 
     // Verify balances
-    let r1_balance = movement.get_balance(recipient1.address()).await.unwrap_or(0);
-    let r2_balance = movement.get_balance(recipient2.address()).await.unwrap_or(0);
-    let r3_balance = movement.get_balance(recipient3.address()).await.unwrap_or(0);
+    let r1_balance = movement
+        .get_balance(recipient1.address())
+        .await
+        .unwrap_or(0);
+    let r2_balance = movement
+        .get_balance(recipient2.address())
+        .await
+        .unwrap_or(0);
+    let r3_balance = movement
+        .get_balance(recipient3.address())
+        .await
+        .unwrap_or(0);
 
     println!("Recipient balances:");
     println!("  Recipient 1: {} APT", r1_balance as f64 / 100_000_000.0);
@@ -441,7 +460,9 @@ async fn multi_agent_multikey_example(movement: &Movement) -> anyhow::Result<()>
 
     // Fund accounts
     println!("\nFunding accounts...");
-    movement.fund_account(primary.address(), 100_000_000).await?;
+    movement
+        .fund_account(primary.address(), 100_000_000)
+        .await?;
     movement
         .fund_account(secondary_multikey.address(), 50_000_000)
         .await?;

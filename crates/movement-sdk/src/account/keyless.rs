@@ -291,7 +291,8 @@ impl PepperService for HttpPepperService {
     fn get_pepper(
         &self,
         jwt: &str,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = MovementResult<Pepper>> + Send + '_>> {
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = MovementResult<Pepper>> + Send + '_>>
+    {
         let jwt = jwt.to_owned();
         Box::pin(async move {
             let response = self
@@ -837,10 +838,9 @@ fn decode_and_verify_jwt(jwt: &str, jwks: &JwkSet) -> MovementResult<JwtClaims> 
         .map_err(|e| MovementError::InvalidJwt(format!("failed to create decoding key: {e}")))?;
 
     // Determine the algorithm strictly from the JWK to prevent algorithm substitution attacks
-    let jwk_alg = signing_key
-        .common
-        .key_algorithm
-        .ok_or_else(|| MovementError::InvalidJwt("JWK missing 'alg' (key_algorithm) field".into()))?;
+    let jwk_alg = signing_key.common.key_algorithm.ok_or_else(|| {
+        MovementError::InvalidJwt("JWK missing 'alg' (key_algorithm) field".into())
+    })?;
 
     let algorithm = match jwk_alg {
         // RSA algorithms

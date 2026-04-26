@@ -3,7 +3,7 @@
 //! The [`Movement`] struct provides a unified interface for all SDK functionality.
 
 use crate::account::Account;
-use crate::api::{MovementResponse, FullnodeClient, PendingTransaction};
+use crate::api::{FullnodeClient, MovementResponse, PendingTransaction};
 use crate::config::MovementConfig;
 use crate::error::{MovementError, MovementResult};
 use crate::transaction::{
@@ -633,8 +633,8 @@ impl Movement {
         // has a single return. Decode the list and take the first element.
         let response = self.fullnode.view_bcs(function, type_args, args).await?;
         let bytes = response.into_inner();
-        let mut values: Vec<T> = aptos_bcs::from_bytes(&bytes)
-            .map_err(|e| MovementError::Bcs(e.to_string()))?;
+        let mut values: Vec<T> =
+            aptos_bcs::from_bytes(&bytes).map_err(|e| MovementError::Bcs(e.to_string()))?;
         values
             .pop()
             .ok_or_else(|| MovementError::Bcs("view returned empty result list".into()))

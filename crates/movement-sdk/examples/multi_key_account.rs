@@ -20,7 +20,10 @@ async fn main() -> anyhow::Result<()> {
     // 1. Setup Movement client for testnet
     let config = MovementConfig::testnet();
     let movement = Movement::new(config)?;
-    println!("Connected to testnet (chain_id: {})", movement.chain_id().id());
+    println!(
+        "Connected to testnet (chain_id: {})",
+        movement.chain_id().id()
+    );
 
     // 2. Generate individual private keys of different types
     println!("\n--- Creating Mixed Key Types ---");

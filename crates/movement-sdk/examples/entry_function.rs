@@ -46,7 +46,9 @@ async fn main() -> anyhow::Result<()> {
     println!("  Arguments: [recipient, amount]");
 
     // Submit and wait for the transaction
-    let result = movement.sign_submit_and_wait(&sender, payload1, None).await?;
+    let result = movement
+        .sign_submit_and_wait(&sender, payload1, None)
+        .await?;
     let success = result
         .data
         .get("success")
@@ -68,7 +70,9 @@ async fn main() -> anyhow::Result<()> {
     println!("  Function: 0x1::coin::transfer<0x1::aptos_coin::AptosCoin>");
     println!("  Type arg parsed from string");
 
-    let result = movement.sign_submit_and_wait(&sender, payload2, None).await?;
+    let result = movement
+        .sign_submit_and_wait(&sender, payload2, None)
+        .await?;
     let success = result
         .data
         .get("success")
@@ -83,7 +87,9 @@ async fn main() -> anyhow::Result<()> {
     let payload3 = InputEntryFunctionData::transfer_apt(recipient.address(), 250_000)?;
     println!("InputEntryFunctionData::transfer_apt() - Quick APT transfer");
 
-    let result = movement.sign_submit_and_wait(&sender, payload3, None).await?;
+    let result = movement
+        .sign_submit_and_wait(&sender, payload3, None)
+        .await?;
     println!(
         "  Transaction success: {}",
         result
@@ -101,7 +107,9 @@ async fn main() -> anyhow::Result<()> {
     )?;
     println!("InputEntryFunctionData::transfer_coin() - Generic coin transfer");
 
-    let result = movement.sign_submit_and_wait(&sender, payload4, None).await?;
+    let result = movement
+        .sign_submit_and_wait(&sender, payload4, None)
+        .await?;
     println!(
         "  Transaction success: {}",
         result
@@ -129,7 +137,9 @@ async fn main() -> anyhow::Result<()> {
     println!("EntryFunction::new() - Manual construction");
     println!("  Requires manual BCS encoding of arguments");
 
-    let result = movement.sign_submit_and_wait(&sender, payload5, None).await?;
+    let result = movement
+        .sign_submit_and_wait(&sender, payload5, None)
+        .await?;
     println!(
         "  Transaction success: {}",
         result
@@ -174,7 +184,9 @@ async fn main() -> anyhow::Result<()> {
         .arg(50_000u64)
         .build()?;
 
-    let result = movement.sign_submit_and_wait(&sender, payload6, None).await?;
+    let result = movement
+        .sign_submit_and_wait(&sender, payload6, None)
+        .await?;
     println!("\nUsing functions::APT_TRANSFER constant:");
     println!(
         "  Transaction success: {}",
@@ -240,7 +252,9 @@ async fn main() -> anyhow::Result<()> {
         .arg(25_000u64)
         .build()?;
 
-    let result = movement.sign_submit_and_wait(&sender, payload7, None).await?;
+    let result = movement
+        .sign_submit_and_wait(&sender, payload7, None)
+        .await?;
     println!("\nUsing type_arg_typed():");
     println!(
         "  Transaction success: {}",
@@ -264,7 +278,9 @@ async fn main() -> anyhow::Result<()> {
     println!("InputEntryFunctionData::from_parts():");
     println!("  Useful when module ID is already parsed");
 
-    let result = movement.sign_submit_and_wait(&sender, payload8, None).await?;
+    let result = movement
+        .sign_submit_and_wait(&sender, payload8, None)
+        .await?;
     println!(
         "  Transaction success: {}",
         result
@@ -293,7 +309,9 @@ async fn main() -> anyhow::Result<()> {
 
     // Convert to payload manually
     let payload9 = TransactionPayload::EntryFunction(entry_fn);
-    let result = movement.sign_submit_and_wait(&sender, payload9, None).await?;
+    let result = movement
+        .sign_submit_and_wait(&sender, payload9, None)
+        .await?;
     println!(
         "  Transaction success: {}",
         result

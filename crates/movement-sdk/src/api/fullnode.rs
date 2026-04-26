@@ -1,7 +1,8 @@
 //! Fullnode REST API client.
 
 use crate::api::response::{
-    AccountData, MovementResponse, GasEstimation, LedgerInfo, MoveModule, PendingTransaction, Resource,
+    AccountData, GasEstimation, LedgerInfo, MoveModule, MovementResponse, PendingTransaction,
+    Resource,
 };
 use crate::config::MovementConfig;
 use crate::error::{MovementError, MovementResult};

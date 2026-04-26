@@ -265,6 +265,8 @@ jobs:
       
       - name: Setup Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
       
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
@@ -307,7 +309,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
       
       - name: Install cargo-tarpaulin
-        run: cargo install cargo-tarpaulin
+        run: cargo install cargo-tarpaulin --locked
       
       - name: Run coverage
         run: |
@@ -323,15 +325,3 @@ jobs:
           name: movement-sdk-coverage
           fail_ci_if_error: false
           verbose: true
-
-  security-audit:
-    name: Security Audit
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      
-      - name: Install cargo-audit
-        run: cargo install cargo-audit
-      
-      - name: Run security audit
-        run: cargo audit

@@ -570,10 +570,12 @@ mod signing_flow_tests {
         match (&signed1.authenticator, &signed2.authenticator) {
             (
                 movement_sdk::transaction::TransactionAuthenticator::Ed25519 {
-                    signature: sig1, ..
+                    signature: sig1,
+                    ..
                 },
                 movement_sdk::transaction::TransactionAuthenticator::Ed25519 {
-                    signature: sig2, ..
+                    signature: sig2,
+                    ..
                 },
             ) => {
                 assert_eq!(sig1, sig2);

@@ -65,7 +65,9 @@ async fn main() -> anyhow::Result<()> {
     });
 
     // Get sequence number
-    let sequence_number = movement.get_sequence_number(primary_signer.address()).await?;
+    let sequence_number = movement
+        .get_sequence_number(primary_signer.address())
+        .await?;
 
     // Build the raw transaction
     let raw_txn = TransactionBuilder::new()

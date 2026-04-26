@@ -436,7 +436,11 @@ impl PartiallySigned {
     ///
     /// Returns an error if the index is out of bounds, if generating the signing message fails,
     /// if signing fails, or if the signature scheme is not recognized.
-    pub fn sign_as_secondary<A: Account>(&mut self, index: usize, signer: &A) -> MovementResult<()> {
+    pub fn sign_as_secondary<A: Account>(
+        &mut self,
+        index: usize,
+        signer: &A,
+    ) -> MovementResult<()> {
         if index >= self.secondary_auths.len() {
             return Err(MovementError::transaction(format!(
                 "secondary signer index {} out of bounds (max {})",

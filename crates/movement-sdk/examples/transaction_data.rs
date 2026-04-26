@@ -282,7 +282,10 @@ async fn main() -> anyhow::Result<()> {
     // ==== Part 6: Get Transaction by Hash (lookup previously submitted) ====
     println!("\n=== Part 6: Lookup Transaction by Hash ===");
 
-    let lookup = movement.fullnode().get_transaction_by_hash(&txn_hash).await?;
+    let lookup = movement
+        .fullnode()
+        .get_transaction_by_hash(&txn_hash)
+        .await?;
     println!("Re-fetched transaction:");
     println!(
         "  Timestamp: {}",

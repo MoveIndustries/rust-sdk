@@ -31,7 +31,9 @@ async fn main() -> anyhow::Result<()> {
 
     // Fund only the fee payer (sender doesn't need APT for gas!)
     println!("\nFunding fee payer account...");
-    movement.fund_account(fee_payer.address(), 100_000_000).await?;
+    movement
+        .fund_account(fee_payer.address(), 100_000_000)
+        .await?;
 
     // Also fund sender with a small amount so they have something to transfer
     println!("Funding sender account...");

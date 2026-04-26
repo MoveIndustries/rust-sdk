@@ -16,7 +16,7 @@ mod faucet;
 mod indexer;
 
 pub use fullnode::FullnodeClient;
-pub use response::{MovementResponse, GasEstimation, LedgerInfo, PendingTransaction};
+pub use response::{GasEstimation, LedgerInfo, MovementResponse, PendingTransaction};
 
 #[cfg(feature = "faucet")]
 pub use faucet::FaucetClient;

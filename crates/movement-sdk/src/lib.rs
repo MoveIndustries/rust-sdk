@@ -82,9 +82,9 @@ pub mod types;
 mod movement;
 
 // Re-export main entry points
-pub use movement::Movement;
 pub use config::MovementConfig;
 pub use error::{MovementError, MovementResult};
+pub use movement::Movement;
 
 // Re-export commonly used types
 pub use types::{AccountAddress, ChainId, HashValue};

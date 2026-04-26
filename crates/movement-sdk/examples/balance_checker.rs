@@ -60,7 +60,9 @@ async fn main() -> anyhow::Result<()> {
 
         // Fund it
         println!("Funding account with 1 APT...");
-        movement.fund_account(account.address(), 100_000_000).await?;
+        movement
+            .fund_account(account.address(), 100_000_000)
+            .await?;
         tokio::time::sleep(Duration::from_secs(2)).await;
 
         let initial_balance = movement.get_balance(account.address()).await.unwrap_or(0);
@@ -131,7 +133,11 @@ fn format_apt(octas: u64) -> String {
     }
 }
 
-async fn check_balance(movement: &Movement, address: AccountAddress, name: &str) -> anyhow::Result<u64> {
+async fn check_balance(
+    movement: &Movement,
+    address: AccountAddress,
+    name: &str,
+) -> anyhow::Result<u64> {
     match movement.get_balance(address).await {
         Ok(balance) => {
             println!("  {}", name);

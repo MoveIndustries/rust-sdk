@@ -39,7 +39,9 @@ async fn register_alice(
 async fn deposit(movement: &movement_sdk::Movement, alice: &Ed25519Account, amount: u64) {
     let ca = make_confidential_asset(movement);
     let token = token_address();
-    let payload = ca.deposit(&alice.address(), &token, amount, None).expect("build deposit");
+    let payload = ca
+        .deposit(&alice.address(), &token, amount, None)
+        .expect("build deposit");
     send_and_wait(movement, alice, payload)
         .await
         .expect("deposit tx");

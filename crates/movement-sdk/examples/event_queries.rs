@@ -25,7 +25,9 @@ async fn main() -> anyhow::Result<()> {
     // Fund both accounts
     println!("\nFunding accounts...");
     movement.fund_account(sender.address(), 100_000_000).await?;
-    movement.fund_account(recipient.address(), 10_000_000).await?;
+    movement
+        .fund_account(recipient.address(), 10_000_000)
+        .await?;
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     // 1. Execute a transfer and get events from the result
@@ -160,7 +162,10 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn print_account_event_summary(movement: &Movement, address: AccountAddress) -> anyhow::Result<()> {
+async fn print_account_event_summary(
+    movement: &Movement,
+    address: AccountAddress,
+) -> anyhow::Result<()> {
     // Count deposits
     let deposits = movement
         .fullnode()

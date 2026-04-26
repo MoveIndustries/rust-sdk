@@ -18,12 +18,12 @@
 //! movement-codegen --input abi.json --output src/ --module-name my_module
 //! ```
 
+use clap::{Parser, ValueEnum};
 use movement_sdk::{
     Movement, MovementConfig,
     api::response::MoveModuleABI,
     codegen::{GeneratorConfig, ModuleGenerator, MoveSourceParser},
 };
-use clap::{Parser, ValueEnum};
 use std::{fs, path::PathBuf};
 
 #[derive(Debug, Clone, ValueEnum)]

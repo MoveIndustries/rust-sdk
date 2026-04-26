@@ -111,7 +111,10 @@ impl InputEntryFunctionData {
     /// # Errors
     ///
     /// Returns an error if the function ID is invalid or if BCS encoding of arguments fails.
-    pub fn transfer_apt(recipient: AccountAddress, amount: u64) -> MovementResult<TransactionPayload> {
+    pub fn transfer_apt(
+        recipient: AccountAddress,
+        amount: u64,
+    ) -> MovementResult<TransactionPayload> {
         InputEntryFunctionData::new("0x1::aptos_account::transfer")
             .arg(recipient)
             .arg(amount)

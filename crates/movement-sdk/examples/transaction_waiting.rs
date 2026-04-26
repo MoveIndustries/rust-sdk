@@ -166,7 +166,10 @@ async fn deferred_waiting(
 
     // You can also check status without blocking using get_transaction_by_hash
     println!("\nStep 4: Non-blocking status check");
-    let status = movement.fullnode().get_transaction_by_hash(&txn_hash).await?;
+    let status = movement
+        .fullnode()
+        .get_transaction_by_hash(&txn_hash)
+        .await?;
     let version = status.data.get("version").and_then(|v| v.as_str());
     println!("  Transaction version: {:?}", version);
 
@@ -174,7 +177,10 @@ async fn deferred_waiting(
 }
 
 /// Part 4: Batch waiting - parallel strategy
-async fn batch_parallel_waiting(movement: &Movement, sender: &Ed25519Account) -> anyhow::Result<()> {
+async fn batch_parallel_waiting(
+    movement: &Movement,
+    sender: &Ed25519Account,
+) -> anyhow::Result<()> {
     // Create multiple recipients
     let recipients: Vec<_> = (0..5).map(|_| Ed25519Account::generate()).collect();
 
@@ -229,7 +235,10 @@ async fn batch_parallel_waiting(movement: &Movement, sender: &Ed25519Account) ->
 }
 
 /// Part 5: Batch waiting - sequential strategy
-async fn batch_sequential_waiting(movement: &Movement, sender: &Ed25519Account) -> anyhow::Result<()> {
+async fn batch_sequential_waiting(
+    movement: &Movement,
+    sender: &Ed25519Account,
+) -> anyhow::Result<()> {
     // Create recipients
     let recipients: Vec<_> = (0..3).map(|_| Ed25519Account::generate()).collect();
 
@@ -470,7 +479,10 @@ async fn retry_patterns(
     }
 
     // Wait for final confirmation
-    movement.fullnode().wait_for_transaction(&hash, None).await?;
+    movement
+        .fullnode()
+        .wait_for_transaction(&hash, None)
+        .await?;
     println!("   Transaction confirmed");
 
     Ok(())

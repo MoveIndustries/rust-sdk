@@ -21,7 +21,10 @@ async fn main() -> anyhow::Result<()> {
 
     // Connect to testnet
     let movement = Movement::new(MovementConfig::testnet())?;
-    println!("Connected to testnet (chain_id: {})", movement.chain_id().id());
+    println!(
+        "Connected to testnet (chain_id: {})",
+        movement.chain_id().id()
+    );
 
     // ==== Part 1: Creating a 2-of-3 Multi-Sig Account ====
     println!("\n--- Part 1: Create 2-of-3 Multi-Sig Account ---");
@@ -75,7 +78,9 @@ async fn main() -> anyhow::Result<()> {
     let payload = EntryFunction::apt_transfer(recipient, 1_000_000)?;
 
     // Get sequence number and build transaction
-    let seq_num = movement.get_sequence_number(multi_account.address()).await?;
+    let seq_num = movement
+        .get_sequence_number(multi_account.address())
+        .await?;
 
     let raw_txn = TransactionBuilder::new()
         .sender(multi_account.address())
@@ -120,7 +125,9 @@ async fn main() -> anyhow::Result<()> {
 
     // Create another transaction for distributed signing demo
     let payload2 = EntryFunction::apt_transfer(recipient, 500_000)?;
-    let seq_num2 = movement.get_sequence_number(multi_account.address()).await?;
+    let seq_num2 = movement
+        .get_sequence_number(multi_account.address())
+        .await?;
 
     let raw_txn2 = TransactionBuilder::new()
         .sender(multi_account.address())

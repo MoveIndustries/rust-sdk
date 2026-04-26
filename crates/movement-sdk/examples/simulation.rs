@@ -131,7 +131,9 @@ async fn main() -> anyhow::Result<()> {
         let payload = EntryFunction::apt_transfer(recipient.address(), 5_000_000)?;
 
         println!("Getting gas estimate for transfer...");
-        let estimated_gas = movement.estimate_gas(&sender, payload.clone().into()).await?;
+        let estimated_gas = movement
+            .estimate_gas(&sender, payload.clone().into())
+            .await?;
 
         println!("\nGas Estimation:");
         println!("  Estimated gas (with 20% buffer): {} units", estimated_gas);

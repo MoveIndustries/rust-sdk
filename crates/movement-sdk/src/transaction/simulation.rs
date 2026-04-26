@@ -67,12 +67,15 @@ impl SimulationResult {
     ///
     /// Returns an error if the response is empty or if parsing the JSON fails.
     pub fn from_response(response: Vec<serde_json::Value>) -> MovementResult<Self> {
-        let data = response.into_iter().next().ok_or_else(|| MovementError::Api {
-            status_code: 200,
-            message: "Empty simulation response".into(),
-            error_code: None,
-            vm_error_code: None,
-        })?;
+        let data = response
+            .into_iter()
+            .next()
+            .ok_or_else(|| MovementError::Api {
+                status_code: 200,
+                message: "Empty simulation response".into(),
+                error_code: None,
+                vm_error_code: None,
+            })?;
 
         Self::from_json(data)
     }

@@ -344,8 +344,9 @@ pub fn generate_from_abis_with_config(
         let code = generator.generate()?;
 
         // Create output directory
-        fs::create_dir_all(output_dir)
-            .map_err(|e| MovementError::Config(format!("Failed to create output directory: {e}")))?;
+        fs::create_dir_all(output_dir).map_err(|e| {
+            MovementError::Config(format!("Failed to create output directory: {e}"))
+        })?;
 
         // Write output file
         let output_filename = format!("{}.rs", abi.name);

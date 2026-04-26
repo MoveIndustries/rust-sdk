@@ -19,7 +19,9 @@ async fn main() -> anyhow::Result<()> {
 
     // Fund the deployer account
     println!("\nFunding deployer account...");
-    movement.fund_account(deployer.address(), 100_000_000).await?;
+    movement
+        .fund_account(deployer.address(), 100_000_000)
+        .await?;
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     // In a real deployment, you would:
@@ -94,7 +96,10 @@ async fn main() -> anyhow::Result<()> {
 
     // Show modules on the framework address as an example
     println!("\nExample: Framework modules at 0x1:");
-    let framework_modules = movement.fullnode().get_account_modules("0x1".parse()?).await?;
+    let framework_modules = movement
+        .fullnode()
+        .get_account_modules("0x1".parse()?)
+        .await?;
 
     println!("Found {} framework modules", framework_modules.data.len());
     for module in framework_modules.data.iter().take(10) {
