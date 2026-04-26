@@ -26,6 +26,7 @@ A user-friendly, idiomatic Rust SDK for [Movement Network](https://docs.movement
 |---|---|
 | [`movement-sdk`](crates/movement-sdk/) | Main SDK &mdash; async clients, account management, transaction building, and crypto |
 | [`movement-sdk-macros`](crates/movement-sdk-macros/) | Procedural macros for type-safe contract bindings |
+| [`confidential-assets`](crates/confidential-assets/) | Confidential-asset operations &mdash; Twisted ElGamal, σ-proofs, range proofs, and the on-chain `confidential_asset` module client. TS-SDK parity, see the crate's [README](crates/confidential-assets/README.md). |
 
 ## Prerequisites
 
@@ -167,6 +168,8 @@ cargo build -p movement-sdk --release          # Release build
 
 ### Testing
 
+**`movement-sdk`:**
+
 ```bash
 cargo test -p movement-sdk                    # Unit tests (default features)
 cargo test -p movement-sdk --all-features     # Unit tests (all features)
@@ -179,25 +182,23 @@ movement node run-localnet --force-restart --with-faucet --do-not-delegate
 cargo test -p movement-sdk --features "e2e,full" -- --ignored
 ```
 
+**`confidential-assets`:**
+
+```bash
+cargo test -p confidential-assets             # Unit + integration (47 tests, no network)
+
+# E2E tests — needs a localnet started by start-localnet-confidential-assets.sh
+# from the confidential-asset-prod branch of movementlabsxyz/aptos-core. See
+# crates/confidential-assets/tests/README.md for full setup.
+export CONFIDENTIAL_MODULE_ADDRESS=0x<64 hex>
+./scripts/run-ca-e2e.sh
+```
+
 ### Linting & Formatting
 
 ```bash
 cargo clippy -p movement-sdk --all-features -- -D warnings
 cargo fmt -- --check
-```
-
-## Architecture
-
-```
-crates/movement-sdk/src/
-├── movement.rs        # Main entry point – combines all API capabilities
-├── config.rs          # Network configuration (mainnet, testnet, localnet)
-├── account/            # Account types: Ed25519, Secp256k1, Secp256r1, MultiKey, Keyless
-├── api/                # REST fullnode, GraphQL indexer, faucet, and ANS clients
-├── transaction/        # Builder, authenticator, sponsored & batched transactions
-├── crypto/             # Signature schemes, hashing, and cryptographic traits
-├── types/              # Addresses, Move types, hash values
-└── codegen/            # Generate type-safe Rust bindings from Move ABIs
 ```
 
 ## Resources
