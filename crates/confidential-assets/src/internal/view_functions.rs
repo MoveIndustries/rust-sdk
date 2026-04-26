@@ -83,10 +83,11 @@ pub async fn get_balance(
     let pending_ct = deserialize_ciphertext_chunks(&pending_bytes)?;
     let available_ct = deserialize_ciphertext_chunks(&available_bytes)?;
 
-    let pending = EncryptedAmount::from_ciphertext_and_private_key(&pending_ct, decryption_key)
+    let pending = EncryptedAmount::from_ciphertext_and_decryption_key(&pending_ct, decryption_key)
         .map_err(|e| MovementError::Internal(format!("failed to decrypt pending: {}", e)))?;
-    let available = EncryptedAmount::from_ciphertext_and_private_key(&available_ct, decryption_key)
-        .map_err(|e| MovementError::Internal(format!("failed to decrypt available: {}", e)))?;
+    let available =
+        EncryptedAmount::from_ciphertext_and_decryption_key(&available_ct, decryption_key)
+            .map_err(|e| MovementError::Internal(format!("failed to decrypt available: {}", e)))?;
 
     Ok(ConfidentialBalance { available, pending })
 }

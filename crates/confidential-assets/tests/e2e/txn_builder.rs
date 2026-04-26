@@ -248,3 +248,20 @@ async fn builder_transfer_to_unregistered_recipient_errors() {
         "expected transfer to unregistered recipient to fail"
     );
 }
+
+#[tokio::test]
+#[ignore = "requires localnet — see tests/README.md"]
+async fn builder_get_asset_auditor_encryption_key_returns_none_on_fresh_localnet() {
+    let movement = make_movement().expect("movement client");
+    let module = module_address();
+    let builder = ConfidentialAssetTransactionBuilder::new(&movement, Some(&module));
+
+    let auditor = builder
+        .get_asset_auditor_encryption_key(&token_address())
+        .await
+        .expect("get_asset_auditor_encryption_key");
+    assert!(
+        auditor.is_none(),
+        "expected no auditor on fresh localnet, got Some(_)"
+    );
+}

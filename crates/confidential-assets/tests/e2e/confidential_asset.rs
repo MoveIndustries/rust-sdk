@@ -574,6 +574,83 @@ async fn it_rotates_alices_encryption_key() {
     );
 }
 
+#[tokio::test]
+#[ignore = "requires localnet — see tests/README.md"]
+async fn it_withdraws_with_total_balance_after_deposit() {
+    let movement = make_movement().expect("movement client");
+    let alice = get_test_account();
+    let alice_dk = get_test_confidential_account(Some(&alice));
+
+    fund_and_migrate(&movement, &alice).await.expect("fund");
+    register_alice(&movement, &alice, &alice_dk).await;
+    deposit(&movement, &alice, DEPOSIT_AMOUNT).await;
+
+    let ca = make_confidential_asset(&movement);
+    let pre = ca
+        .get_balance(&alice.address(), &token_address(), &alice_dk)
+        .await
+        .expect("get_balance");
+    // available is 0 here; pending is DEPOSIT_AMOUNT — pull from total.
+    let amount = pre.available_balance() as u64 + 1;
+
+    let fee_payer = make_fee_payer(&movement).await.expect("fee payer");
+    let withdraw_payload = ca
+        .withdraw_with_total_balance(&alice, &token_address(), amount, &alice_dk, None)
+        .await
+        .expect("withdraw_with_total_balance build");
+    send_and_wait_sponsored(&movement, &alice, &fee_payer, withdraw_payload)
+        .await
+        .expect("withdraw tx");
+
+    let post = ca
+        .get_balance(&alice.address(), &token_address(), &alice_dk)
+        .await
+        .expect("get_balance");
+    assert_eq!(post.pending_balance(), 0);
+}
+
+#[tokio::test]
+#[ignore = "requires localnet — see tests/README.md"]
+async fn it_transfers_with_total_balance_after_deposit() {
+    let movement = make_movement().expect("movement client");
+    let alice = get_test_account();
+    let alice_dk = get_test_confidential_account(Some(&alice));
+
+    fund_and_migrate(&movement, &alice).await.expect("fund");
+    register_alice(&movement, &alice, &alice_dk).await;
+    deposit(&movement, &alice, DEPOSIT_AMOUNT).await;
+
+    let ca = make_confidential_asset(&movement);
+    let pre = ca
+        .get_balance(&alice.address(), &token_address(), &alice_dk)
+        .await
+        .expect("get_balance");
+    let transfer_amount = pre.available_balance() as u64 + 1;
+
+    let transfer_payload = ca
+        .transfer_with_total_balance(
+            &alice,
+            &alice.address(),
+            &token_address(),
+            transfer_amount,
+            &alice_dk,
+            &[],
+            &[],
+        )
+        .await
+        .expect("transfer_with_total_balance build");
+    send_and_wait(&movement, &alice, transfer_payload)
+        .await
+        .expect("transfer-with-total tx");
+
+    let post = ca
+        .get_balance(&alice.address(), &token_address(), &alice_dk)
+        .await
+        .expect("get_balance");
+    let pre_total = pre.available_balance() + pre.pending_balance();
+    assert_eq!(post.available_balance() + post.pending_balance(), pre_total);
+}
+
 // suppress unused-const warnings — these document why a test was deferred
 const _: &[&str] = &[
     NEEDS_LOCALNET,

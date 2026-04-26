@@ -14,6 +14,7 @@ use crate::internal::view_functions::{
     ConfidentialBalance, get_balance, get_encryption_key, get_global_auditor_encryption_key,
     is_balance_normalized, is_pending_balance_frozen,
 };
+use movement_sdk::account::Account;
 use movement_sdk::{
     Movement, MovementError, transaction::payload::TransactionPayload, types::AccountAddress,
 };
@@ -127,6 +128,106 @@ impl<'a> ConfidentialAsset<'a> {
                 sender_auditor_hint,
             )
             .await
+    }
+
+    /// Build payloads to withdraw using the sender's total (available + pending) balance.
+    ///
+    /// Mirrors the TS `withdrawWithTotalBalance`: if `available < amount`, auto-rollover
+    /// (which itself normalizes if needed) before building the withdraw.
+    /// Withdraw using the sender's total (available + pending) balance.
+    ///
+    /// Mirrors the TS `withdrawWithTotalBalance`: if `available < amount`, the rollover
+    /// transactions are submitted **internally** (via `signer`), then the final withdraw
+    /// payload is built against the rolled-over on-chain state and returned for the caller
+    /// to sign and submit. The intermediate rollover requires waiting for inclusion
+    /// because the withdraw σ-proof is bound to the on-chain ciphertext.
+    pub async fn withdraw_with_total_balance<A: Account>(
+        &self,
+        signer: &A,
+        token_address: &AccountAddress,
+        amount: u64,
+        sender_decryption_key: &TwistedEd25519PrivateKey,
+        recipient: Option<&AccountAddress>,
+    ) -> Result<TransactionPayload, MovementError> {
+        self.rollover_if_insufficient(signer, token_address, amount, sender_decryption_key)
+            .await?;
+
+        self.transaction
+            .withdraw(
+                &signer.address(),
+                token_address,
+                amount,
+                sender_decryption_key,
+                recipient,
+            )
+            .await
+    }
+
+    /// Transfer using the sender's total (available + pending) balance.
+    ///
+    /// Mirrors the TS `transferWithTotalBalance`: if `available < amount`, the rollover
+    /// transactions are submitted internally (via `signer`), then the final transfer
+    /// payload is built against the rolled-over on-chain state and returned.
+    pub async fn transfer_with_total_balance<A: Account>(
+        &self,
+        signer: &A,
+        recipient: &AccountAddress,
+        token_address: &AccountAddress,
+        amount: u64,
+        sender_decryption_key: &TwistedEd25519PrivateKey,
+        additional_auditor_encryption_keys: &[TwistedEd25519PublicKey],
+        sender_auditor_hint: &[u8],
+    ) -> Result<TransactionPayload, MovementError> {
+        self.rollover_if_insufficient(signer, token_address, amount, sender_decryption_key)
+            .await?;
+
+        self.transaction
+            .transfer(
+                &signer.address(),
+                recipient,
+                token_address,
+                amount,
+                sender_decryption_key,
+                additional_auditor_encryption_keys,
+                sender_auditor_hint,
+            )
+            .await
+    }
+
+    /// Check `available + pending`; if available is short, submit rollover transactions
+    /// (so the chain reflects the rolled-over state) before the caller builds withdraw/transfer.
+    async fn rollover_if_insufficient<A: Account>(
+        &self,
+        signer: &A,
+        token_address: &AccountAddress,
+        amount: u64,
+        sender_decryption_key: &TwistedEd25519PrivateKey,
+    ) -> Result<(), MovementError> {
+        let sender = signer.address();
+        let balance = self
+            .get_balance(&sender, token_address, sender_decryption_key)
+            .await?;
+        let amount_u128 = amount as u128;
+        if balance.available_balance() >= amount_u128 {
+            return Ok(());
+        }
+        if balance.available_balance() + balance.pending_balance() < amount_u128 {
+            return Err(MovementError::Internal(format!(
+                "Insufficient balance. Pending balance - {}, Available balance - {}",
+                balance.pending_balance(),
+                balance.available_balance()
+            )));
+        }
+        let rollover = self
+            .rollover_pending_balance(&sender, token_address, Some(sender_decryption_key), false)
+            .await?;
+        for payload in rollover {
+            self.transaction
+                .client
+                .sign_submit_and_wait(signer, payload, None)
+                .await?;
+        }
+        Ok(())
     }
 
     /// Build a rollover pending balance transaction (may also normalize first).

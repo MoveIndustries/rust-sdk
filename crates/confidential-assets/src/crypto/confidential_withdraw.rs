@@ -60,7 +60,7 @@ impl ConfidentialWithdraw {
         // Use the on-chain ciphertext as-is for the current balance; re-encrypting with
         // fresh randomness would produce a different ciphertext than what's stored on-chain
         // and the σ-proof transcript would not match the on-chain verifier.
-        let current_ea = EncryptedAmount::from_ciphertext_and_private_key(
+        let current_ea = EncryptedAmount::from_ciphertext_and_decryption_key(
             &sender_balance_ciphertext,
             &decryption_key,
         )?;

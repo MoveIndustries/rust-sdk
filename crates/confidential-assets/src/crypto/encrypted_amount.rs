@@ -59,7 +59,7 @@ impl EncryptedAmount {
     /// upstream Pollard kangaroo. Per-chunk randomness is unknown after decryption,
     /// so the returned `EncryptedAmount` carries `Scalar::ZERO` randomness — only
     /// the chunk plaintexts are valid for downstream sigma-prover use.
-    pub fn from_ciphertext_and_private_key(
+    pub fn from_ciphertext_and_decryption_key(
         ciphertext: &[TwistedElGamalCiphertext],
         private_key: &TwistedEd25519PrivateKey,
     ) -> Result<Self, String> {

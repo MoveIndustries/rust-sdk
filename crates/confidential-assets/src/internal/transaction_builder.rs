@@ -463,6 +463,19 @@ impl<'a> ConfidentialAssetTransactionBuilder<'a> {
         .into())
     }
 
+    /// Get the asset auditor encryption key for a token, if set.
+    pub async fn get_asset_auditor_encryption_key(
+        &self,
+        token_address: &AccountAddress,
+    ) -> Result<Option<TwistedEd25519PublicKey>, MovementError> {
+        get_global_auditor_encryption_key(
+            self.client,
+            token_address,
+            Some(&self.confidential_asset_module_address),
+        )
+        .await
+    }
+
     /// Build a `normalize_balance` entry function payload.
     pub async fn normalize_balance(
         &self,
