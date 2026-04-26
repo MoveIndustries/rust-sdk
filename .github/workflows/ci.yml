@@ -299,17 +299,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: "1.90"
-      
+
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
-      
+
+      # Pin to a tarpaulin version whose dep tree builds on rustc 1.90.
+      # Newer tarpaulin (>=0.35.4) pulls in cargo-platform 0.3.3 which needs 1.91.
       - name: Install cargo-tarpaulin
-        run: cargo install cargo-tarpaulin --locked
+        run: cargo install cargo-tarpaulin --version 0.32.7 --locked
       
       - name: Run coverage
         run: |
