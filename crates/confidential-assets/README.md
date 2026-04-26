@@ -17,7 +17,7 @@ ships as WASM (`movement_rp_wasm`, `movement_pollard_kangaroo_wasm`) — same co
 
 See [`tests/README.md`](tests/README.md) for how to run the e2e suite (requires
 [`scripts/start-localnet-confidential-assets.sh`](https://github.com/movementlabsxyz/aptos-core/blob/confidential-asset-prod/scripts/start-localnet-confidential-assets.sh)
-from the Movement fork of `aptos-core`).
+from the `confidential-asset-prod` branch of our `aptos-core` repo).
 
 ## Concepts
 
