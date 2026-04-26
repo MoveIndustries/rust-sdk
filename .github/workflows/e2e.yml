@@ -41,7 +41,7 @@ jobs:
 
       - name: Start localnet
         run: |
-          movement node run-localnet --with-faucet --force-restart > "${{ runner.temp }}/localnet.log" 2>&1 &
+          yes | movement node run-localnet --with-faucet --force-restart --do-not-delegate > "${{ runner.temp }}/localnet.log" 2>&1 &
           echo "LOCALNET_PID=$!" >> $GITHUB_ENV
           # Wait for localnet to be ready
           for i in $(seq 1 90); do
