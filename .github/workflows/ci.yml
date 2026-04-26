@@ -225,12 +225,7 @@ jobs:
       - name: Check documentation (docs.rs parity)
         env:
           RUSTDOCFLAGS: --cfg docsrs -D warnings
-        run: cargo +nightly doc -p movement-sdk --no-deps --all-features
-      
-      - name: Check macros documentation
-        env:
-          RUSTDOCFLAGS: --cfg docsrs -D warnings
-        run: cargo +nightly doc -p movement-sdk-macros --no-deps --all-features
+        run: cargo +nightly doc --workspace --no-deps --all-features
 
   # Deploy docs to GitHub Pages on main branch
   deploy-docs:
@@ -257,7 +252,7 @@ jobs:
       - name: Build documentation
         env:
           RUSTDOCFLAGS: --cfg docsrs
-        run: cargo +nightly doc -p movement-sdk --no-deps --all-features
+        run: cargo +nightly doc --workspace --no-deps --all-features
       
       - name: Add redirect to main crate
         run: |
