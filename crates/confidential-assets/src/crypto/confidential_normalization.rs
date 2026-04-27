@@ -293,8 +293,7 @@ impl ConfidentialNormalization {
     pub async fn gen_range_proof(&self) -> Result<Vec<u8>, String> {
         crate::crypto::range_proof::generate_range_proof(
             self.normalized_encrypted_available_balance.get_ciphertext(),
-            self
-                .normalized_encrypted_available_balance
+            self.normalized_encrypted_available_balance
                 .chunked_amount()
                 .chunks(),
             self.normalized_encrypted_available_balance.randomness(),

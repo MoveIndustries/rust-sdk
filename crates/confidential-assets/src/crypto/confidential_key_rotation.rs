@@ -321,8 +321,7 @@ impl ConfidentialKeyRotation {
     pub async fn gen_range_proof(&self) -> Result<Vec<u8>, String> {
         crate::crypto::range_proof::generate_range_proof(
             self.new_encrypted_available_balance.get_ciphertext(),
-            self
-                .new_encrypted_available_balance
+            self.new_encrypted_available_balance
                 .chunked_amount()
                 .chunks(),
             self.new_encrypted_available_balance.randomness(),

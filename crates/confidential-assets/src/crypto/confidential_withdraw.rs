@@ -147,8 +147,7 @@ impl ConfidentialWithdraw {
         crate::crypto::range_proof::generate_range_proof(
             self.sender_encrypted_available_balance_after_withdrawal
                 .get_ciphertext(),
-            self
-                .sender_encrypted_available_balance_after_withdrawal
+            self.sender_encrypted_available_balance_after_withdrawal
                 .chunked_amount()
                 .chunks(),
             self.sender_encrypted_available_balance_after_withdrawal
