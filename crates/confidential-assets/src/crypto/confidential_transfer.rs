@@ -627,7 +627,7 @@ impl ConfidentialTransfer {
                             &aud.auditors_cb_list[au_idx][idx_j]
                                 .d_bytes()
                                 .try_into()
-                                .unwrap(),
+                                .expect("ElGamal D component is 32 bytes"),
                         ) * p;
                     if xi >= proof.x7_list.len() {
                         return false;
@@ -706,7 +706,9 @@ impl ConfidentialTransfer {
         let take32 = |b: &[u8], o: &mut usize| -> [u8; 32] {
             let s = *o;
             *o += 32;
-            b[s..s + 32].try_into().unwrap()
+            b[s..s + 32]
+                .try_into()
+                .expect("32-byte slice converts to [u8; 32]")
         };
         let take_n = |b: &[u8], o: &mut usize, n: usize| -> Vec<[u8; 32]> {
             (0..n).map(|_| take32(b, o)).collect()

@@ -63,7 +63,11 @@ impl ChunkedAmount {
             .iter()
             .map(|s| {
                 let b = s.to_bytes();
-                u64::from_le_bytes(b[0..8].try_into().unwrap()) & (CHUNK_MASK as u64)
+                u64::from_le_bytes(
+                    b[0..8]
+                        .try_into()
+                        .expect("8-byte slice converts to [u8; 8]"),
+                ) & (CHUNK_MASK as u64)
             })
             .collect();
         Self { chunks: u64_chunks }

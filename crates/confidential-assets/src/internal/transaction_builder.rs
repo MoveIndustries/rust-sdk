@@ -28,9 +28,9 @@ use movement_sdk::{
     types::{AccountAddress, Identifier, MoveModuleId},
 };
 
-/// Helper: BCS-encode an AccountAddress.
+/// Helper: BCS-encode an AccountAddress (fixed 32-byte serialization, infallible).
 fn bcs_addr(addr: &AccountAddress) -> Vec<u8> {
-    aptos_bcs::to_bytes(addr).unwrap_or_default()
+    aptos_bcs::to_bytes(addr).expect("AccountAddress BCS serialization is infallible")
 }
 
 /// Helper: parse module address string to AccountAddress.
@@ -40,6 +40,14 @@ fn bcs_addr(addr: &AccountAddress) -> Vec<u8> {
 fn parse_module_address(addr: &str) -> AccountAddress {
     AccountAddress::from_hex(addr)
         .unwrap_or_else(|e| panic!("invalid confidential-asset module address {addr:?}: {e}"))
+}
+
+/// Build the on-chain `<contract_address>::confidential_asset` module id.
+fn module_id(contract_address: AccountAddress) -> MoveModuleId {
+    MoveModuleId::new(
+        contract_address,
+        Identifier::new(MODULE_NAME).expect("MODULE_NAME is a valid Move identifier"),
+    )
 }
 
 /// Builder for confidential asset transactions.
@@ -85,10 +93,7 @@ impl<'a> ConfidentialAssetTransactionBuilder<'a> {
         let public_key_bytes = decryption_key.public_key().to_bytes();
 
         Ok(EntryFunction::new(
-            MoveModuleId::new(
-                contract_address,
-                Identifier::new(MODULE_NAME).expect("valid module name"),
-            ),
+            module_id(contract_address),
             "register",
             vec![],
             vec![
@@ -115,16 +120,13 @@ impl<'a> ConfidentialAssetTransactionBuilder<'a> {
         let module_addr = parse_module_address(&self.confidential_asset_module_address);
 
         Ok(EntryFunction::new(
-            MoveModuleId::new(
-                module_addr,
-                Identifier::new(MODULE_NAME).expect("valid module name"),
-            ),
+            module_id(module_addr),
             "deposit_to",
             vec![],
             vec![
                 bcs_addr(token_address),
                 bcs_addr(&recipient_addr),
-                aptos_bcs::to_bytes(&amount).unwrap_or_default(),
+                aptos_bcs::to_bytes(&amount).expect("u64 BCS serialization is infallible"),
             ],
         )
         .into())
@@ -177,16 +179,13 @@ impl<'a> ConfidentialAssetTransactionBuilder<'a> {
         let module_addr = parse_module_address(&self.confidential_asset_module_address);
 
         Ok(EntryFunction::new(
-            MoveModuleId::new(
-                module_addr,
-                Identifier::new(MODULE_NAME).expect("valid module name"),
-            ),
+            module_id(module_addr),
             "withdraw_to",
             vec![],
             vec![
                 bcs_addr(token_address),
                 bcs_addr(&recipient_addr),
-                aptos_bcs::to_bytes(&amount).unwrap_or_default(),
+                aptos_bcs::to_bytes(&amount).expect("u64 BCS serialization is infallible"),
                 serialize_vector_u8(&encrypted_amount_after_withdraw.get_ciphertext_bytes()),
                 serialize_vector_u8(&range_proof_bytes),
                 serialize_vector_u8(&ConfidentialWithdraw::serialize_sigma_proof(&proofs)),
@@ -227,10 +226,7 @@ impl<'a> ConfidentialAssetTransactionBuilder<'a> {
         let module_addr = parse_module_address(&self.confidential_asset_module_address);
 
         Ok(EntryFunction::new(
-            MoveModuleId::new(
-                module_addr,
-                Identifier::new(MODULE_NAME).expect("valid module name"),
-            ),
+            module_id(module_addr),
             function_name,
             vec![],
             vec![bcs_addr(token_address)],
@@ -358,10 +354,7 @@ impl<'a> ConfidentialAssetTransactionBuilder<'a> {
         let module_addr = parse_module_address(&self.confidential_asset_module_address);
 
         Ok(EntryFunction::new(
-            MoveModuleId::new(
-                module_addr,
-                Identifier::new(MODULE_NAME).expect("valid module name"),
-            ),
+            module_id(module_addr),
             "confidential_transfer",
             vec![],
             vec![
@@ -444,10 +437,7 @@ impl<'a> ConfidentialAssetTransactionBuilder<'a> {
         let module_addr = parse_module_address(&self.confidential_asset_module_address);
 
         Ok(EntryFunction::new(
-            MoveModuleId::new(
-                module_addr,
-                Identifier::new(MODULE_NAME).expect("valid module name"),
-            ),
+            module_id(module_addr),
             method,
             vec![],
             vec![
@@ -518,10 +508,7 @@ impl<'a> ConfidentialAssetTransactionBuilder<'a> {
 
         let module_addr = parse_module_address(&self.confidential_asset_module_address);
         Ok(EntryFunction::new(
-            MoveModuleId::new(
-                module_addr,
-                Identifier::new(MODULE_NAME).expect("valid module name"),
-            ),
+            module_id(module_addr),
             "normalize",
             vec![],
             vec![

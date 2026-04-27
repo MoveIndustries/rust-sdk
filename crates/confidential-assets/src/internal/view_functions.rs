@@ -49,9 +49,10 @@ fn func_path(module_address: &str, function_name: &str) -> String {
     format!("{}::{}::{}", module_address, MODULE_NAME, function_name)
 }
 
-/// BCS-encode an AccountAddress argument for view function calls.
+/// BCS-encode an AccountAddress argument for view function calls
+/// (fixed 32-byte serialization, infallible).
 fn bcs_address(addr: &AccountAddress) -> Vec<u8> {
-    aptos_bcs::to_bytes(addr).unwrap_or_default()
+    aptos_bcs::to_bytes(addr).expect("AccountAddress BCS serialization is infallible")
 }
 
 /// Get the confidential balance for an account.
