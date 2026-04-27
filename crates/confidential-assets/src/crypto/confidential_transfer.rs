@@ -18,12 +18,13 @@ use crate::crypto::scalar_ts::{
     fix_alpha_limbs_weighted_lincomb, lin_comb_pow2_mod_l, scalar_pow2_mod_l, sub_mod_l,
     sub_mul_mod_l,
 };
+use crate::crypto::sigma_helpers::{sum_c_weighted, sum_d_weighted};
 use crate::crypto::twisted_ed25519::{TwistedEd25519PrivateKey, TwistedEd25519PublicKey};
 use crate::crypto::twisted_el_gamal::TwistedElGamalCiphertext;
 use crate::utils::ed25519_gen_list_of_random;
 use crate::utils::ed25519_gen_random;
 use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
-use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
+use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::traits::Identity;
 
@@ -35,28 +36,11 @@ fn h_bytes() -> [u8; 32] {
     h_ristretto().compress().to_bytes()
 }
 
+/// Decompress a freshly-encoded Ristretto point. Panics on invalid bytes
+/// (only used for points the prover just constructed; see verifier paths
+/// for `Option`-returning decompression).
 fn decompress(p: &[u8; 32]) -> RistrettoPoint {
-    CompressedRistretto(*p)
-        .decompress()
-        .expect("valid ristretto point")
-}
-
-fn sum_d_weighted(cts: &[TwistedElGamalCiphertext]) -> RistrettoPoint {
-    cts.iter()
-        .enumerate()
-        .fold(RistrettoPoint::identity(), |acc, (i, ct)| {
-            let coef = scalar_pow2_mod_l(CHUNK_BITS * i as u32);
-            acc + ct.d * coef
-        })
-}
-
-fn sum_c_weighted(cts: &[TwistedElGamalCiphertext]) -> RistrettoPoint {
-    cts.iter()
-        .enumerate()
-        .fold(RistrettoPoint::identity(), |acc, (i, ct)| {
-            let coef = scalar_pow2_mod_l(CHUNK_BITS * i as u32);
-            acc + ct.c * coef
-        })
+    crate::crypto::sigma_helpers::decompress_point(p).expect("valid ristretto point")
 }
 
 /// Transfer sigma proof (TS `ConfidentialTransferSigmaProof`): scalars as 32-byte LE, points as compressed.

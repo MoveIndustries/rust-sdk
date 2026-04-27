@@ -161,7 +161,6 @@ impl<'a> ConfidentialAssetTransactionBuilder<'a> {
             sender_decryption_key.clone(),
             balance.available.get_amount(),
             balance.available.get_ciphertext().to_vec(),
-            vec![],
             amount as u128,
             chain_id,
             &sender_bytes,

@@ -10,27 +10,23 @@ use crate::crypto::chunked_amount::{
 };
 use crate::crypto::encrypted_amount::EncryptedAmount;
 use crate::crypto::h_ristretto;
-use crate::crypto::scalar_ts::{
-    ed25519_mod_n_biguint, lin_comb_pow2_mod_l, mul_mod_l, scalar_pow2_mod_l,
-};
+use crate::crypto::scalar_ts::{ed25519_mod_n_biguint, lin_comb_pow2_mod_l, mul_mod_l};
+use crate::crypto::sigma_helpers::{sum_c_weighted, sum_d_weighted};
 use crate::crypto::twisted_ed25519::TwistedEd25519PublicKey;
-use crate::crypto::twisted_el_gamal::TwistedElGamalCiphertext;
 use crate::utils::ed25519_gen_list_of_random;
 use crate::utils::ed25519_gen_random;
 use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
-use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
+use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
-use curve25519_dalek::traits::Identity;
 use num_bigint::BigUint;
 use sha2::{Digest, Sha512};
 
 /// Serialized withdraw sigma proof size (matches current TS `serializeSigmaProof` output).
 pub const WITHDRAW_SIGMA_PROOF_BYTES: usize = PROOF_CHUNK_SIZE * 36;
 
+/// Decompress a freshly-encoded Ristretto point. Panics on invalid bytes.
 fn decompress(p: &[u8; 32]) -> RistrettoPoint {
-    CompressedRistretto(*p)
-        .decompress()
-        .expect("valid ristretto encoding")
+    crate::crypto::sigma_helpers::decompress_point(p).expect("valid ristretto encoding")
 }
 
 fn g_bytes() -> [u8; 32] {
@@ -52,24 +48,6 @@ fn chunk_u64_to_scalar_bytes(chunk: u64) -> [u8; 32] {
     let mut out = [0u8; 32];
     out[..8].copy_from_slice(&chunk.to_le_bytes());
     out
-}
-
-fn sum_d_weighted(cts: &[TwistedElGamalCiphertext]) -> RistrettoPoint {
-    cts.iter()
-        .enumerate()
-        .fold(RistrettoPoint::identity(), |acc, (i, ct)| {
-            let coef = scalar_pow2_mod_l(CHUNK_BITS * i as u32);
-            acc + ct.d * coef
-        })
-}
-
-fn sum_c_weighted(cts: &[TwistedElGamalCiphertext]) -> RistrettoPoint {
-    cts.iter()
-        .enumerate()
-        .fold(RistrettoPoint::identity(), |acc, (i, ct)| {
-            let coef = scalar_pow2_mod_l(CHUNK_BITS * i as u32);
-            acc + ct.c * coef
-        })
 }
 
 /// Fiat–Shamir challenge for withdraw (matches TS `dstHash` + `ed25519modN(bytesToNumberLE(hash))`).

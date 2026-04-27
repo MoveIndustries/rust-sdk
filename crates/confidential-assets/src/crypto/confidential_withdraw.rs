@@ -51,7 +51,6 @@ impl ConfidentialWithdraw {
             decryption_key,
             ea.get_amount(),
             sender_available_balance_cipher_text.to_vec(),
-            vec![],
             amount,
             chain_id,
             sender_address,
@@ -67,7 +66,6 @@ impl ConfidentialWithdraw {
         decryption_key: TwistedEd25519PrivateKey,
         sender_balance_amount: u128,
         sender_balance_ciphertext: Vec<TwistedElGamalCiphertext>,
-        _sender_balance_randomness: Vec<curve25519_dalek::scalar::Scalar>,
         amount: u128,
         chain_id: u8,
         sender_address: &[u8],
@@ -129,7 +127,6 @@ impl ConfidentialWithdraw {
         chain_id: u8,
         sender_address: &[u8],
         contract_address: &[u8],
-        _token_address: &[u8],
     ) -> bool {
         verify_withdraw_sigma_proof(&WithdrawVerifyParams {
             sigma: proof,

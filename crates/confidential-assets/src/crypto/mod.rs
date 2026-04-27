@@ -11,6 +11,7 @@ pub mod encrypted_amount;
 pub mod fiat_shamir;
 pub mod range_proof;
 pub mod scalar_ts;
+pub mod sigma_helpers;
 pub mod twisted_ed25519;
 pub mod twisted_el_gamal;
 pub mod withdraw_protocol;

@@ -41,7 +41,6 @@ fn generate_withdraw_sigma_proof() {
         alice_dk,
         ALICE_BALANCE,
         alice_ea.get_ciphertext().to_vec(),
-        alice_ea.randomness().to_vec(),
         withdraw_amount,
         TEST_CHAIN_ID,
         &test_sender_addr(),

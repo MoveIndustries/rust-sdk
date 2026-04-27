@@ -6,14 +6,13 @@ use crate::crypto::chunked_amount::{AVAILABLE_BALANCE_CHUNK_COUNT, CHUNK_BITS, C
 use crate::crypto::encrypted_amount::EncryptedAmount;
 use crate::crypto::fiat_shamir::fiat_shamir_challenge_ts;
 use crate::crypto::h_ristretto;
-use crate::crypto::scalar_ts::{lin_comb_pow2_mod_l, mul_mod_l, scalar_pow2_mod_l};
+use crate::crypto::scalar_ts::{lin_comb_pow2_mod_l, mul_mod_l};
+use crate::crypto::sigma_helpers::{decompress_point, sum_c_weighted, sum_d_weighted};
 use crate::crypto::twisted_ed25519::{TwistedEd25519PrivateKey, TwistedEd25519PublicKey};
-use crate::crypto::twisted_el_gamal::TwistedElGamalCiphertext;
 use crate::utils::{ed25519_gen_list_of_random, ed25519_gen_random};
 use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
-use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
+use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
-use curve25519_dalek::traits::Identity;
 
 /// Normalization sigma proof (matches TS `ConfidentialNormalizationSigmaProof`).
 #[derive(Clone, Debug)]
@@ -26,26 +25,6 @@ pub struct NormalizationSigmaProof {
     pub x2: [u8; 32],
     pub x3_list: [[u8; 32]; AVAILABLE_BALANCE_CHUNK_COUNT],
     pub x4_list: [[u8; 32]; AVAILABLE_BALANCE_CHUNK_COUNT],
-}
-
-fn decompress(p: &[u8; 32]) -> Option<RistrettoPoint> {
-    CompressedRistretto(*p).decompress()
-}
-
-fn sum_d_weighted(cts: &[TwistedElGamalCiphertext]) -> RistrettoPoint {
-    cts.iter()
-        .enumerate()
-        .fold(RistrettoPoint::identity(), |acc, (i, ct)| {
-            acc + ct.d * scalar_pow2_mod_l(CHUNK_BITS * i as u32)
-        })
-}
-
-fn sum_c_weighted(cts: &[TwistedElGamalCiphertext]) -> RistrettoPoint {
-    cts.iter()
-        .enumerate()
-        .fold(RistrettoPoint::identity(), |acc, (i, ct)| {
-            acc + ct.c * scalar_pow2_mod_l(CHUNK_BITS * i as u32)
-        })
 }
 
 /// Confidential normalization context.
@@ -268,21 +247,21 @@ impl ConfidentialNormalization {
         let x1_re = g * lin_a1 + d_old * a2 + c_old * p;
         let x2_re = h * a3 + pk_pt * p;
 
-        let Some(x1_p) = decompress(&sigma_proof.x1) else {
+        let Some(x1_p) = decompress_point(&sigma_proof.x1) else {
             return false;
         };
-        let Some(x2_p) = decompress(&sigma_proof.x2) else {
+        let Some(x2_p) = decompress_point(&sigma_proof.x2) else {
             return false;
         };
         let mut ok = x1_re == x1_p && x2_re == x2_p;
         for i in 0..AVAILABLE_BALANCE_CHUNK_COUNT {
             let x3i = g * a1[i] + h * a4[i] + norm_ct[i].c * p;
-            let Some(x3p) = decompress(&sigma_proof.x3_list[i]) else {
+            let Some(x3p) = decompress_point(&sigma_proof.x3_list[i]) else {
                 return false;
             };
             ok &= x3i == x3p;
             let x4i = pk_pt * a4[i] + norm_ct[i].d * p;
-            let Some(x4p) = decompress(&sigma_proof.x4_list[i]) else {
+            let Some(x4p) = decompress_point(&sigma_proof.x4_list[i]) else {
                 return false;
             };
             ok &= x4i == x4p;

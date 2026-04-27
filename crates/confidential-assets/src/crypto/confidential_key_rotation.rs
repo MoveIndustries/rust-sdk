@@ -6,14 +6,14 @@ use crate::crypto::chunked_amount::{AVAILABLE_BALANCE_CHUNK_COUNT, CHUNK_BITS};
 use crate::crypto::encrypted_amount::EncryptedAmount;
 use crate::crypto::fiat_shamir::fiat_shamir_challenge_ts;
 use crate::crypto::h_ristretto;
-use crate::crypto::scalar_ts::{lin_comb_pow2_mod_l, mul_mod_l, scalar_pow2_mod_l};
+use crate::crypto::scalar_ts::{lin_comb_pow2_mod_l, mul_mod_l};
+use crate::crypto::sigma_helpers::{decompress_point, sum_c_weighted, sum_d_weighted};
 use crate::crypto::twisted_ed25519::{TwistedEd25519PrivateKey, TwistedEd25519PublicKey};
 use crate::crypto::twisted_el_gamal::TwistedElGamalCiphertext;
 use crate::utils::{ed25519_gen_list_of_random, ed25519_gen_random};
 use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
-use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
+use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
-use curve25519_dalek::traits::Identity;
 
 /// Key-rotation sigma proof (matches TS `ConfidentialKeyRotationSigmaProof`).
 #[derive(Clone, Debug)]
@@ -28,28 +28,6 @@ pub struct KeyRotationSigmaProof {
     pub x3: [u8; 32],
     pub x4_list: [[u8; 32]; AVAILABLE_BALANCE_CHUNK_COUNT],
     pub x5_list: [[u8; 32]; AVAILABLE_BALANCE_CHUNK_COUNT],
-}
-
-fn decompress(p: &[u8; 32]) -> Option<RistrettoPoint> {
-    CompressedRistretto(*p).decompress()
-}
-
-fn sum_d_weighted(cts: &[TwistedElGamalCiphertext]) -> RistrettoPoint {
-    cts.iter()
-        .enumerate()
-        .fold(RistrettoPoint::identity(), |acc, (i, ct)| {
-            let coef = scalar_pow2_mod_l(CHUNK_BITS * i as u32);
-            acc + ct.d * coef
-        })
-}
-
-fn sum_c_weighted(cts: &[TwistedElGamalCiphertext]) -> RistrettoPoint {
-    cts.iter()
-        .enumerate()
-        .fold(RistrettoPoint::identity(), |acc, (i, ct)| {
-            let coef = scalar_pow2_mod_l(CHUNK_BITS * i as u32);
-            acc + ct.c * coef
-        })
 }
 
 /// Confidential key rotation context.
@@ -292,25 +270,25 @@ impl ConfidentialKeyRotation {
         let x2_re = h * a3 + pk_old * p;
         let x3_re = h * a4 + pk_new * p;
 
-        let Some(x1_p) = decompress(&sigma_proof.x1) else {
+        let Some(x1_p) = decompress_point(&sigma_proof.x1) else {
             return false;
         };
-        let Some(x2_p) = decompress(&sigma_proof.x2) else {
+        let Some(x2_p) = decompress_point(&sigma_proof.x2) else {
             return false;
         };
-        let Some(x3_p) = decompress(&sigma_proof.x3) else {
+        let Some(x3_p) = decompress_point(&sigma_proof.x3) else {
             return false;
         };
 
         let mut ok = x1_re == x1_p && x2_re == x2_p && x3_re == x3_p;
         for i in 0..AVAILABLE_BALANCE_CHUNK_COUNT {
             let x4i = g * a1[i] + h * a5[i] + new_encrypted_balance[i].c * p;
-            let Some(x4p) = decompress(&sigma_proof.x4_list[i]) else {
+            let Some(x4p) = decompress_point(&sigma_proof.x4_list[i]) else {
                 return false;
             };
             ok &= x4i == x4p;
             let x5i = pk_new * a5[i] + new_encrypted_balance[i].d * p;
-            let Some(x5p) = decompress(&sigma_proof.x5_list[i]) else {
+            let Some(x5p) = decompress_point(&sigma_proof.x5_list[i]) else {
                 return false;
             };
             ok &= x5i == x5p;
