@@ -82,13 +82,13 @@ impl InputEntryFunctionDataBuilder {
 
 ```rust
 /// Creates a Move vector from items.
-pub fn move_vec<T: Serialize>(items: &[T]) -> Vec<u8>;
+pub fn move_vec<T: Serialize>(items: &[T]) -> MovementResult<Vec<u8>>;
 
 /// Creates a Move string.
 pub fn move_string(s: &str) -> String;
 
 /// Creates an Option::Some value.
-pub fn move_some<T: Serialize>(value: T) -> Vec<u8>;
+pub fn move_some<T: Serialize>(value: T) -> MovementResult<Vec<u8>>;
 
 /// Creates an Option::None value.
 pub fn move_none() -> Vec<u8>;
@@ -195,7 +195,7 @@ let payload = InputEntryFunctionData::new("0x1::my_module::my_function")
 
 ```rust
 let payload = InputEntryFunctionData::new("0x1::optional::set_value")
-    .arg_raw(move_some(42u64))  // Option::Some
+    .arg_raw(move_some(42u64)?)  // Option::Some
     .build()?;
 
 let payload = InputEntryFunctionData::new("0x1::optional::clear_value")
