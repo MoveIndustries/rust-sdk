@@ -57,6 +57,27 @@ jobs:
             aptos-rust-sdk
             aptos-core
 
+      # Binary cache keyed on the pinned aptos-core commit. The first run on a
+      # new APTOS_CORE_COMMIT compiles movement CLI (~30 min); every run after
+      # that on the same pin restores ~/.../target/release/movement directly,
+      # and start-localnet-confidential-assets.sh skips its cargo build because
+      # the binary already exists at $REPO_ROOT/target/release/movement.
+      - name: Cache movement CLI binary
+        id: movement-bin-cache
+        uses: actions/cache@v4
+        with:
+          path: aptos-core/target/release/movement
+          key: movement-bin-${{ runner.os }}-${{ env.APTOS_CORE_COMMIT }}
+
+      - name: Report movement CLI cache status
+        run: |
+          if [[ "${{ steps.movement-bin-cache.outputs.cache-hit }}" == "true" ]]; then
+            echo "movement CLI restored from cache for commit ${APTOS_CORE_COMMIT} — skipping compile."
+            ls -l aptos-core/target/release/movement
+          else
+            echo "movement CLI cache miss for commit ${APTOS_CORE_COMMIT} — script will build it (slow first run)."
+          fi
+
       - name: Start localnet + publish confidential_asset module
         working-directory: aptos-core
         run: |
@@ -83,6 +104,7 @@ jobs:
           # We wait for the "Done" line so the module is actually on-chain
           # before extracting the publish-signer address.
           DEADLINE=$((SECONDS + 60 * 60))  # 60 min cap on the localnet script
+          NEXT_HEARTBEAT=$((SECONDS + 30))
           while (( SECONDS < DEADLINE )); do
             if grep -q "Done — feature flag" "$LOG" 2>/dev/null; then
               break
@@ -91,6 +113,15 @@ jobs:
               echo "Localnet script exited before publish completed:" >&2
               cat "$LOG"
               exit 1
+            fi
+            # Heartbeat: every 30s print elapsed time and the tail of the log so
+            # CI viewers can see progress (cargo build lines, faucet polling, etc.)
+            # instead of staring at a blank step.
+            if (( SECONDS >= NEXT_HEARTBEAT )); then
+              echo "--- waiting for module publish (elapsed ${SECONDS}s; tail of $LOG) ---"
+              tail -n 20 "$LOG" 2>/dev/null || echo "(no log yet)"
+              echo "--- end tail ---"
+              NEXT_HEARTBEAT=$((SECONDS + 30))
             fi
             sleep 5
           done
