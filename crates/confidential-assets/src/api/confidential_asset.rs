@@ -27,7 +27,6 @@ use movement_sdk::{
 /// Transaction submission is done via `movement.sign_and_submit()` using the returned payloads.
 pub struct ConfidentialAsset<'a> {
     pub transaction: ConfidentialAssetTransactionBuilder<'a>,
-    pub with_fee_payer: bool,
 }
 
 impl<'a> ConfidentialAsset<'a> {
@@ -38,14 +37,12 @@ impl<'a> ConfidentialAsset<'a> {
     pub fn new(
         client: &'a Movement,
         confidential_asset_module_address: Option<&str>,
-        with_fee_payer: bool,
     ) -> Result<Self, MovementError> {
         Ok(Self {
             transaction: ConfidentialAssetTransactionBuilder::new(
                 client,
                 confidential_asset_module_address,
             )?,
-            with_fee_payer,
         })
     }
 
