@@ -15,11 +15,14 @@ readme = "README.md"
 e2e = []
 
 [dependencies]
-movement-sdk = { workspace = true }
+movement-sdk = { workspace = true, features = ["twisted_ed25519"] }
 aptos-bcs = { workspace = true }
 tokio = { workspace = true }
 
-curve25519-dalek = { version = "4", features = ["serde"] }
+# `zeroize` is required so per-chunk encryption randomness held as `Scalar` values
+# clears on drop — matches the SDK's Twisted Ed25519 private-key handling.
+curve25519-dalek = { workspace = true }
+zeroize = { version = "1.8", features = ["derive"] }
 sha2 = "0.10"
 sha3 = "0.10"
 rand = "0.8"

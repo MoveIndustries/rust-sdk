@@ -59,6 +59,8 @@ mod multi_key;
 mod secp256k1;
 #[cfg(feature = "secp256r1")]
 mod secp256r1;
+#[cfg(feature = "twisted_ed25519")]
+pub mod twisted_ed25519;
 
 // Re-export hash functions
 pub use hash::{HashFunction, sha2_256, sha3_256, sha3_256_of, signing_message};
@@ -106,6 +108,14 @@ pub use bls12381::{
     BLS12381_POP_LENGTH, BLS12381_PRIVATE_KEY_LENGTH, BLS12381_PUBLIC_KEY_LENGTH,
     BLS12381_SIGNATURE_LENGTH, Bls12381PrivateKey, Bls12381ProofOfPossession, Bls12381PublicKey,
     Bls12381Signature,
+};
+
+// Re-export Twisted Ed25519 types
+#[cfg(feature = "twisted_ed25519")]
+pub use twisted_ed25519::{
+    DECRYPTION_KEY_DERIVATION_MESSAGE, H_RISTRETTO_COMPRESSED, TWISTED_ED25519_PRIVATE_KEY_LENGTH,
+    TWISTED_ED25519_PUBLIC_KEY_LENGTH, TwistedEd25519PrivateKey, TwistedEd25519PublicKey,
+    h_ristretto,
 };
 
 /// The authentication key scheme byte for Ed25519 single-key accounts.

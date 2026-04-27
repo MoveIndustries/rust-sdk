@@ -25,9 +25,7 @@ async fn _readme_setup_and_walkthrough() -> MovementResult<()> {
 
     let signature = alice.sign_message(DECRYPTION_KEY_DERIVATION_MESSAGE);
     let sig_bytes = signature.to_bytes();
-    let mut dk_bytes = [0u8; 32];
-    dk_bytes.copy_from_slice(&sig_bytes[..32]);
-    let alice_dk = TwistedEd25519PrivateKey::from_bytes(&dk_bytes);
+    let alice_dk = TwistedEd25519PrivateKey::from_bytes(&sig_bytes[..32])?;
 
     let token: AccountAddress =
         "0x000000000000000000000000000000000000000000000000000000000000000a"

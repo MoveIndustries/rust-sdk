@@ -66,8 +66,7 @@ pub fn get_test_account() -> Ed25519Account {
 pub fn get_test_confidential_account(account: Option<&Ed25519Account>) -> TwistedEd25519PrivateKey {
     if let Ok(dk_hex) = env::var("TESTNET_DK") {
         let bytes = hex::decode(dk_hex.trim_start_matches("0x")).expect("TESTNET_DK must be hex");
-        let arr: [u8; 32] = bytes.try_into().expect("TESTNET_DK must be 32 bytes");
-        return TwistedEd25519PrivateKey::from_bytes(&arr);
+        return TwistedEd25519PrivateKey::from_bytes(&bytes).expect("TESTNET_DK must be 32 bytes");
     }
 
     let Some(account) = account else {
@@ -77,10 +76,7 @@ pub fn get_test_confidential_account(account: Option<&Ed25519Account>) -> Twiste
     let signature = account.sign_message(DECRYPTION_KEY_DERIVATION_MESSAGE);
     let sig_bytes = signature.to_bytes();
     // Twisted Ed25519 derivation takes the first 32 bytes of the 64-byte signature mod the subgroup order.
-    let arr: [u8; 32] = sig_bytes[..32]
-        .try_into()
-        .expect("signature has at least 32 bytes");
-    TwistedEd25519PrivateKey::from_bytes(&arr)
+    TwistedEd25519PrivateKey::from_bytes(&sig_bytes[..32]).expect("signature has at least 32 bytes")
 }
 
 pub fn migrate_payload() -> MovementResult<TransactionPayload> {

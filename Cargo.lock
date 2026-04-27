@@ -442,6 +442,7 @@ dependencies = [
  "sha3 0.10.8",
  "thiserror 2.0.18",
  "tokio",
+ "zeroize",
 ]
 
 [[package]]
@@ -1538,6 +1539,7 @@ dependencies = [
  "blst",
  "clap",
  "const-hex",
+ "curve25519-dalek",
  "ed25519-dalek",
  "futures",
  "hmac",

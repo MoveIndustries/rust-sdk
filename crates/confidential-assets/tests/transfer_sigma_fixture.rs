@@ -116,7 +116,8 @@ fn transfer_sigma_fixture_verifies_when_not_skipped() {
 
     let sender_dk = TwistedEd25519PrivateKey::from_bytes(
         &hex32(&f.inputs.sender_private_key_hex).expect("sender sk"),
-    );
+    )
+    .expect("sender sk length");
     let recipient_pk = TwistedEd25519PublicKey::from_bytes(
         &hex32(&f.inputs.recipient_public_key_hex).expect("recipient pk"),
     )

@@ -192,6 +192,43 @@ jobs:
       - name: Test with full features
         run: cargo test -p movement-sdk --features full
 
+  confidential-assets:
+    name: Confidential Assets (build + non-e2e tests + clippy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.90"
+          components: clippy
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      # Lints over the whole confidential-assets surface, including:
+      #  - the σ-proof verifiers (panic-resistance fix on malformed proof points),
+      #  - the Twisted Ed25519 SDK module + zeroize/redacted-Debug guarantees,
+      #  - and the README compile-test that pins the documented API.
+      - name: Clippy (all targets, all features)
+        run: cargo clippy -p confidential-assets --all-targets --all-features -- -D warnings
+
+      # Builds tests for the e2e feature too so any drift in `tests/e2e/**`
+      # surfaces here, even though the actual e2e tests need a localnet and
+      # only run via scripts/run-ca-e2e.sh.
+      - name: Build (all targets, e2e feature)
+        run: cargo build -p confidential-assets --all-targets --features e2e
+
+      # Runs the non-ignored test surface:
+      #   * unit + integration crypto / BCS / σ-proof gen↔verify roundtrips,
+      #     transfer-σ TS-fixture parity,
+      #   * the σ-verifier panic-resistance regressions
+      #     (transfer_sigma_verify_rejects_malformed_proof_points_without_panic, etc.),
+      #   * tests/readme_compiles.rs — type-checks every README snippet.
+      - name: Run non-e2e tests
+        run: cargo test -p confidential-assets --tests
+
   # Spec tests (behavioral tests from specifications)
   # TODO: Re-enable once specification tests are stabilized
   # spec-tests:
@@ -231,7 +268,7 @@ jobs:
   deploy-docs:
     name: Deploy Documentation
     runs-on: ubuntu-latest
-    needs: [docs, test, lint]
+    needs: [docs, test, lint, confidential-assets]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       contents: read
