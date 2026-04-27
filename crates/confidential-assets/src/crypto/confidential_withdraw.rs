@@ -27,17 +27,35 @@ pub struct ConfidentialWithdraw {
 }
 
 impl ConfidentialWithdraw {
-    /// Create a new confidential withdrawal context.
+    /// Create a withdrawal context from an encrypted on-chain balance.
+    ///
+    /// Recovers the sender's cleartext balance from `sender_available_balance_cipher_text`
+    /// via the Pollard kangaroo DLP solver, then delegates to [`Self::create_with_balance`].
+    /// Mirrors the TS `ConfidentialWithdraw.create` entry point.
     pub async fn create(
-        _decryption_key: TwistedEd25519PrivateKey,
-        _sender_available_balance_cipher_text: &[TwistedElGamalCiphertext],
-        _amount: u128,
-        _chain_id: u8,
-        _sender_address: &[u8],
-        _contract_address: &[u8],
-        _token_address: &[u8],
+        decryption_key: TwistedEd25519PrivateKey,
+        sender_available_balance_cipher_text: &[TwistedElGamalCiphertext],
+        amount: u128,
+        chain_id: u8,
+        sender_address: &[u8],
+        contract_address: &[u8],
+        token_address: &[u8],
     ) -> Result<Self, String> {
-        Err("ConfidentialWithdraw::create requires decrypted balance. Use create_with_balance() instead.".to_string())
+        let ea = EncryptedAmount::from_ciphertext_and_decryption_key(
+            sender_available_balance_cipher_text,
+            &decryption_key,
+        )?;
+        Self::create_with_balance(
+            decryption_key,
+            ea.get_amount(),
+            sender_available_balance_cipher_text.to_vec(),
+            vec![],
+            amount,
+            chain_id,
+            sender_address,
+            contract_address,
+            token_address,
+        )
     }
 
     /// Create with known balance amount and ciphertext-aligned state.
