@@ -136,6 +136,99 @@ fn transfer_sigma_gen_verify_roundtrip() {
     );
 }
 
+/// Malformed proof points must cause verification to return `false`, not panic.
+/// `[0xff; 32]` is not a canonical ristretto255 encoding; comparing in compressed
+/// form (rather than decompressing untrusted bytes) keeps the verifier panic-free.
+#[test]
+fn transfer_sigma_verify_rejects_malformed_proof_points_without_panic() {
+    let alice_dk = TwistedEd25519PrivateKey::generate();
+    let bob_dk = TwistedEd25519PrivateKey::generate();
+    let alice_pk = alice_dk.public_key();
+    let alice_chunked = ChunkedAmount::from_amount(ALICE_BALANCE);
+    let alice_ea = EncryptedAmount::new(alice_chunked, alice_pk);
+
+    let ct = ConfidentialTransfer::create(
+        alice_dk.clone(),
+        ALICE_BALANCE,
+        alice_ea.randomness().to_vec(),
+        10,
+        bob_dk.public_key(),
+        vec![],
+        TEST_CHAIN_ID,
+        &test_sender_addr(),
+        &test_contract_addr(),
+        &test_token_addr(),
+        &[],
+    )
+    .expect("create");
+
+    let mut sigma = ct.gen_sigma_proof();
+    sigma.x1 = [0xffu8; 32]; // not a valid canonical ristretto255 encoding
+
+    let opts = TransferVerifyParams {
+        sender_private_key: alice_dk,
+        recipient_public_key: bob_dk.public_key(),
+        encrypted_actual_balance: ct
+            .sender_encrypted_available_balance()
+            .get_ciphertext()
+            .to_vec(),
+        encrypted_actual_balance_after_transfer: ct
+            .sender_encrypted_available_balance_after_transfer()
+            .clone(),
+        encrypted_transfer_amount_by_recipient: ct.transfer_amount_encrypted_by_recipient().clone(),
+        encrypted_transfer_amount_by_sender: ct.transfer_amount_encrypted_by_sender().clone(),
+        sigma_proof: sigma,
+        auditors: None,
+        chain_id: TEST_CHAIN_ID,
+        sender_address: test_sender_addr(),
+        contract_address: test_contract_addr(),
+        token_address: test_token_addr(),
+        sender_auditor_hint: vec![],
+    };
+    assert!(
+        !ConfidentialTransfer::verify_sigma_proof(&opts),
+        "malformed x1 must fail verification, not panic"
+    );
+}
+
+/// Same panic-resistance check for the withdraw σ-verifier.
+#[test]
+fn withdraw_sigma_verify_rejects_malformed_proof_points_without_panic() {
+    let alice_dk = TwistedEd25519PrivateKey::generate();
+    let alice_pk = alice_dk.public_key();
+    let alice_chunked = ChunkedAmount::from_amount(ALICE_BALANCE);
+    let alice_ea = EncryptedAmount::new(alice_chunked, alice_pk);
+    let withdraw_amount: u128 = 1u128 << 16;
+
+    let cw = ConfidentialWithdraw::create_with_balance(
+        alice_dk,
+        ALICE_BALANCE,
+        alice_ea.get_ciphertext().to_vec(),
+        withdraw_amount,
+        TEST_CHAIN_ID,
+        &test_sender_addr(),
+        &test_contract_addr(),
+        &test_token_addr(),
+    )
+    .expect("create_with_balance");
+
+    let mut sigma = cw.gen_sigma_proof();
+    sigma.x2 = [0xffu8; 32]; // not a valid canonical ristretto255 encoding
+
+    assert!(
+        !ConfidentialWithdraw::verify_sigma_proof(
+            cw.sender_encrypted_available_balance(),
+            cw.sender_encrypted_available_balance_after_withdrawal(),
+            withdraw_amount,
+            &sigma,
+            TEST_CHAIN_ID,
+            &test_sender_addr(),
+            &test_contract_addr(),
+        ),
+        "malformed x2 must fail verification, not panic"
+    );
+}
+
 #[test]
 fn transfer_sigma_proof_serialize_deserialize_roundtrip_no_auditors() {
     let alice_dk = TwistedEd25519PrivateKey::generate();

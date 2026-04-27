@@ -24,9 +24,14 @@ use sha2::{Digest, Sha512};
 /// Serialized withdraw sigma proof size (matches current TS `serializeSigmaProof` output).
 pub const WITHDRAW_SIGMA_PROOF_BYTES: usize = PROOF_CHUNK_SIZE * 36;
 
-/// Decompress a freshly-encoded Ristretto point. Panics on invalid bytes.
-fn decompress(p: &[u8; 32]) -> RistrettoPoint {
-    crate::crypto::sigma_helpers::decompress_point(p).expect("valid ristretto encoding")
+/// Compare a (computed) point against a (proof-supplied) compressed encoding.
+///
+/// ristretto255 has a unique canonical 32-byte encoding, so two points are equal
+/// iff their compressed bytes are equal. Comparing in compressed form avoids
+/// decompressing untrusted proof bytes — malformed inputs simply compare unequal,
+/// so verification returns `false` cleanly instead of panicking.
+fn point_eq_compressed(lhs: &RistrettoPoint, rhs: &[u8; 32]) -> bool {
+    lhs.compress().to_bytes() == *rhs
 }
 
 fn g_bytes() -> [u8; 32] {
@@ -248,14 +253,14 @@ pub fn verify_withdraw_sigma_proof(opts: &WithdrawVerifyParams<'_>) -> bool {
     let h = h_ristretto();
     let x2_re = h * a3 + pk_pt * p;
 
-    let mut ok = x1_re == decompress(&opts.sigma.x1);
-    ok &= x2_re == decompress(&opts.sigma.x2);
+    let mut ok = point_eq_compressed(&x1_re, &opts.sigma.x1);
+    ok &= point_eq_compressed(&x2_re, &opts.sigma.x2);
 
     for i in 0..AVAILABLE_BALANCE_CHUNK_COUNT {
         let x3i = RISTRETTO_BASEPOINT_POINT * a1[i] + h * a4[i] + new_ct[i].c * p;
-        ok &= x3i == decompress(&opts.sigma.x3[i]);
+        ok &= point_eq_compressed(&x3i, &opts.sigma.x3[i]);
         let x4i = pk_pt * a4[i] + new_ct[i].d * p;
-        ok &= x4i == decompress(&opts.sigma.x4[i]);
+        ok &= point_eq_compressed(&x4i, &opts.sigma.x4[i]);
     }
 
     ok

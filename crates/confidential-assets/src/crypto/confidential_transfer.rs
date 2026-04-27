@@ -36,11 +36,14 @@ fn h_bytes() -> [u8; 32] {
     h_ristretto().compress().to_bytes()
 }
 
-/// Decompress a freshly-encoded Ristretto point. Panics on invalid bytes
-/// (only used for points the prover just constructed; see verifier paths
-/// for `Option`-returning decompression).
-fn decompress(p: &[u8; 32]) -> RistrettoPoint {
-    crate::crypto::sigma_helpers::decompress_point(p).expect("valid ristretto point")
+/// Compare a (computed) point against a (proof-supplied) compressed encoding.
+///
+/// ristretto255 has a unique canonical 32-byte encoding, so two points are equal
+/// iff their compressed bytes are equal. This avoids decompressing untrusted proof
+/// bytes in the verifier — malformed or non-canonical inputs simply compare
+/// unequal, so verification returns `false` cleanly instead of panicking.
+fn point_eq_compressed(lhs: &RistrettoPoint, rhs: &[u8; 32]) -> bool {
+    lhs.compress().to_bytes() == *rhs
 }
 
 /// Transfer sigma proof (TS `ConfidentialTransferSigmaProof`): scalars as 32-byte LE, points as compressed.
@@ -634,25 +637,25 @@ impl ConfidentialTransfer {
             .map(|(idx, a1s)| RISTRETTO_BASEPOINT_POINT * a1s + h * a6[idx] + new_ct[idx].c * p)
             .collect();
 
-        let mut ok = x1_re == decompress(&proof.x1);
+        let mut ok = point_eq_compressed(&x1_re, &proof.x1);
         for (x, b) in x2_list.iter().zip(&proof.x2_list) {
-            ok &= *x == decompress(b);
+            ok &= point_eq_compressed(x, b);
         }
         for (x, b) in x3_list.iter().zip(&proof.x3_list) {
-            ok &= *x == decompress(b);
+            ok &= point_eq_compressed(x, b);
         }
         for (x, b) in x4_list.iter().zip(&proof.x4_list) {
-            ok &= *x == decompress(b);
+            ok &= point_eq_compressed(x, b);
         }
-        ok &= x5_re == decompress(&proof.x5);
+        ok &= point_eq_compressed(&x5_re, &proof.x5);
         for (x, b) in x6_list.iter().zip(&proof.x6_list) {
-            ok &= *x == decompress(b);
+            ok &= point_eq_compressed(x, b);
         }
         for (x, b) in x8_list_verify(opts, &a3[..j], &p, sender_ristretto)
             .iter()
             .zip(&proof.x8_list)
         {
-            ok &= *x == decompress(b);
+            ok &= point_eq_compressed(x, b);
         }
 
         if let Some(ref aud) = opts.auditors {
@@ -660,12 +663,12 @@ impl ConfidentialTransfer {
             for (au_idx, au_pk) in aud.public_keys.iter().enumerate() {
                 let au_pt = au_pk.as_point();
                 for (idx_j, a3s) in a3.iter().take(j).enumerate() {
-                    let d_bytes = aud.auditors_cb_list[au_idx][idx_j].d_bytes();
-                    let x7 = au_pt * a3s + decompress(&d_bytes) * p;
+                    let d_pt = aud.auditors_cb_list[au_idx][idx_j].d;
+                    let x7 = au_pt * a3s + d_pt * p;
                     if xi >= proof.x7_list.len() {
                         return false;
                     }
-                    ok &= x7 == decompress(&proof.x7_list[xi]);
+                    ok &= point_eq_compressed(&x7, &proof.x7_list[xi]);
                     xi += 1;
                 }
             }
