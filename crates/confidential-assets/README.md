@@ -392,6 +392,14 @@ the test's expectations. It's the strongest end-to-end guarantee available short
 See [`tests/README.md`](tests/README.md) for more detail and the list of `#[ignore]`d
 diagnostic tests.
 
+## Maintainers
+
+If you're editing `src/crypto/**`, the BCS layer, the TS fixture, or anything in the
+on-chain wire format, read [`MAINTAINERS.md`](MAINTAINERS.md) first — it documents the
+security-critical surface, wire-format invariants, the TS↔Rust↔Move compatibility
+tests, the pinned Move-module commit used in CI, the release checklist, and the
+rollback rules.
+
 ## License
 
 Apache-2.0 © Move Industries
