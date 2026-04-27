@@ -310,10 +310,10 @@ impl<'a> ConfidentialAssetTransactionBuilder<'a> {
         }
         auditor_keys.extend_from_slice(additional_auditor_encryption_keys);
 
-        let confidential_transfer = ConfidentialTransfer::create(
+        let confidential_transfer = ConfidentialTransfer::create_with_balance(
             sender_decryption_key.clone(),
             balance.available.get_amount(),
-            balance.available.randomness().to_vec(),
+            balance.available.get_ciphertext().to_vec(),
             amount as u128,
             recipient_encryption_key.clone(),
             auditor_keys.clone(),

@@ -5,6 +5,9 @@ use crate::e2e::helpers::{
 use movement_sdk::account::Ed25519Account;
 use movement_sdk::types::AccountAddress;
 
+/// Negative path: transferring to a hard-coded unregistered recipient must error
+/// during `transfer` build (no encryption key on chain). Mirror of the TS unit test
+/// that uses the same fixed recipient address.
 #[tokio::test]
 #[ignore = "requires localnet — see tests/README.md"]
 async fn transfer_to_unregistered_recipient_should_fail() {

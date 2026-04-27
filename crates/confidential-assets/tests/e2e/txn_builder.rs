@@ -9,6 +9,8 @@ const DEPOSIT_AMOUNT: u64 = 5;
 const WITHDRAW_AMOUNT: u64 = 1;
 const TRANSFER_AMOUNT: u64 = 2;
 
+/// Lower-level builder smoke test: `register_balance` then `deposit` lands amount in
+/// `pending`. Mirrors the high-level API test but exercises the raw transaction builder.
 #[tokio::test]
 #[ignore = "requires localnet — see tests/README.md"]
 async fn builder_register_then_deposit_updates_pending() {
@@ -36,6 +38,8 @@ async fn builder_register_then_deposit_updates_pending() {
         .expect("deposit tx");
 }
 
+/// Builder-level rollover: a single `rollover_pending_balance` payload submitted after
+/// a deposit moves funds pending → available.
 #[tokio::test]
 #[ignore = "requires localnet — see tests/README.md"]
 async fn builder_rolls_over_pending_balance() {
@@ -70,6 +74,9 @@ async fn builder_rolls_over_pending_balance() {
         .expect("rollover tx");
 }
 
+/// With `check_normalized = true`, the builder must refuse to produce a rollover when
+/// the available balance isn't normalized (vs. the high-level API which auto-prepends
+/// a normalize transaction).
 #[tokio::test]
 #[ignore = "requires localnet — see tests/README.md"]
 async fn builder_errors_when_rollover_check_normalized_fails() {
@@ -119,6 +126,8 @@ async fn builder_errors_when_rollover_check_normalized_fails() {
     );
 }
 
+/// Builder-level withdraw: produces a withdraw payload that the on-chain Move verifier
+/// accepts (σ-proof + range-proof + ciphertext args wired correctly).
 #[tokio::test]
 #[ignore = "requires localnet — see tests/README.md"]
 async fn builder_withdraws_alices_balance() {
@@ -165,6 +174,8 @@ async fn builder_withdraws_alices_balance() {
         .expect("withdraw tx");
 }
 
+/// Builder-level self-transfer: produces a transfer payload accepted by Move's
+/// `verify_transfer_sigma_proof` (basic positive case for the raw builder API).
 #[tokio::test]
 #[ignore = "requires localnet — see tests/README.md"]
 async fn builder_transfers_to_self() {
@@ -213,6 +224,8 @@ async fn builder_transfers_to_self() {
         .expect("transfer tx");
 }
 
+/// Builder mirror of the high-level negative test: building a transfer to an
+/// unregistered recipient must error during payload construction.
 #[tokio::test]
 #[ignore = "requires localnet — see tests/README.md"]
 async fn builder_transfer_to_unregistered_recipient_errors() {
@@ -249,6 +262,8 @@ async fn builder_transfer_to_unregistered_recipient_errors() {
     );
 }
 
+/// On a fresh localnet, no global auditor encryption key has been set for the test
+/// token, so `get_asset_auditor_encryption_key` must return `None` (not an error).
 #[tokio::test]
 #[ignore = "requires localnet — see tests/README.md"]
 async fn builder_get_asset_auditor_encryption_key_returns_none_on_fresh_localnet() {

@@ -3,6 +3,8 @@ use crate::e2e::helpers::{
     make_movement, send_and_wait, token_address,
 };
 
+/// Negative path: depositing without rolling over leaves `available = 0`; a withdraw
+/// must fail either at proof construction or on chain (insufficient balance).
 #[tokio::test]
 #[ignore = "requires localnet — see tests/README.md"]
 async fn withdraw_from_un_rolled_over_balance_should_fail() {

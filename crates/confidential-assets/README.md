@@ -12,9 +12,9 @@ ships as WASM (`movement_rp_wasm`, `movement_pollard_kangaroo_wasm`) — same co
 ## Status
 
 - 47 unit + integration tests (crypto, BCS, σ-proof gen↔verify roundtrips, TS fixture): **passing**.
-- 27 e2e tests against a Movement localnet (register / deposit / rollover / withdraw / transfer
-  with and without auditor / normalize / rotate / total-balance variants, plus negative paths):
-  **passing**.
+- 28 e2e tests against a Movement localnet (register / deposit / rollover / withdraw / transfer
+  with and without auditor / two-transfers-without-rollover regression / normalize / rotate /
+  total-balance variants, plus negative paths): **passing**.
 
 See [`tests/README.md`](tests/README.md) for how to run the e2e suite (requires
 [`scripts/start-localnet-confidential-assets.sh`](https://github.com/movementlabsxyz/aptos-core/blob/confidential-asset-prod/scripts/start-localnet-confidential-assets.sh)
@@ -37,7 +37,8 @@ design (separate construction).
 You hold a **decryption key** (a `TwistedEd25519PrivateKey`) which is independent of your Aptos
 account key. Its corresponding encryption key is what other parties use to deposit / transfer
 to you. Decryption keys can be derived deterministically from your account by signing a fixed
-domain string (see `TwistedEd25519PrivateKey::DECRYPTION_KEY_DERIVATION_MESSAGE`).
+domain string (see the module-level `DECRYPTION_KEY_DERIVATION_MESSAGE` const in
+`confidential_assets::crypto::twisted_ed25519`).
 
 The `ConfidentialAsset` high-level API builds Move entry-function payloads for each operation;
 you sign and submit them with the standard `Movement` client.
@@ -48,7 +49,9 @@ you sign and submit them with the standard `Movement` client.
 
 ```rust
 use confidential_assets::api::ConfidentialAsset;
-use confidential_assets::crypto::twisted_ed25519::TwistedEd25519PrivateKey;
+use confidential_assets::crypto::twisted_ed25519::{
+    DECRYPTION_KEY_DERIVATION_MESSAGE, TwistedEd25519PrivateKey,
+};
 use movement_sdk::account::Ed25519Account;
 use movement_sdk::types::AccountAddress;
 use movement_sdk::{Movement, MovementConfig};
@@ -56,14 +59,18 @@ use movement_sdk::{Movement, MovementConfig};
 let movement = Movement::new(MovementConfig::testnet())?;
 let alice = Ed25519Account::generate();
 
-// Derive a deterministic decryption key from Alice's signing key.
-let signature = alice.sign(TwistedEd25519PrivateKey::DECRYPTION_KEY_DERIVATION_MESSAGE)?;
-let alice_dk = TwistedEd25519PrivateKey::from_signature(&signature)?;
+// Derive a deterministic decryption key from Alice's signing key: sign the
+// fixed domain string and take the first 32 bytes of the signature as a scalar.
+let signature = alice.sign_message(DECRYPTION_KEY_DERIVATION_MESSAGE);
+let sig_bytes = signature.to_bytes();
+let mut dk_bytes = [0u8; 32];
+dk_bytes.copy_from_slice(&sig_bytes[..32]);
+let alice_dk = TwistedEd25519PrivateKey::from_bytes(&dk_bytes);
 
 let token: AccountAddress =
     "0x000000000000000000000000000000000000000000000000000000000000000a".parse()?;
 let module_address = std::env::var("CONFIDENTIAL_MODULE_ADDRESS")?;
-let ca = ConfidentialAsset::new(&movement, Some(&module_address), false);
+let ca = ConfidentialAsset::new(&movement, Some(module_address.as_str()), false);
 ```
 
 ### 1. Register a confidential balance
@@ -319,9 +326,10 @@ These tests do not touch the network and don't need any environment setup.
 
 ### End-to-end against a Movement localnet
 
-27 tests that exercise the full lifecycle on a real chain: register → deposit → rollover →
-withdraw → transfer (with/without auditor) → normalize → key rotation → total-balance variants,
-plus negative paths (frozen balance, unregistered recipient, over-withdraw, etc.).
+28 tests that exercise the full lifecycle on a real chain: register → deposit → rollover →
+withdraw → transfer (with/without auditor) → two-transfers-without-rollover regression →
+normalize → key rotation → total-balance variants, plus negative paths (frozen balance,
+unregistered recipient, over-withdraw, etc.).
 
 **1. Start the localnet.** The required helper script lives at
 [`scripts/start-localnet-confidential-assets.sh`](https://github.com/movementlabsxyz/aptos-core/blob/confidential-asset-prod/scripts/start-localnet-confidential-assets.sh)

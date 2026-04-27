@@ -10,15 +10,9 @@ const DEPOSIT_AMOUNT: u64 = 5;
 const WITHDRAW_AMOUNT: u64 = 1;
 const TRANSFER_AMOUNT: u64 = 2;
 
-const NEEDS_LOCALNET: &str = "requires localnet — see tests/README.md";
-const WIP_TRANSFER_PROOF: &str =
-    "depends on transfer-σ Rust gen↔verify (WIP — see crates/confidential-assets/README.md)";
-const WIP_WITHDRAW_PROOF: &str =
-    "depends on withdraw-σ Rust gen↔verify (WIP — see crates/confidential-assets/README.md)";
-const WIP_KEY_ROTATION: &str =
-    "depends on key-rotation σ proof generation (WIP — see crates/confidential-assets/README.md)";
-const WIP_NORMALIZATION: &str =
-    "depends on normalization σ proof generation (WIP — see crates/confidential-assets/README.md)";
+// Every test in this file is `#[ignore]`d because it needs a running Movement localnet
+// with the `confidential_asset` Move module published. `cargo test` skips them by default;
+// `./scripts/run-ca-e2e.sh` passes `-- --ignored` to run the suite end-to-end.
 
 async fn register_alice(
     movement: &movement_sdk::Movement,
@@ -47,6 +41,7 @@ async fn deposit(movement: &movement_sdk::Movement, alice: &Ed25519Account, amou
         .expect("deposit tx");
 }
 
+/// Deposits a public-FA amount and checks it lands in `pending` (not `available`).
 #[tokio::test]
 #[ignore = "requires localnet — see tests/README.md"]
 async fn it_deposits_alices_balance_and_checks_pending() {
@@ -68,6 +63,7 @@ async fn it_deposits_alices_balance_and_checks_pending() {
     assert_eq!(bal.pending_balance(), DEPOSIT_AMOUNT as u128);
 }
 
+/// Rollover moves `pending` → `available` and zeroes out `pending`.
 #[tokio::test]
 #[ignore = "requires localnet — see tests/README.md"]
 async fn it_rolls_over_alices_pending_to_available() {
@@ -98,6 +94,9 @@ async fn it_rolls_over_alices_pending_to_available() {
     assert_eq!(bal.pending_balance(), 0);
 }
 
+/// A rollover into a non-normalized `available` requires the decryption key (to build a
+/// normalize proof first); calling without one must error rather than silently producing
+/// an unverifiable transaction.
 #[tokio::test]
 #[ignore = "requires localnet — see tests/README.md"]
 async fn it_errors_on_rollover_when_not_normalized() {
@@ -133,6 +132,8 @@ async fn it_errors_on_rollover_when_not_normalized() {
     );
 }
 
+/// Withdraw moves a confidential `available` amount back to a public FA balance; uses a
+/// fee-payer so gas doesn't pollute the same-token balance assertion.
 #[tokio::test]
 #[ignore = "requires localnet — see tests/README.md"]
 async fn it_withdraws_alices_confidential_balance() {
@@ -190,6 +191,8 @@ async fn it_withdraws_alices_confidential_balance() {
     );
 }
 
+/// Withdraw build must fail (locally, before submission) when the requested amount
+/// exceeds the sender's `available` balance.
 #[tokio::test]
 #[ignore = "requires localnet — see tests/README.md"]
 async fn it_throws_when_withdrawing_more_than_available() {
@@ -231,6 +234,8 @@ async fn it_throws_when_withdrawing_more_than_available() {
     );
 }
 
+/// Transfer build must fail when the recipient hasn't registered a confidential balance
+/// (no encryption key on chain to encrypt the amount under).
 #[tokio::test]
 #[ignore = "requires localnet — see tests/README.md"]
 async fn it_throws_when_transferring_to_unregistered_recipient() {
@@ -260,6 +265,8 @@ async fn it_throws_when_transferring_to_unregistered_recipient() {
     );
 }
 
+/// Transfer build must fail (locally) when the requested amount exceeds the sender's
+/// `available` balance — before any tx is signed or submitted.
 #[tokio::test]
 #[ignore = "requires localnet — see tests/README.md"]
 async fn it_throws_when_transferring_more_than_available() {
@@ -295,6 +302,8 @@ async fn it_throws_when_transferring_more_than_available() {
     );
 }
 
+/// Self-transfer with no auditor: amount moves out of `available` and lands in the
+/// sender's own `pending`. Smoke test for the basic transfer-σ + range-proof path.
 #[tokio::test]
 #[ignore = "requires localnet — see tests/README.md"]
 async fn it_transfers_alice_to_alice_pending_no_auditor() {
@@ -350,6 +359,87 @@ async fn it_transfers_alice_to_alice_pending_no_auditor() {
     );
 }
 
+/// Regression: two consecutive transfers with no rollover between them. After the
+/// first transfer the sender's on-chain `actual_balance` carries real randomness
+/// (D ≠ 0); the second transfer's σ-proof must bind to *that* ciphertext rather than
+/// a re-encryption of the known plaintext, or Move's verifier rejects with
+/// `ESIGMA_PROTOCOL_VERIFY_FAILED`. Single-transfer tests miss this because Move's
+/// deposit→rollover path uses `new_pending_balance_u64_no_randonmess` (D = 0,
+/// C = v·G), coincidentally matching a rebuild from `amount + zero randomness`.
+#[tokio::test]
+#[ignore = "requires localnet — see tests/README.md"]
+async fn it_transfers_twice_without_intervening_rollover() {
+    let movement = make_movement().expect("movement client");
+    let alice = get_test_account();
+    let alice_dk = get_test_confidential_account(Some(&alice));
+
+    fund_and_migrate(&movement, &alice).await.expect("fund");
+    register_alice(&movement, &alice, &alice_dk).await;
+    deposit(&movement, &alice, DEPOSIT_AMOUNT).await;
+
+    let ca = make_confidential_asset(&movement);
+    let rollovers = ca
+        .rollover_pending_balance(&alice.address(), &token_address(), None, false)
+        .await
+        .expect("rollover build");
+    for p in rollovers {
+        send_and_wait(&movement, &alice, p).await.expect("rollover");
+    }
+
+    let pre = ca
+        .get_balance(&alice.address(), &token_address(), &alice_dk)
+        .await
+        .expect("get_balance");
+
+    let payload1 = ca
+        .transfer(
+            &alice.address(),
+            &alice.address(),
+            &token_address(),
+            TRANSFER_AMOUNT,
+            &alice_dk,
+            &[],
+            &[],
+        )
+        .await
+        .expect("transfer 1 build");
+    send_and_wait(&movement, &alice, payload1)
+        .await
+        .expect("transfer 1 tx");
+
+    // No rollover here — Alice's actual_balance now has real randomness on chain.
+    let payload2 = ca
+        .transfer(
+            &alice.address(),
+            &alice.address(),
+            &token_address(),
+            TRANSFER_AMOUNT,
+            &alice_dk,
+            &[],
+            &[],
+        )
+        .await
+        .expect("transfer 2 build");
+    send_and_wait(&movement, &alice, payload2)
+        .await
+        .expect("transfer 2 tx");
+
+    let post = ca
+        .get_balance(&alice.address(), &token_address(), &alice_dk)
+        .await
+        .expect("get_balance");
+    assert_eq!(
+        post.available_balance(),
+        pre.available_balance() - 2 * TRANSFER_AMOUNT as u128
+    );
+    assert_eq!(
+        post.pending_balance(),
+        pre.pending_balance() + 2 * TRANSFER_AMOUNT as u128
+    );
+}
+
+/// Transfer with one extra auditor key: the σ-proof's `x7` rows and the auditor-amount
+/// ciphertexts must verify in the same MSM Move's verifier runs.
 #[tokio::test]
 #[ignore = "requires localnet — see tests/README.md"]
 async fn it_transfers_alice_to_alice_with_auditor() {
@@ -388,6 +478,7 @@ async fn it_transfers_alice_to_alice_with_auditor() {
         .expect("transfer tx");
 }
 
+/// A freshly-registered account's pending balance is not frozen.
 #[tokio::test]
 #[ignore = "requires localnet — see tests/README.md"]
 async fn it_checks_alices_balance_not_frozen() {
@@ -406,6 +497,7 @@ async fn it_checks_alices_balance_not_frozen() {
     assert!(!frozen);
 }
 
+/// Querying frozen-state on an unregistered account must error (no resource on chain).
 #[tokio::test]
 #[ignore = "requires localnet — see tests/README.md"]
 async fn it_throws_checking_frozen_for_unregistered_account() {
@@ -422,6 +514,7 @@ async fn it_throws_checking_frozen_for_unregistered_account() {
     );
 }
 
+/// Querying normalization-state on an unregistered account must error.
 #[tokio::test]
 #[ignore = "requires localnet — see tests/README.md"]
 async fn it_throws_is_normalized_for_unregistered_account() {
@@ -438,6 +531,9 @@ async fn it_throws_is_normalized_for_unregistered_account() {
     );
 }
 
+/// After a deposit + rollover + second deposit, an explicit `normalize_balance` call
+/// leaves the balance in normalized form (so subsequent rollovers don't need a
+/// normalize-proof prepended).
 #[tokio::test]
 #[ignore = "requires localnet — see tests/README.md"]
 async fn it_normalizes_alices_balance() {
@@ -474,6 +570,8 @@ async fn it_normalizes_alices_balance() {
     assert!(normalized);
 }
 
+/// Withdraw with an explicit recipient address: the public FA lands in Bob's balance,
+/// not Alice's.
 #[tokio::test]
 #[ignore = "requires localnet — see tests/README.md"]
 async fn it_withdraws_to_another_account() {
@@ -525,6 +623,8 @@ async fn it_withdraws_to_another_account() {
     assert_eq!(post, pre + WITHDRAW_AMOUNT);
 }
 
+/// Rotate to a new decryption key: post-rotation, the *total* (available + pending)
+/// balance is preserved and decryptable under the new key.
 #[tokio::test]
 #[ignore = "requires localnet — see tests/README.md"]
 async fn it_rotates_alices_encryption_key() {
@@ -574,6 +674,9 @@ async fn it_rotates_alices_encryption_key() {
     );
 }
 
+/// `withdraw_with_total_balance` auto-rolls-over pending → available when
+/// `available < amount`, so a withdraw can pull from a freshly-deposited (still
+/// pending) balance without an explicit rollover step.
 #[tokio::test]
 #[ignore = "requires localnet — see tests/README.md"]
 async fn it_withdraws_with_total_balance_after_deposit() {
@@ -609,6 +712,9 @@ async fn it_withdraws_with_total_balance_after_deposit() {
     assert_eq!(post.pending_balance(), 0);
 }
 
+/// `transfer_with_total_balance` mirrors `withdraw_with_total_balance`: auto-rollover
+/// when `available < amount` so a transfer can spend a still-pending balance. Total
+/// (available + pending) across the operation is preserved.
 #[tokio::test]
 #[ignore = "requires localnet — see tests/README.md"]
 async fn it_transfers_with_total_balance_after_deposit() {
@@ -650,12 +756,3 @@ async fn it_transfers_with_total_balance_after_deposit() {
     let pre_total = pre.available_balance() + pre.pending_balance();
     assert_eq!(post.available_balance() + post.pending_balance(), pre_total);
 }
-
-// suppress unused-const warnings — these document why a test was deferred
-const _: &[&str] = &[
-    NEEDS_LOCALNET,
-    WIP_TRANSFER_PROOF,
-    WIP_WITHDRAW_PROOF,
-    WIP_KEY_ROTATION,
-    WIP_NORMALIZATION,
-];

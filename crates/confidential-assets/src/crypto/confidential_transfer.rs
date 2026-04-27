@@ -105,14 +105,68 @@ impl ConfidentialTransfer {
         token_address: &[u8],
         sender_auditor_hint: &[u8],
     ) -> Result<Self, String> {
+        if sender_balance_randomness.len() != AVAILABLE_BALANCE_CHUNK_COUNT {
+            return Err(format!(
+                "sender_balance_randomness must have length {AVAILABLE_BALANCE_CHUNK_COUNT}"
+            ));
+        }
+        let sender_pk = sender_decryption_key.public_key();
+        let current_chunked = ChunkedAmount::from_amount(sender_balance_amount);
+        let current_ea = EncryptedAmount::new_with_randomness(
+            current_chunked,
+            sender_pk,
+            sender_balance_randomness,
+        )?;
+        Self::create_with_balance(
+            sender_decryption_key,
+            sender_balance_amount,
+            current_ea.get_ciphertext().to_vec(),
+            amount,
+            recipient_encryption_key,
+            auditor_encryption_keys,
+            chain_id,
+            sender_address,
+            contract_address,
+            token_address,
+            sender_auditor_hint,
+        )
+    }
+
+    /// Build a transfer context from the **on-chain** sender ciphertext.
+    ///
+    /// Move's `verify_transfer_sigma_proof` binds the σ-proof to the actual stored
+    /// `current_balance` ciphertext (real D points, real C points) — both via the
+    /// Fiat-Shamir transcript and the MSM check. Re-encrypting the known plaintext
+    /// with fresh randomness here would yield a different ciphertext than what's
+    /// stored on chain, the FS challenges would diverge, and the proof would be
+    /// rejected with `ESIGMA_PROTOCOL_VERIFY_FAILED`. Tests built on a fresh deposit
+    /// → rollover happen to mask this because Move's deposit path uses
+    /// `new_pending_balance_u64_no_randonmess` (D = 0, C = v·G), which coincidentally
+    /// matches a rebuild from `amount + zero randomness`; a second consecutive
+    /// transfer (no intervening rollover) exercises real randomness and exposes the
+    /// divergence.
+    #[allow(clippy::too_many_arguments)]
+    pub fn create_with_balance(
+        sender_decryption_key: TwistedEd25519PrivateKey,
+        sender_balance_amount: u128,
+        sender_balance_ciphertext: Vec<TwistedElGamalCiphertext>,
+        amount: u128,
+        recipient_encryption_key: TwistedEd25519PublicKey,
+        auditor_encryption_keys: Vec<TwistedEd25519PublicKey>,
+        chain_id: u8,
+        sender_address: &[u8],
+        contract_address: &[u8],
+        token_address: &[u8],
+        sender_auditor_hint: &[u8],
+    ) -> Result<Self, String> {
         if sender_auditor_hint.len() > MAX_SENDER_AUDITOR_HINT_BYTES {
             return Err(format!(
                 "senderAuditorHint exceeds MAX_SENDER_AUDITOR_HINT_BYTES ({MAX_SENDER_AUDITOR_HINT_BYTES})"
             ));
         }
-        if sender_balance_randomness.len() != AVAILABLE_BALANCE_CHUNK_COUNT {
+        if sender_balance_ciphertext.len() != AVAILABLE_BALANCE_CHUNK_COUNT {
             return Err(format!(
-                "sender_balance_randomness must have length {AVAILABLE_BALANCE_CHUNK_COUNT}"
+                "sender_balance_ciphertext must have length {AVAILABLE_BALANCE_CHUNK_COUNT}"
             ));
         }
         if amount > sender_balance_amount {
@@ -124,11 +178,9 @@ impl ConfidentialTransfer {
         let new_balance = sender_balance_amount - amount;
         let sender_pk = sender_decryption_key.public_key();
 
-        let current_chunked = ChunkedAmount::from_amount(sender_balance_amount);
-        let current_ea = EncryptedAmount::new_with_randomness(
-            current_chunked,
+        let current_ea = EncryptedAmount::from_ciphertext_vec_for_verification(
+            sender_balance_ciphertext,
             sender_pk.clone(),
-            sender_balance_randomness,
         )?;
 
         let new_rnd = ed25519_gen_list_of_random(AVAILABLE_BALANCE_CHUNK_COUNT);
