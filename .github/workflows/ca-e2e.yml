@@ -1,12 +1,10 @@
 name: Confidential Assets E2E
 
 on:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
-    paths:
-      - 'crates/confidential-assets/**'
-      - 'scripts/run-ca-e2e.sh'
-      - '.github/workflows/ca-e2e.yml'
   schedule:
     # Run nightly at 02:00 UTC.
     - cron: '0 2 * * *'
