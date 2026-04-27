@@ -1,0 +1,150 @@
+name: Confidential Assets E2E
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'crates/confidential-assets/**'
+      - 'scripts/run-ca-e2e.sh'
+      - '.github/workflows/ca-e2e.yml'
+  schedule:
+    # Run nightly at 02:00 UTC.
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  # Pinned to a commit on movementlabsxyz/aptos-core's confidential-asset-prod
+  # branch so CI is reproducible and won't drift if the branch advances.
+  # Bump when intentional changes to the localnet/module setup are needed.
+  APTOS_CORE_COMMIT: e3d61f62460eb1537fccd8157e51daafbbf8c867
+
+jobs:
+  ca-e2e:
+    name: Confidential Assets E2E (Localnet)
+    runs-on: ubuntu-latest
+    # The aptos-core localnet script builds the movement CLI from source,
+    # which is slow on a clean runner. Allow generous headroom.
+    timeout-minutes: 90
+    steps:
+      - name: Checkout aptos-rust-sdk
+        uses: actions/checkout@v6
+        with:
+          path: aptos-rust-sdk
+
+      - name: Checkout aptos-core (pinned)
+        uses: actions/checkout@v6
+        with:
+          repository: movementlabsxyz/aptos-core
+          ref: ${{ env.APTOS_CORE_COMMIT }}
+          path: aptos-core
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.90"
+
+      - name: Install aptos-core build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake clang lld pkg-config \
+            libssl-dev libudev-dev libdw-dev curl jq
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            aptos-rust-sdk
+            aptos-core
+
+      - name: Start localnet + publish confidential_asset module
+        working-directory: aptos-core
+        run: |
+          set -euo pipefail
+          LOG="${RUNNER_TEMP}/ca-localnet-script.log"
+          # Run the script detached; it builds movement CLI, starts localnet,
+          # enables feature flag 87, and publishes AptosExperimental. Output
+          # is tee'd so we can parse the publish-signer address out of it.
+          nohup bash ./scripts/start-localnet-confidential-assets.sh \
+            > "$LOG" 2>&1 &
+          SCRIPT_PID=$!
+          echo "SCRIPT_PID=$SCRIPT_PID" >> "$GITHUB_ENV"
+          echo "CA_LOCALNET_LOG=$LOG" >> "$GITHUB_ENV"
+          echo "Started script (PID=$SCRIPT_PID), tailing $LOG"
+
+      - name: Wait for module publish + extract address
+        run: |
+          set -euo pipefail
+          LOG="${CA_LOCALNET_LOG}"
+          # The script prints, partway through:
+          #   Funding move publish signer (default profile) 0x<64-hex> via faucet ...
+          # and then later:
+          #   Done — feature flag and (if enabled) publish finished.
+          # We wait for the "Done" line so the module is actually on-chain
+          # before extracting the publish-signer address.
+          DEADLINE=$((SECONDS + 60 * 60))  # 60 min cap on the localnet script
+          while (( SECONDS < DEADLINE )); do
+            if grep -q "Done — feature flag" "$LOG" 2>/dev/null; then
+              break
+            fi
+            if ! kill -0 "$SCRIPT_PID" 2>/dev/null; then
+              echo "Localnet script exited before publish completed:" >&2
+              cat "$LOG"
+              exit 1
+            fi
+            sleep 5
+          done
+          if ! grep -q "Done — feature flag" "$LOG"; then
+            echo "Timed out waiting for module publish." >&2
+            cat "$LOG"
+            exit 1
+          fi
+          ADDR=$(grep -oE 'publish signer \(default profile\) 0x[0-9a-f]{64}' "$LOG" \
+                 | head -n1 | awk '{print $NF}')
+          if [[ -z "$ADDR" ]]; then
+            echo "Could not parse publish-signer address from script output." >&2
+            cat "$LOG"
+            exit 1
+          fi
+          echo "CONFIDENTIAL_MODULE_ADDRESS=$ADDR"
+          echo "CONFIDENTIAL_MODULE_ADDRESS=$ADDR" >> "$GITHUB_ENV"
+
+      - name: Verify REST endpoint is up
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8080/v1 > /dev/null; then
+              echo "REST ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "REST not ready" >&2
+          cat "${CA_LOCALNET_LOG}"
+          exit 1
+
+      - name: Run confidential-assets e2e tests
+        working-directory: aptos-rust-sdk
+        env:
+          MOVEMENT_LOCAL_FAUCET_URL: http://127.0.0.1:8081
+          MOVEMENT_LOCAL_NODE_URL: http://127.0.0.1:8080/v1
+        run: ./scripts/run-ca-e2e.sh
+
+      - name: Print localnet script log on failure
+        if: failure()
+        run: |
+          echo "=== ca-localnet-script.log ==="
+          cat "${CA_LOCALNET_LOG}" || true
+          echo "=== aptos-core .movement/localnet.log ==="
+          cat aptos-core/.movement/localnet.log || true
+
+      - name: Stop localnet
+        if: always()
+        run: |
+          kill "${SCRIPT_PID}" 2>/dev/null || true
+          pkill -f "movement node" 2>/dev/null || true
+          # PID file written by the script
+          if [[ -f aptos-core/.movement/localnet.pid ]]; then
+            kill "$(cat aptos-core/.movement/localnet.pid)" 2>/dev/null || true
+          fi
