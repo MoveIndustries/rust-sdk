@@ -190,12 +190,12 @@ pub async fn get_global_auditor_encryption_key(
 
     match result {
         Some(bytes) if !bytes.is_empty() => {
-            match {
+            let res = {
                 let arr: [u8; 32] = bytes
                     .try_into()
                     .map_err(|_| MovementError::Internal("auditor key not 32 bytes".to_string()))?;
                 TwistedEd25519PublicKey::from_bytes(&arr)
-            } {
+            }; match res {
                 Ok(key) => Ok(Some(key)),
                 Err(_) => Ok(None),
             }

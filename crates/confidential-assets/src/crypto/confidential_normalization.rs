@@ -56,6 +56,7 @@ pub struct ConfidentialNormalization {
     chain_id: u8,
     sender_address: Vec<u8>,
     contract_address: Vec<u8>,
+    // Held for TS API parity; the normalization σ-protocol does not bind to the token address.
     #[allow(dead_code)]
     token_address: Vec<u8>,
 }
@@ -292,11 +293,10 @@ impl ConfidentialNormalization {
     pub async fn gen_range_proof(&self) -> Result<Vec<u8>, String> {
         crate::crypto::range_proof::generate_range_proof(
             self.normalized_encrypted_available_balance.get_ciphertext(),
-            &self
+            self
                 .normalized_encrypted_available_balance
                 .chunked_amount()
-                .chunks()
-                .to_vec(),
+                .chunks(),
             self.normalized_encrypted_available_balance.randomness(),
         )
     }

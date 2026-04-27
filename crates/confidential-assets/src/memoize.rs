@@ -23,11 +23,10 @@ fn global() -> &'static Mutex<HashMap<String, Entry>> {
 pub fn get_cache<T: Clone + Send + Sync + 'static>(key: &str, ttl_ms: Option<u64>) -> Option<T> {
     let map = global().lock().ok()?;
     let e = map.get(key)?;
-    if let Some(ms) = ttl_ms {
-        if e.at.elapsed() > Duration::from_millis(ms) {
+    if let Some(ms) = ttl_ms
+        && e.at.elapsed() > Duration::from_millis(ms) {
             return None;
         }
-    }
     e.value.downcast_ref::<T>().cloned()
 }
 
@@ -117,11 +116,10 @@ where
     Fut: std::future::Future<Output = T>,
     T: Clone + Send + Sync + 'static,
 {
-    if use_cached_value {
-        if let Some(v) = get_cache::<T>(&key, ttl_ms) {
+    if use_cached_value
+        && let Some(v) = get_cache::<T>(&key, ttl_ms) {
             return v;
         }
-    }
     let out = func().await;
     set_cache(key, out.clone());
     out

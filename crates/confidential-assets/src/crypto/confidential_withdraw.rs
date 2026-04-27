@@ -22,6 +22,8 @@ pub struct ConfidentialWithdraw {
     chain_id: u8,
     sender_address: Vec<u8>,
     contract_address: Vec<u8>,
+    // Held for TS API parity; the withdraw σ-protocol does not bind to the token address
+    // (only transfer σ does, via auditor encryption). Kept so `create*` signatures match TS.
     #[allow(dead_code)]
     token_address: Vec<u8>,
 }
@@ -59,6 +61,8 @@ impl ConfidentialWithdraw {
     }
 
     /// Create with known balance amount and ciphertext-aligned state.
+    // σ-protocol context — each parameter is a distinct cryptographic input.
+    #[allow(clippy::too_many_arguments)]
     pub fn create_with_balance(
         decryption_key: TwistedEd25519PrivateKey,
         sender_balance_amount: u128,
@@ -129,8 +133,8 @@ impl ConfidentialWithdraw {
     ) -> bool {
         verify_withdraw_sigma_proof(&WithdrawVerifyParams {
             sigma: proof,
-            sender_encrypted_balance: sender_encrypted_balance,
-            sender_encrypted_balance_after: sender_encrypted_balance_after,
+            sender_encrypted_balance,
+            sender_encrypted_balance_after,
             amount_to_withdraw: amount,
             chain_id,
             sender_address,
@@ -143,11 +147,10 @@ impl ConfidentialWithdraw {
         crate::crypto::range_proof::generate_range_proof(
             self.sender_encrypted_available_balance_after_withdrawal
                 .get_ciphertext(),
-            &self
+            self
                 .sender_encrypted_available_balance_after_withdrawal
                 .chunked_amount()
-                .chunks()
-                .to_vec(),
+                .chunks(),
             self.sender_encrypted_available_balance_after_withdrawal
                 .randomness(),
         )

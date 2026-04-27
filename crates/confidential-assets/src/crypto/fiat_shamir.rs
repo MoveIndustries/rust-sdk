@@ -30,7 +30,7 @@ pub fn fiat_shamir_challenge(
     hasher.update(DST_PREFIX);
     hasher.update(protocol_id.as_bytes());
     // chain_id as single byte
-    hasher.update(&[chain_id]);
+    hasher.update([chain_id]);
     hasher.update(sender_address);
     hasher.update(token_address);
     for data in extra_data {
@@ -84,7 +84,7 @@ pub fn fiat_shamir_challenge_ts(
     let mut hasher = Sha512::new();
     let dst = format!("MovementConfidentialAsset/{protocol_id}");
     hasher.update(dst.as_bytes());
-    hasher.update(&[chain_id]);
+    hasher.update([chain_id]);
     hasher.update(sender_address);
     for p in public_inputs {
         hasher.update(*p);
@@ -107,7 +107,7 @@ pub fn fiat_shamir_challenge_full(
     let mut hasher = Sha512::new();
     hasher.update(DST_PREFIX);
     hasher.update(protocol_id.as_bytes());
-    hasher.update(&[chain_id]);
+    hasher.update([chain_id]);
     hasher.update(sender_address);
     hasher.update(contract_address);
     hasher.update(token_address);

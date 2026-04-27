@@ -57,16 +57,8 @@ pub fn verify_range_batch(
         return Err("empty commitments".into());
     }
     let proof = RangeProof::from_bytes(proof).map_err(|e| format!("rp deser: {:?}", e))?;
-    let val_base_b: [u8; 32] = val_base
-        .compress()
-        .to_bytes()
-        .try_into()
-        .map_err(|_| "val_base bytes".to_string())?;
-    let rand_base_b: [u8; 32] = rand_base
-        .compress()
-        .to_bytes()
-        .try_into()
-        .map_err(|_| "rand_base bytes".to_string())?;
+    let val_base_b: [u8; 32] = val_base.compress().to_bytes();
+    let rand_base_b: [u8; 32] = rand_base.compress().to_bytes();
     let pg = PedersenGens {
         B: NgCompressed(val_base_b)
             .decompress()

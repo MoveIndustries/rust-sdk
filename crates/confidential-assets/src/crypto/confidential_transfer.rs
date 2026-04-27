@@ -105,6 +105,9 @@ pub struct ConfidentialTransfer {
 }
 
 impl ConfidentialTransfer {
+    // Each argument is a distinct cryptographic input to the σ-protocol; collapsing
+    // into a struct just shuffles complexity without making the call site clearer.
+    #[allow(clippy::too_many_arguments)]
     pub fn create(
         sender_decryption_key: TwistedEd25519PrivateKey,
         sender_balance_amount: u128,
@@ -288,10 +291,10 @@ impl ConfidentialTransfer {
             .collect();
 
         let mut x7_flat: Vec<[u8; 32]> = Vec::new();
-        for (aud_idx, _aud_pk) in self.auditor_encryption_keys.iter().enumerate() {
-            let aud_pt = self.auditor_encryption_keys[aud_idx].as_point();
-            for k in 0..j {
-                x7_flat.push((aud_pt * x3_list[k]).compress().to_bytes());
+        for aud_pk in &self.auditor_encryption_keys {
+            let aud_pt = aud_pk.as_point();
+            for x3 in &x3_list[..j] {
+                x7_flat.push((aud_pt * x3).compress().to_bytes());
             }
         }
 
@@ -609,7 +612,7 @@ impl ConfidentialTransfer {
         for (x, b) in x6_list.iter().zip(&proof.x6_list) {
             ok &= *x == decompress(b);
         }
-        for (x, b) in x8_list_verify(opts, &a3[..j], &p, &sender_ristretto)
+        for (x, b) in x8_list_verify(opts, &a3[..j], &p, sender_ristretto)
             .iter()
             .zip(&proof.x8_list)
         {
@@ -620,15 +623,9 @@ impl ConfidentialTransfer {
             let mut xi = 0usize;
             for (au_idx, au_pk) in aud.public_keys.iter().enumerate() {
                 let au_pt = au_pk.as_point();
-                for idx_j in 0..j {
-                    let a3s = a3[idx_j];
-                    let x7 = au_pt * a3s
-                        + decompress(
-                            &aud.auditors_cb_list[au_idx][idx_j]
-                                .d_bytes()
-                                .try_into()
-                                .expect("ElGamal D component is 32 bytes"),
-                        ) * p;
+                for (idx_j, a3s) in a3.iter().take(j).enumerate() {
+                    let d_bytes = aud.auditors_cb_list[au_idx][idx_j].d_bytes();
+                    let x7 = au_pt * a3s + decompress(&d_bytes) * p;
                     if xi >= proof.x7_list.len() {
                         return false;
                     }
@@ -687,7 +684,7 @@ impl ConfidentialTransfer {
 
     pub fn deserialize_sigma_proof(bytes: &[u8]) -> Result<TransferSigmaProof, String> {
         const CHUNK: usize = 32;
-        if bytes.len() % CHUNK != 0 {
+        if !bytes.len().is_multiple_of(CHUNK) {
             return Err("sigma proof length must be multiple of 32".into());
         }
         if bytes.len() < SIGMA_PROOF_TRANSFER_SIZE {
@@ -698,7 +695,7 @@ impl ConfidentialTransfer {
             ));
         }
         let extra = (bytes.len() - SIGMA_PROOF_TRANSFER_SIZE) / CHUNK;
-        if extra % 4 != 0 {
+        if !extra.is_multiple_of(4) {
             return Err("extra X7 chunks must be multiple of 4".into());
         }
 

@@ -61,6 +61,7 @@ pub struct ConfidentialKeyRotation {
     chain_id: u8,
     sender_address: Vec<u8>,
     contract_address: Vec<u8>,
+    // Held for TS API parity; the key-rotation σ-protocol does not bind to the token address.
     #[allow(dead_code)]
     token_address: Vec<u8>,
 }
@@ -320,11 +321,10 @@ impl ConfidentialKeyRotation {
     pub async fn gen_range_proof(&self) -> Result<Vec<u8>, String> {
         crate::crypto::range_proof::generate_range_proof(
             self.new_encrypted_available_balance.get_ciphertext(),
-            &self
+            self
                 .new_encrypted_available_balance
                 .chunked_amount()
-                .chunks()
-                .to_vec(),
+                .chunks(),
             self.new_encrypted_available_balance.randomness(),
         )
     }

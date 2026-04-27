@@ -73,6 +73,8 @@ fn sum_c_weighted(cts: &[TwistedElGamalCiphertext]) -> RistrettoPoint {
 }
 
 /// Fiat–Shamir challenge for withdraw (matches TS `dstHash` + `ed25519modN(bytesToNumberLE(hash))`).
+// σ-protocol challenge — each parameter is a distinct transcript input.
+#[allow(clippy::too_many_arguments)]
 pub fn withdraw_fiat_shamir_challenge(
     chain_id: u8,
     sender_address: &[u8],
@@ -109,7 +111,7 @@ pub fn withdraw_fiat_shamir_challenge(
     let dst = format!("MovementConfidentialAsset/{PROTOCOL_ID_WITHDRAWAL}");
     let mut hasher = Sha512::new();
     hasher.update(dst.as_bytes());
-    hasher.update(&[chain_id]);
+    hasher.update([chain_id]);
     hasher.update(sender_address);
     hasher.update(&extra);
     let h = hasher.finalize();
@@ -285,6 +287,8 @@ pub fn verify_withdraw_sigma_proof(opts: &WithdrawVerifyParams<'_>) -> bool {
 ///
 /// `new_balance_randomness` must match the per-chunk randomness used to build
 /// `sender_encrypted_balance_after` (same as TS `this.randomness`).
+// σ-protocol prover — each parameter is a distinct cryptographic input.
+#[allow(clippy::too_many_arguments)]
 pub fn gen_withdraw_sigma_proof(
     decryption_scalar: &Scalar,
     pk: &TwistedEd25519PublicKey,
