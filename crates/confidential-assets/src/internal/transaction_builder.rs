@@ -33,15 +33,6 @@ fn bcs_addr(addr: &AccountAddress) -> Vec<u8> {
     aptos_bcs::to_bytes(addr).expect("AccountAddress BCS serialization is infallible")
 }
 
-/// Helper: parse module address string to AccountAddress.
-///
-/// Panics on malformed input rather than silently zero-padding — a wrong module address
-/// produces a LINKER_ERROR on-chain that's expensive to debug.
-fn parse_module_address(addr: &str) -> AccountAddress {
-    AccountAddress::from_hex(addr)
-        .unwrap_or_else(|e| panic!("invalid confidential-asset module address {addr:?}: {e}"))
-}
-
 /// Build the on-chain `<contract_address>::confidential_asset` module id.
 fn module_id(contract_address: AccountAddress) -> MoveModuleId {
     MoveModuleId::new(
@@ -56,18 +47,33 @@ fn module_id(contract_address: AccountAddress) -> MoveModuleId {
 /// `movement.sign_and_submit()` / `movement.simulate()`.
 pub struct ConfidentialAssetTransactionBuilder<'a> {
     pub client: &'a Movement,
+    /// Original module-address string, retained for view-function calls that take `&str`.
     pub confidential_asset_module_address: String,
+    /// Parsed module address, validated at construction time.
+    pub contract_address: AccountAddress,
 }
 
 impl<'a> ConfidentialAssetTransactionBuilder<'a> {
-    pub fn new(client: &'a Movement, confidential_asset_module_address: Option<&str>) -> Self {
+    /// Create a new builder, validating the module address up front.
+    ///
+    /// Returns `MovementError::Internal` if the address is not a valid hex `AccountAddress`.
+    pub fn new(
+        client: &'a Movement,
+        confidential_asset_module_address: Option<&str>,
+    ) -> Result<Self, MovementError> {
         let addr = confidential_asset_module_address
             .unwrap_or(DEFAULT_CONFIDENTIAL_COIN_MODULE_ADDRESS)
             .to_string();
-        Self {
+        let contract_address = AccountAddress::from_hex(&addr).map_err(|e| {
+            MovementError::Internal(format!(
+                "invalid confidential-asset module address {addr:?}: {e}"
+            ))
+        })?;
+        Ok(Self {
             client,
             confidential_asset_module_address: addr,
-        }
+            contract_address,
+        })
     }
 
     /// Build a `register` entry function payload.
@@ -78,7 +84,7 @@ impl<'a> ConfidentialAssetTransactionBuilder<'a> {
         decryption_key: &TwistedEd25519PrivateKey,
     ) -> Result<TransactionPayload, MovementError> {
         let chain_id = get_chain_id_byte_for_proofs(self.client).await?;
-        let contract_address = parse_module_address(&self.confidential_asset_module_address);
+        let contract_address = self.contract_address;
         let sender_bytes = sender.to_bytes();
         let token_bytes = token_address.to_bytes();
 
@@ -117,7 +123,7 @@ impl<'a> ConfidentialAssetTransactionBuilder<'a> {
         // Match TS: `recipient ?? sender` — depositing to one's own confidential
         // balance is the common case.
         let recipient_addr = recipient.copied().unwrap_or(*sender);
-        let module_addr = parse_module_address(&self.confidential_asset_module_address);
+        let module_addr = self.contract_address;
 
         Ok(EntryFunction::new(
             module_id(module_addr),
@@ -155,7 +161,7 @@ impl<'a> ConfidentialAssetTransactionBuilder<'a> {
         .await?;
 
         let chain_id = get_chain_id_byte_for_proofs(self.client).await?;
-        let contract_address = parse_module_address(&self.confidential_asset_module_address);
+        let contract_address = self.contract_address;
 
         let confidential_withdraw = ConfidentialWithdraw::create_with_balance(
             sender_decryption_key.clone(),
@@ -175,7 +181,7 @@ impl<'a> ConfidentialAssetTransactionBuilder<'a> {
             .map_err(|e| MovementError::Internal(format!("withdraw auth failed: {}", e)))?;
 
         let recipient_addr = recipient.copied().unwrap_or(*sender);
-        let module_addr = parse_module_address(&self.confidential_asset_module_address);
+        let module_addr = self.contract_address;
 
         Ok(EntryFunction::new(
             module_id(module_addr),
@@ -222,7 +228,7 @@ impl<'a> ConfidentialAssetTransactionBuilder<'a> {
             "rollover_pending_balance"
         };
 
-        let module_addr = parse_module_address(&self.confidential_asset_module_address);
+        let module_addr = self.contract_address;
 
         Ok(EntryFunction::new(
             module_id(module_addr),
@@ -301,7 +307,7 @@ impl<'a> ConfidentialAssetTransactionBuilder<'a> {
         )
         .await?;
 
-        let contract_address = parse_module_address(&self.confidential_asset_module_address);
+        let contract_address = self.contract_address;
 
         // Assemble auditor keys
         let mut auditor_keys: Vec<TwistedEd25519PublicKey> = vec![];
@@ -350,7 +356,7 @@ impl<'a> ConfidentialAssetTransactionBuilder<'a> {
             .transfer_amount_encrypted_by_sender()
             .get_ciphertext_bytes();
 
-        let module_addr = parse_module_address(&self.confidential_asset_module_address);
+        let module_addr = self.contract_address;
 
         Ok(EntryFunction::new(
             module_id(module_addr),
@@ -409,7 +415,7 @@ impl<'a> ConfidentialAssetTransactionBuilder<'a> {
 
         let sender_bytes = sender.to_bytes();
         let token_bytes = token_address.to_bytes();
-        let contract_address = parse_module_address(&self.confidential_asset_module_address);
+        let contract_address = self.contract_address;
 
         let key_rotation = ConfidentialKeyRotation::create(
             sender_decryption_key.clone(),
@@ -433,7 +439,7 @@ impl<'a> ConfidentialAssetTransactionBuilder<'a> {
             "rotate_encryption_key"
         };
 
-        let module_addr = parse_module_address(&self.confidential_asset_module_address);
+        let module_addr = self.contract_address;
 
         Ok(EntryFunction::new(
             module_id(module_addr),
@@ -485,7 +491,7 @@ impl<'a> ConfidentialAssetTransactionBuilder<'a> {
 
         let sender_bytes = sender.to_bytes();
         let token_bytes = token_address.to_bytes();
-        let contract_address = parse_module_address(&self.confidential_asset_module_address);
+        let contract_address = self.contract_address;
 
         let normalization = ConfidentialNormalization::create(
             sender_decryption_key.clone(),
@@ -505,7 +511,7 @@ impl<'a> ConfidentialAssetTransactionBuilder<'a> {
             .normalized_encrypted_available_balance()
             .clone();
 
-        let module_addr = parse_module_address(&self.confidential_asset_module_address);
+        let module_addr = self.contract_address;
         Ok(EntryFunction::new(
             module_id(module_addr),
             "normalize",

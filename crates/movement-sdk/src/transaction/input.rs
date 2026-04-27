@@ -424,11 +424,15 @@ impl<T: Serialize> IntoMoveArg for T {
 /// # Example
 ///
 /// ```rust,ignore
-/// let addresses = move_vec(&[addr1, addr2, addr3]);
-/// let amounts = move_vec(&[100u64, 200u64, 300u64]);
+/// let addresses = move_vec(&[addr1, addr2, addr3])?;
+/// let amounts = move_vec(&[100u64, 200u64, 300u64])?;
 /// ```
-pub fn move_vec<T: Serialize>(items: &[T]) -> Vec<u8> {
-    aptos_bcs::to_bytes(items).unwrap_or_default()
+///
+/// # Errors
+///
+/// Returns `MovementError::Bcs` if BCS serialization of `items` fails.
+pub fn move_vec<T: Serialize>(items: &[T]) -> MovementResult<Vec<u8>> {
+    aptos_bcs::to_bytes(items).map_err(MovementError::bcs)
 }
 
 /// Helper to create a string argument for Move functions.
@@ -449,15 +453,17 @@ pub fn move_string(s: &str) -> String {
 /// # Example
 ///
 /// ```rust,ignore
-/// let maybe_value = move_some(42u64);
+/// let maybe_value = move_some(42u64)?;
 /// ```
-pub fn move_some<T: Serialize>(value: T) -> Vec<u8> {
+///
+/// # Errors
+///
+/// Returns `MovementError::Bcs` if BCS serialization of `value` fails.
+pub fn move_some<T: Serialize>(value: T) -> MovementResult<Vec<u8>> {
     // BCS encodes Option as: 0x01 followed by the value bytes for Some
     let mut bytes = vec![0x01];
-    if let Ok(value_bytes) = aptos_bcs::to_bytes(&value) {
-        bytes.extend(value_bytes);
-    }
-    bytes
+    bytes.extend(aptos_bcs::to_bytes(&value).map_err(MovementError::bcs)?);
+    Ok(bytes)
 }
 
 /// Helper to create an `Option::None` argument for Move.
@@ -750,7 +756,7 @@ mod tests {
 
     #[test]
     fn test_move_some_none() {
-        let some_bytes = move_some(42u64);
+        let some_bytes = move_some(42u64).unwrap();
         assert_eq!(some_bytes[0], 0x01);
 
         let none_bytes = move_none();

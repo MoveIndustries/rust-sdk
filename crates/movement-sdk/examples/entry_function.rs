@@ -213,7 +213,7 @@ async fn main() -> anyhow::Result<()> {
     println!("  move_vec(&[...]) -> Vector arg for Move");
 
     // move_some / move_none - for Option arguments
-    let _some_value = move_some(42u64);
+    let _some_value = move_some(42u64)?;
     let _none_value: Vec<u8> = move_none();
     println!("  move_some(42u64) -> Option::Some(42)");
     println!("  move_none() -> Option::None");

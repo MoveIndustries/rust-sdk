@@ -33,7 +33,7 @@ async fn _readme_setup_and_walkthrough() -> MovementResult<()> {
             .map_err(|e: movement_sdk::MovementError| e)?;
     let module_address = std::env::var("CONFIDENTIAL_MODULE_ADDRESS")
         .map_err(|e| movement_sdk::MovementError::Internal(e.to_string()))?;
-    let ca = ConfidentialAsset::new(&movement, Some(module_address.as_str()), false);
+    let ca = ConfidentialAsset::new(&movement, Some(module_address.as_str()), false)?;
 
     // --- 1. Register a confidential balance -----------------------------------------
     let payload = ca

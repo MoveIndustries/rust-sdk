@@ -52,6 +52,7 @@ pub fn make_movement() -> MovementResult<Movement> {
 
 pub fn make_confidential_asset(client: &Movement) -> ConfidentialAsset<'_> {
     ConfidentialAsset::new(client, Some(&module_address()), false)
+        .expect("module_address() must be a valid hex address")
 }
 
 pub fn get_test_account() -> Ed25519Account {

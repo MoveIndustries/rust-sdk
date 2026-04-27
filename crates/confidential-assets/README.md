@@ -68,7 +68,7 @@ let alice_dk = TwistedEd25519PrivateKey::from_bytes(&sig_bytes[..32])?;
 let token: AccountAddress =
     "0x000000000000000000000000000000000000000000000000000000000000000a".parse()?;
 let module_address = std::env::var("CONFIDENTIAL_MODULE_ADDRESS")?;
-let ca = ConfidentialAsset::new(&movement, Some(module_address.as_str()), false);
+let ca = ConfidentialAsset::new(&movement, Some(module_address.as_str()), false)?;
 ```
 
 ### 1. Register a confidential balance

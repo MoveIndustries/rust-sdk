@@ -31,18 +31,22 @@ pub struct ConfidentialAsset<'a> {
 }
 
 impl<'a> ConfidentialAsset<'a> {
+    /// Create a new high-level confidential asset client.
+    ///
+    /// Returns `MovementError::Internal` if `confidential_asset_module_address` is provided
+    /// but is not a valid hex `AccountAddress`.
     pub fn new(
         client: &'a Movement,
         confidential_asset_module_address: Option<&str>,
         with_fee_payer: bool,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, MovementError> {
+        Ok(Self {
             transaction: ConfidentialAssetTransactionBuilder::new(
                 client,
                 confidential_asset_module_address,
-            ),
+            )?,
             with_fee_payer,
-        }
+        })
     }
 
     /// Get the confidential balance for an account.
