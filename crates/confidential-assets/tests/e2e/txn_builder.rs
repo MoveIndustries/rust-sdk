@@ -18,7 +18,8 @@ async fn builder_register_then_deposit_updates_pending() {
     let alice = get_test_account();
     let alice_dk = get_test_confidential_account(Some(&alice));
     let module = module_address();
-    let builder = ConfidentialAssetTransactionBuilder::new(&movement, Some(&module)).expect("valid module address");
+    let builder = ConfidentialAssetTransactionBuilder::new(&movement, Some(&module))
+        .expect("valid module address");
 
     fund_and_migrate(&movement, &alice).await.expect("fund");
 
@@ -47,7 +48,8 @@ async fn builder_rolls_over_pending_balance() {
     let alice = get_test_account();
     let alice_dk = get_test_confidential_account(Some(&alice));
     let module = module_address();
-    let builder = ConfidentialAssetTransactionBuilder::new(&movement, Some(&module)).expect("valid module address");
+    let builder = ConfidentialAssetTransactionBuilder::new(&movement, Some(&module))
+        .expect("valid module address");
 
     fund_and_migrate(&movement, &alice).await.expect("fund");
     let register_payload = builder
@@ -84,7 +86,8 @@ async fn builder_errors_when_rollover_check_normalized_fails() {
     let alice = get_test_account();
     let alice_dk = get_test_confidential_account(Some(&alice));
     let module = module_address();
-    let builder = ConfidentialAssetTransactionBuilder::new(&movement, Some(&module)).expect("valid module address");
+    let builder = ConfidentialAssetTransactionBuilder::new(&movement, Some(&module))
+        .expect("valid module address");
 
     fund_and_migrate(&movement, &alice).await.expect("fund");
     let r = builder
@@ -135,7 +138,8 @@ async fn builder_withdraws_alices_balance() {
     let alice = get_test_account();
     let alice_dk = get_test_confidential_account(Some(&alice));
     let module = module_address();
-    let builder = ConfidentialAssetTransactionBuilder::new(&movement, Some(&module)).expect("valid module address");
+    let builder = ConfidentialAssetTransactionBuilder::new(&movement, Some(&module))
+        .expect("valid module address");
 
     fund_and_migrate(&movement, &alice).await.expect("fund");
     let r = builder
@@ -183,7 +187,8 @@ async fn builder_transfers_to_self() {
     let alice = get_test_account();
     let alice_dk = get_test_confidential_account(Some(&alice));
     let module = module_address();
-    let builder = ConfidentialAssetTransactionBuilder::new(&movement, Some(&module)).expect("valid module address");
+    let builder = ConfidentialAssetTransactionBuilder::new(&movement, Some(&module))
+        .expect("valid module address");
 
     fund_and_migrate(&movement, &alice).await.expect("fund");
     let r = builder
@@ -234,7 +239,8 @@ async fn builder_transfer_to_unregistered_recipient_errors() {
     let alice_dk = get_test_confidential_account(Some(&alice));
     let bob = Ed25519Account::generate();
     let module = module_address();
-    let builder = ConfidentialAssetTransactionBuilder::new(&movement, Some(&module)).expect("valid module address");
+    let builder = ConfidentialAssetTransactionBuilder::new(&movement, Some(&module))
+        .expect("valid module address");
 
     fund_and_migrate(&movement, &alice).await.expect("fund");
     let r = builder
@@ -269,7 +275,8 @@ async fn builder_transfer_to_unregistered_recipient_errors() {
 async fn builder_get_asset_auditor_encryption_key_returns_none_on_fresh_localnet() {
     let movement = make_movement().expect("movement client");
     let module = module_address();
-    let builder = ConfidentialAssetTransactionBuilder::new(&movement, Some(&module)).expect("valid module address");
+    let builder = ConfidentialAssetTransactionBuilder::new(&movement, Some(&module))
+        .expect("valid module address");
 
     let auditor = builder
         .get_asset_auditor_encryption_key(&token_address())
