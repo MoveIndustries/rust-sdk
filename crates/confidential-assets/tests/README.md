@@ -1,56 +1,93 @@
 # confidential-assets — tests
 
-This crate has two layers of tests:
+Two layers:
 
-- **Unit/crypto tests** (default) — pure-Rust tests covering proof generation, encryption, fixtures, etc. Run tests:
+- **Unit / integration** (default; no network) — 47 tests covering crypto primitives,
+  σ-proof gen↔verify roundtrips, BCS, kangaroo decryption, range-proof wrapper, and TS-fixture
+  verification. Run with:
 
-```
-cargo test -p confidential-assets
-```
+  ```bash
+  cargo test -p confidential-assets
+  ```
 
-- **End-to-end tests** (`e2e` feature, all `#[ignore]`-d) — drive a real Movement localnet and exercise
-the on-chain confidential-asset module: register, deposit, rollover, withdraw, transfer, normalize,
-rotate keys.
+- **End-to-end** (`e2e` feature, all `#[ignore]`d) — 27 tests that drive a real Movement
+  localnet end-to-end: register, deposit, rollover, withdraw, transfer (with/without auditor),
+  normalize, key rotation, plus negative paths.
 
 ## Running e2e tests
 
-1. Start a localnet with the `confidential_asset` feature flag (87) enabled and the module
-  published. The required helper script lives at
-   `[scripts/start-localnet-confidential-assets.sh](https://github.com/movementlabsxyz/aptos-core/blob/confidential-asset-prod/scripts/start-localnet-confidential-assets.sh)`
-   in the `**confidential-asset-prod` branch** of
-   `[movementlabsxyz/aptos-core](https://github.com/movementlabsxyz/aptos-core)`. Clone that
-   branch locally — the script depends on sibling Move sources and helper files in the same
-   repo, so a remote `curl | bash` won't work.
-   The script enables feature flag 87, publishes the `confidential_asset` module, and outputs  
-   the `aptos_experimental` / publish-signer address. That printed address is what you'll
-   export as `CONFIDENTIAL_MODULE_ADDRESS` below.
-   Leave the localnet running in that terminal. Open a new terminal back in this repo for the
-   next steps.
-2. Export env vars and run the suite. Required:
-  ```bash
-   export CONFIDENTIAL_MODULE_ADDRESS=0x...   # outputted by the script above
-  ```
-   Optional:
-3. Run the tests. Target the `e2e_lib` test binary specifically (so the lib unit tests aren't
-  re-run with `--ignored`), and serialize with `--test-threads=1` so the localnet faucet
-   isn't hammered by 20+ concurrent `fund_account` calls (it'll drain its own gas balance and
-   start returning `INSUFFICIENT_BALANCE_FOR_TRANSACTION_FEE` if you don't):
+**1. Start a localnet** with feature flag 87 (`BULLETPROOFS_BATCH_NATIVES`) enabled and the
+`confidential_asset` Move module published. The required helper script lives at
+[`scripts/start-localnet-confidential-assets.sh`](https://github.com/movementlabsxyz/aptos-core/blob/confidential-asset-prod/scripts/start-localnet-confidential-assets.sh)
+in the **`confidential-asset-prod` branch** of
+[`movementlabsxyz/aptos-core`](https://github.com/movementlabsxyz/aptos-core). The script
+depends on sibling Move sources in that repo, so clone the branch locally — a remote
+`curl | bash` won't work:
+
+```bash
+# In a separate directory, NOT inside the rust-sdk repo
+git clone --branch confidential-asset-prod --depth 1 \
+    https://github.com/movementlabsxyz/aptos-core.git
+cd aptos-core
+./scripts/start-localnet-confidential-assets.sh
+```
+
+The script enables feature flag 87, publishes the `confidential_asset` module, and prints
+the publish-signer address. Leave the localnet running in that terminal; note the printed
+address.
+
+**2. Set required env var** in a new terminal back in the rust-sdk repo:
+
+```bash
+export CONFIDENTIAL_MODULE_ADDRESS=0x<64 hex from the script>
+```
+
+A length check refuses to run if the address isn't exactly 32 bytes (64 hex chars after `0x`).
+
+Optional env vars:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `MOVEMENT_NETWORK` | `LOCAL` | `LOCAL` / `TESTNET` / `MAINNET` — picks the `MovementConfig` preset. |
+| `TOKEN_ADDRESS` | `0x...0a` (MOVE FA) | FA metadata address used as the test token. |
+| `TESTNET_PK` | *generates fresh* | Reuse a funded Ed25519 account across runs (hex private key). |
+| `TESTNET_DK` | *derives from sender* | Reuse a Twisted Ed25519 decryption key across runs. |
+
+**3. Run the suite**, serialized so the localnet faucet isn't hammered by parallel
+`fund_account` calls (it'll drain its own gas balance and start returning
+`INSUFFICIENT_BALANCE_FOR_TRANSACTION_FEE` if you don't):
+
+```bash
+bash scripts/run-ca-e2e.sh
+```
+
+…which is shorthand for:
+
+```bash
+cargo test -p confidential-assets --features e2e --test e2e_lib \
+    -- --ignored --test-threads=1
+```
 
 ## Layout
 
-- `tests/e2e/helpers.rs` — env-driven config, account setup, fund-and-migrate helper, send-and-wait helper.
-- `tests/e2e/confidential_asset.rs` — high-level `ConfidentialAsset` API tests (port of TS
-`confidentialAsset.test.ts`).
-- `tests/e2e/txn_builder.rs` — lower-level `ConfidentialAssetTransactionBuilder` tests (port of TS
-`confidentialAssetTxnBuilder.test.ts`).
-- `tests/e2e/api/` — single-operation negative tests ported from `tests/units/api/negative*.ts`.
+| Path | What it covers |
+|---|---|
+| `tests/e2e/helpers.rs` | env-driven config, account setup, fund-and-migrate, send-and-wait, fee-payer helpers |
+| `tests/e2e/confidential_asset.rs` | high-level `ConfidentialAsset` API (port of TS `confidentialAsset.test.ts`) |
+| `tests/e2e/txn_builder.rs` | lower-level `ConfidentialAssetTransactionBuilder` (port of TS `confidentialAssetTxnBuilder.test.ts`) |
+| `tests/e2e/api/negative_*.rs` | single-operation negative tests ported from `tests/units/api/negative*.ts` |
 
-## Known gaps
+## Cross-implementation parity
 
-Withdraw-σ and transfer-σ now round-trip through their own Rust verifiers (`withdraw_sigma_gen_verify_roundtrip`,
-`transfer_sigma_gen_verify_roundtrip`) and the verifier accepts TS-generated fixtures. Range proofs are
-delegated to the upstream `movement_rp_wasm` (same prover the TS SDK builds as WASM); the verify path uses
-`bulletproofs::RangeProof::verify_multiple` against the same DST. Pollard kangaroo decryption is delegated to
-the upstream `pollard-kangaroo` (`Kangaroo32` preset) — matches the TS WASM module's secret-size assumption.
+All five σ-protocols (registration, transfer, withdraw, key-rotation, normalization) round-trip
+with their own Rust verifiers in unit tests. The transfer-σ verifier additionally accepts
+TS-generated proof fixtures (`tests/transfer_sigma_fixture.rs`). The other four σ-protocols
+rely on the e2e suite for cross-implementation validation — proofs generated by Rust are
+accepted by the on-chain Move verifier, which is the same code path the TS SDK ultimately
+exercises.
 
-All four σ-provers (withdraw, transfer, key-rotation, normalization) now round-trip with their own Rust verifiers.
+Range proofs are delegated to the upstream `movement_rp_wasm` (same prover the TS SDK builds
+as WASM); the verify path uses `bulletproofs::RangeProof::verify_multiple` against the
+canonical DST `AptosConfidentialAsset/BulletproofRangeProof`. Pollard kangaroo decryption uses
+the upstream `pollard-kangaroo` crate with the `Kangaroo32` preset, matching the TS WASM
+module's secret-size assumption.

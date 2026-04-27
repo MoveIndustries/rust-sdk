@@ -106,7 +106,7 @@ Complete, runnable examples live in [`crates/movement-sdk/examples/`](crates/mov
 
 | Example | Description |
 |---|---|
-| [`transfer.rs`](crates/movement-sdk/examples/transfer.rs) | Basic APT transfer between accounts |
+| [`transfer.rs`](crates/movement-sdk/examples/transfer.rs) | Basic native-token (MOVE) transfer between accounts |
 | [`view_function.rs`](crates/movement-sdk/examples/view_function.rs) | Read-only view function calls |
 | [`balance_checker.rs`](crates/movement-sdk/examples/balance_checker.rs) | Check account balances |
 | [`transaction_data.rs`](crates/movement-sdk/examples/transaction_data.rs) | Working with transaction data |

@@ -135,7 +135,6 @@ Each view function generates two variants:
 
 - `view_<name>()` - Returns typed values using BCS (recommended for type safety)
 - `view_<name>_json()` - Returns raw JSON (useful for debugging/inspection)
-```
 
 ## License
 

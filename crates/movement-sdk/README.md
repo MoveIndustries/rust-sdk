@@ -1,26 +1,40 @@
-# Movement Rust SDK v2
+# movement-sdk
 
-A user-friendly, idiomatic Rust SDK for the Movement blockchain with feature parity to the TypeScript SDK.
+A user-friendly, idiomatic Rust SDK for the [Movement Network](https://docs.movementnetwork.xyz)
+blockchain. This is the main crate of the
+[Movement Rust SDK workspace](../../README.md); for confidential-asset operations see
+[`confidential-assets`](../confidential-assets/), and for compile-time contract bindings see
+[`movement-sdk-macros`](../movement-sdk-macros/).
 
 ## Features
 
-- **Full Blockchain Interaction**: Connect, explore, and interact with the Movement blockchain
-- **Multiple Signature Schemes**: Ed25519, Secp256k1, Secp256r1 (P-256), and BLS12-381
-- **Transaction Building**: Fluent builder pattern for constructing transactions
-- **Account Management**: Single-key, multi-sig, and keyless (OIDC) accounts
-- **Type Safety**: Strong Rust type system for Move contract interactions
-- **Modular Design**: Feature flags to include only what you need
+- **Full blockchain interaction** — connect, query, and submit transactions on Movement.
+- **Multiple signature schemes** — Ed25519, Secp256k1, Secp256r1 (P-256), MultiKey, BLS12-381,
+  and OIDC keyless accounts.
+- **Transaction building** — fluent builder for entry functions, scripts, sponsored (fee-payer)
+  transactions, multi-agent, and batched submission.
+- **Type-safe contract bindings** — proc macros (via [`movement-sdk-macros`](../movement-sdk-macros/))
+  to generate typed wrappers from Move ABIs.
+- **Modular** — feature flags to compile only what you need.
 
-## Quick Start
+## Add to your crate
 
-Add to your `Cargo.toml`:
+The crate is path-published only inside this workspace (not on crates.io). Add as a git
+dependency:
 
 ```toml
 [dependencies]
-movement-sdk = "0.3"
+movement-sdk = { git = "https://github.com/MoveIndustries/rust-sdk", package = "movement-sdk" }
 ```
 
-Basic usage:
+Or, if your crate is in this workspace, use the workspace dep:
+
+```toml
+[dependencies]
+movement-sdk = { workspace = true }
+```
+
+## Quick start
 
 ```rust
 use movement_sdk::{Movement, MovementConfig};
@@ -35,7 +49,7 @@ async fn main() -> anyhow::Result<()> {
     let account = Ed25519Account::generate();
     println!("Address: {}", account.address());
 
-    // Check balance
+    // Read its balance
     let balance = movement.get_balance(account.address()).await?;
     println!("Balance: {} octas", balance);
 
@@ -43,191 +57,106 @@ async fn main() -> anyhow::Result<()> {
 }
 ```
 
-## Feature Flags
+## Feature flags
 
 | Feature | Default | Description |
-|---------|---------|-------------|
+|---|---|---|
 | `ed25519` | ✓ | Ed25519 signature scheme |
 | `secp256k1` | ✓ | Secp256k1 ECDSA signatures |
 | `secp256r1` | ✓ | Secp256r1 (P-256) ECDSA signatures |
-| `mnemonic` | ✓ | BIP-39 mnemonic phrase support for key derivation |
+| `mnemonic` | ✓ | BIP-39 mnemonic phrase derivation |
 | `indexer` | ✓ | GraphQL indexer client |
-| `faucet` | ✓ | Faucet integration for testnets |
+| `faucet` | ✓ | Faucet integration for testnets / localnet |
 | `bls` | | BLS12-381 signatures |
 | `keyless` | | OIDC-based keyless authentication |
 | `macros` | | Procedural macros for type-safe contract bindings |
-| `full` | | Enable all features |
+| `e2e` | | E2E test feature gate (used by tests only) |
+| `full` | | Convenience: enable everything |
 
-### Minimal Build
+### Minimal build
 
-For the smallest possible binary:
+Compile with only the signature scheme you need:
 
 ```toml
 [dependencies]
-movement-sdk = { version = "0.1", default-features = false, features = ["ed25519"] }
+movement-sdk = { git = "https://github.com/MoveIndustries/rust-sdk", package = "movement-sdk", default-features = false, features = ["ed25519"] }
 ```
 
-### Full Build
-
-For all features:
+### Full build
 
 ```toml
 [dependencies]
-movement-sdk = { version = "0.1", features = ["full"] }
+movement-sdk = { git = "https://github.com/MoveIndustries/rust-sdk", package = "movement-sdk", features = ["full"] }
 ```
 
 ## Examples
 
-See the [`examples/`](examples/) directory for complete working examples:
+Runnable examples live in [`examples/`](examples/). Each example sets `required-features` in
+the workspace `Cargo.toml` so it picks the right feature set. Run any example with:
 
-### Basic Operations
-- [`transfer.rs`](examples/transfer.rs) - Basic APT transfer
-- [`view_function.rs`](examples/view_function.rs) - Read-only view function calls
-- [`transaction_data.rs`](examples/transaction_data.rs) - Working with transaction data
+```bash
+cargo run -p movement-sdk --example <name> --features "ed25519,faucet"
+```
 
-### Advanced Transactions
-- [`entry_function.rs`](examples/entry_function.rs) - Entry function transaction building
-- [`script_transaction.rs`](examples/script_transaction.rs) - Script-based transactions
-- [`sponsored_transaction.rs`](examples/sponsored_transaction.rs) - Fee payer (sponsored) transactions
-- [`multi_agent.rs`](examples/multi_agent.rs) - Multi-signer transactions
-- [`transaction_waiting.rs`](examples/transaction_waiting.rs) - Transaction waiting strategies
-- [`advanced_transactions.rs`](examples/advanced_transactions.rs) - Complex transaction combinations
-
-### Account Types
-- [`multi_key_account.rs`](examples/multi_key_account.rs) - Multi-key (mixed signature) accounts
-- [`multi_sig_account.rs`](examples/multi_sig_account.rs) - MultiEd25519 threshold accounts
-- [`multisig_v2.rs`](examples/multisig_v2.rs) - On-chain multisig (governance) accounts
-
-### Smart Contracts
-- [`deploy_module.rs`](examples/deploy_module.rs) - Deploy a Move module
-- [`call_contract.rs`](examples/call_contract.rs) - Call contract entry functions
-- [`read_contract_state.rs`](examples/read_contract_state.rs) - Read contract state
-- [`nft_operations.rs`](examples/nft_operations.rs) - NFT/Digital Asset interactions
-- [`codegen.rs`](examples/codegen.rs) - Contract binding generation
-- [`contract_bindings.rs`](examples/contract_bindings.rs) - Using generated type-safe bindings
+| Category | Examples |
+|---|---|
+| Basics | [`transfer`](examples/transfer.rs), [`view_function`](examples/view_function.rs), [`balance_checker`](examples/balance_checker.rs), [`transaction_data`](examples/transaction_data.rs), [`simulation`](examples/simulation.rs) |
+| Transactions | [`entry_function`](examples/entry_function.rs), [`script_transaction`](examples/script_transaction.rs), [`sponsored_transaction`](examples/sponsored_transaction.rs), [`multi_agent`](examples/multi_agent.rs), [`transaction_waiting`](examples/transaction_waiting.rs), [`advanced_transactions`](examples/advanced_transactions.rs) |
+| Accounts | [`account_management`](examples/account_management.rs), [`multi_key_account`](examples/multi_key_account.rs), [`multi_sig_account`](examples/multi_sig_account.rs), [`multisig_v2`](examples/multisig_v2.rs) |
+| Smart contracts | [`deploy_module`](examples/deploy_module.rs), [`call_contract`](examples/call_contract.rs), [`read_contract_state`](examples/read_contract_state.rs), [`nft_operations`](examples/nft_operations.rs), [`codegen`](examples/codegen.rs), [`contract_bindings`](examples/contract_bindings.rs) |
+| Indexer / events | [`indexer_queries`](examples/indexer_queries.rs), [`event_queries`](examples/event_queries.rs) |
 
 ## Development
 
-### Building
+### Build
 
 ```bash
-# Build with default features
-cargo build -p movement-sdk
-
-# Build with all features
-cargo build -p movement-sdk --all-features
-
-# Build with specific features only
-cargo build -p movement-sdk --features "ed25519,secp256r1,bls"
-
-# Check compilation (faster than build)
-cargo check -p movement-sdk --all-features
-
-# Release build (optimized)
-cargo build -p movement-sdk --release --all-features
+cargo build -p movement-sdk                    # Default features
+cargo build -p movement-sdk --all-features     # All features
+cargo build -p movement-sdk --release          # Release build
 ```
 
-### Linting
+### Lint and format
 
 ```bash
-# Run clippy lints
 cargo clippy -p movement-sdk --all-features -- -D warnings
-
-# Check formatting
 cargo fmt -p movement-sdk -- --check
-
-# Format code
-cargo fmt -p movement-sdk
 ```
 
-### Testing
-
-#### Unit Tests
+### Unit tests (no network)
 
 ```bash
-# Run unit tests with default features
 cargo test -p movement-sdk
-
-# Run tests with all features
 cargo test -p movement-sdk --all-features
-
-# Run tests with specific features
-cargo test -p movement-sdk --features "full"
-
-# Run a specific test by name
-cargo test -p movement-sdk test_name
-
-# Run tests with output visible
-cargo test -p movement-sdk -- --nocapture
-
-# Run doc tests only
-cargo test -p movement-sdk --doc
-
-# Run library tests only (no integration tests)
-cargo test -p movement-sdk --lib
 ```
 
-#### E2E Tests
+### E2E tests (requires Movement localnet)
 
-E2E tests require a running Movement localnet:
+The workspace ships a runner script that starts a localnet, runs the e2e suite, and tears
+down afterwards:
 
 ```bash
-# Terminal 1: Start localnet
-movement node run-localnet
-
-# Terminal 2: Run E2E tests
-cargo test -p movement-sdk --features "e2e" -- --ignored
+./scripts/run-e2e.sh
 ```
 
-#### Behavioral Tests
-
-The SDK includes Gherkin-based behavioral specification tests:
+…or manually:
 
 ```bash
-# Run behavioral tests (from workspace root)
-cd specifications/tests/rust
-cargo test
-
-# Run with verbose output
-cargo test -- --nocapture
+movement node run-localnet --force-restart --with-faucet --do-not-delegate
+cargo test -p movement-sdk --features "e2e,full" -- --ignored
 ```
 
-### Code Coverage
+### Code coverage
 
 ```bash
-# Unit tests only (default)
 cargo tarpaulin -p movement-sdk --features "full" --skip-clean
-
-# Include E2E tests (requires localnet)
-cargo tarpaulin -p movement-sdk --features "full,e2e" --ignored --skip-clean --timeout 300
-
-# Or use the helper script
-./scripts/coverage.sh        # Unit tests only
-./scripts/coverage.sh e2e    # Include E2E tests
-./scripts/coverage.sh ci     # CI mode with HTML/XML output
-```
-
-See `tarpaulin.toml` for coverage configuration profiles.
-
-### Generating Documentation
-
-```bash
-# Generate and open documentation
-cargo doc -p movement-sdk --all-features --open
-
-# Generate docs without opening browser
-cargo doc -p movement-sdk --all-features
-
-# Include private items in docs
-cargo doc -p movement-sdk --all-features --document-private-items
 ```
 
 ## Resources
 
-- [API Documentation](https://docs.rs/movement-sdk)
 - [Movement Developer Documentation](https://docs.movementnetwork.xyz)
+- [API reference (rustdoc on GitHub Pages)](https://moveindustries.github.io/rust-sdk/movement_sdk/index.html)
 
 ## License
 
 Apache-2.0
-

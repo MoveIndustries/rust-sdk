@@ -11,9 +11,10 @@ ships as WASM (`movement_rp_wasm`, `movement_pollard_kangaroo_wasm`) — same co
 
 ## Status
 
-- 47 unit + integration tests (crypto, BCS, fixtures): **passing**.
-- 24 e2e tests against a Movement localnet (register / deposit / rollover / withdraw / transfer /
-  normalize / rotate, plus negative paths): **passing**.
+- 47 unit + integration tests (crypto, BCS, σ-proof gen↔verify roundtrips, TS fixture): **passing**.
+- 27 e2e tests against a Movement localnet (register / deposit / rollover / withdraw / transfer
+  with and without auditor / normalize / rotate / total-balance variants, plus negative paths):
+  **passing**.
 
 See [`tests/README.md`](tests/README.md) for how to run the e2e suite (requires
 [`scripts/start-localnet-confidential-assets.sh`](https://github.com/movementlabsxyz/aptos-core/blob/confidential-asset-prod/scripts/start-localnet-confidential-assets.sh)
@@ -23,11 +24,15 @@ from the `confidential-asset-prod` branch of our `aptos-core` repo).
 
 A confidential balance for an `(account, token)` pair has two parts:
 
-- **pending** — additive: anyone can `deposit_to` here without your permission. Encrypted with
-  the recipient's encryption key, but the recipient sees only the deposited amount, not who
-  deposited.
+- **pending** — additive: anyone can `deposit_to` here without your permission. The deposited
+  ciphertext is encrypted under your encryption key; only you (and any auditors specified at
+  transfer time) can decrypt the amount.
 - **available** — what you can spend. To move funds from pending → available you sign a
   `rollover_pending_balance` transaction.
+
+The depositor's account address is still on-chain (it's the transaction's signer), so this scheme
+hides **amounts**, not identities. For full sender/recipient anonymity you'd need a shielded-pool
+design (separate construction).
 
 You hold a **decryption key** (a `TwistedEd25519PrivateKey`) which is independent of your Aptos
 account key. Its corresponding encryption key is what other parties use to deposit / transfer
@@ -131,8 +136,10 @@ movement.sign_submit_and_wait(&alice, payload, None).await?;
 
 ### 6. Confidential transfer
 
-Moves `amount` from Alice's available balance into Bob's pending balance, with no on-chain
-trace of the amount or sender. Both Alice and Bob must already be registered.
+Moves `amount` from Alice's available balance into Bob's pending balance with the **amount
+encrypted** under Bob's encryption key — only Alice and Bob (and any auditors, if specified)
+can decrypt it. Sender, recipient, and the fact a transfer occurred are still public on-chain;
+this scheme hides amounts, not identities. Both Alice and Bob must already be registered.
 
 ```rust
 let bob: AccountAddress = "0x...".parse()?;
@@ -312,9 +319,9 @@ These tests do not touch the network and don't need any environment setup.
 
 ### End-to-end against a Movement localnet
 
-24 tests that exercise the full lifecycle on a real chain: register → deposit → rollover →
-withdraw → transfer → normalize → rotate, plus negative paths (frozen balance, unregistered
-recipient, over-withdraw, etc.).
+27 tests that exercise the full lifecycle on a real chain: register → deposit → rollover →
+withdraw → transfer (with/without auditor) → normalize → key rotation → total-balance variants,
+plus negative paths (frozen balance, unregistered recipient, over-withdraw, etc.).
 
 **1. Start the localnet.** The required helper script lives at
 [`scripts/start-localnet-confidential-assets.sh`](https://github.com/movementlabsxyz/aptos-core/blob/confidential-asset-prod/scripts/start-localnet-confidential-assets.sh)
