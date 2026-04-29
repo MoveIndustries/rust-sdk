@@ -197,6 +197,8 @@ impl ConfidentialKeyRotation {
         }
     }
 
+    // σ-protocol verifier — each parameter is a distinct cryptographic input.
+    #[allow(clippy::too_many_arguments)]
     pub fn verify_sigma_proof(
         sigma_proof: &KeyRotationSigmaProof,
         curr_public_key: &TwistedEd25519PublicKey,
