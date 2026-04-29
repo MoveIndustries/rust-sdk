@@ -62,6 +62,7 @@ pub fn withdraw_fiat_shamir_challenge(
     chain_id: u8,
     sender_address: &[u8],
     contract_address: &[u8],
+    token_address: &[u8],
     pk_bytes: &[u8; 32],
     withdraw_amount: &ChunkedAmount,
     old_balance_ciphertext_bytes: &[u8],
@@ -72,6 +73,7 @@ pub fn withdraw_fiat_shamir_challenge(
 ) -> Scalar {
     let mut extra: Vec<u8> = Vec::new();
     extra.extend_from_slice(contract_address);
+    extra.extend_from_slice(token_address);
     extra.extend_from_slice(&g_bytes());
     extra.extend_from_slice(&h_bytes());
     extra.extend_from_slice(pk_bytes);
@@ -112,6 +114,7 @@ pub struct WithdrawVerifyParams<'a> {
     pub chain_id: u8,
     pub sender_address: &'a [u8],
     pub contract_address: &'a [u8],
+    pub token_address: &'a [u8],
 }
 
 /// Withdraw sigma proof as raw 32-byte chunks (wire / TS object form).
@@ -218,6 +221,7 @@ pub fn verify_withdraw_sigma_proof(opts: &WithdrawVerifyParams<'_>) -> bool {
         opts.chain_id,
         opts.sender_address,
         opts.contract_address,
+        opts.token_address,
         &pk_bytes,
         &withdraw_chunks,
         &old_balance_bytes,
@@ -282,6 +286,7 @@ pub fn gen_withdraw_sigma_proof(
     chain_id: u8,
     sender_address: &[u8],
     contract_address: &[u8],
+    token_address: &[u8],
 ) -> WithdrawSigmaProofWire {
     let pk_bytes = pk.to_bytes();
     let pk_pt = pk.as_point();
@@ -317,6 +322,7 @@ pub fn gen_withdraw_sigma_proof(
         chain_id,
         sender_address,
         contract_address,
+        token_address,
         &pk_bytes,
         &withdraw_chunks,
         &old_ct_bytes,
@@ -398,6 +404,7 @@ mod tests {
             1,
             &[0u8; 32],
             &[0u8; 32],
+            &[0u8; 32],
         );
 
         let ok = verify_withdraw_sigma_proof(&WithdrawVerifyParams {
@@ -408,6 +415,7 @@ mod tests {
             chain_id: 1,
             sender_address: &[0u8; 32],
             contract_address: &[0u8; 32],
+            token_address: &[0u8; 32],
         });
         assert!(ok, "withdraw sigma should verify");
 

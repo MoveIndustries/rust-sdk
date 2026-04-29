@@ -90,6 +90,7 @@ impl ConfidentialNormalization {
             .get_ciphertext_bytes();
         let mut parts: Vec<&[u8]> = vec![
             &self.contract_address,
+            &self.token_address,
             &g_b,
             &h_b,
             &pk_b,
@@ -189,7 +190,7 @@ impl ConfidentialNormalization {
         chain_id: u8,
         sender_address: &[u8],
         contract_address: &[u8],
-        _token_address: &[u8],
+        token_address: &[u8],
     ) -> bool {
         let unnorm_ct = unnormalized_encrypted_balance.get_ciphertext();
         let norm_ct = normalized_encrypted_balance.get_ciphertext();
@@ -210,6 +211,7 @@ impl ConfidentialNormalization {
 
         let mut parts: Vec<&[u8]> = vec![
             contract_address,
+            token_address,
             &g_b,
             &h_b,
             &pk_b,

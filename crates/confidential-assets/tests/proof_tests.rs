@@ -224,6 +224,7 @@ fn withdraw_sigma_verify_rejects_malformed_proof_points_without_panic() {
             TEST_CHAIN_ID,
             &test_sender_addr(),
             &test_contract_addr(),
+            &test_token_addr(),
         ),
         "malformed x2 must fail verification, not panic"
     );

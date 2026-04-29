@@ -346,6 +346,7 @@ impl ConfidentialTransfer {
 
         let mut extra = Vec::new();
         extra.extend_from_slice(&self.contract_address);
+        extra.extend_from_slice(&self.token_address);
         extra.extend_from_slice(&g_bytes());
         extra.extend_from_slice(&h_bytes());
         extra.extend_from_slice(&sender_pk_pt.to_bytes());
@@ -499,6 +500,7 @@ impl ConfidentialTransfer {
 
         let mut extra = Vec::new();
         extra.extend_from_slice(&opts.contract_address);
+        extra.extend_from_slice(&opts.token_address);
         extra.extend_from_slice(&g_bytes());
         extra.extend_from_slice(&h_bytes());
         extra.extend_from_slice(&sender_b);

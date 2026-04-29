@@ -22,9 +22,6 @@ pub struct ConfidentialWithdraw {
     chain_id: u8,
     sender_address: Vec<u8>,
     contract_address: Vec<u8>,
-    // Held for TS API parity; the withdraw σ-protocol does not bind to the token address
-    // (only transfer σ does, via auditor encryption). Kept so `create*` signatures match TS.
-    #[allow(dead_code)]
     token_address: Vec<u8>,
 }
 
@@ -115,10 +112,12 @@ impl ConfidentialWithdraw {
             self.chain_id,
             &self.sender_address,
             &self.contract_address,
+            &self.token_address,
         )
     }
 
     /// Verify a withdrawal sigma proof.
+    #[allow(clippy::too_many_arguments)]
     pub fn verify_sigma_proof(
         sender_encrypted_balance: &EncryptedAmount,
         sender_encrypted_balance_after: &EncryptedAmount,
@@ -127,6 +126,7 @@ impl ConfidentialWithdraw {
         chain_id: u8,
         sender_address: &[u8],
         contract_address: &[u8],
+        token_address: &[u8],
     ) -> bool {
         verify_withdraw_sigma_proof(&WithdrawVerifyParams {
             sigma: proof,
@@ -136,6 +136,7 @@ impl ConfidentialWithdraw {
             chain_id,
             sender_address,
             contract_address,
+            token_address,
         })
     }
 

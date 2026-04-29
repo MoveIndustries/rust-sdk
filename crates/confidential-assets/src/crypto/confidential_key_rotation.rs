@@ -98,6 +98,7 @@ impl ConfidentialKeyRotation {
         let new_ct = self.new_encrypted_available_balance.get_ciphertext_bytes();
         let mut parts: Vec<&[u8]> = vec![
             &self.contract_address,
+            &self.token_address,
             &g_b,
             &h_b,
             &curr_pk,
@@ -205,6 +206,7 @@ impl ConfidentialKeyRotation {
         chain_id: u8,
         sender_address: &[u8],
         contract_address: &[u8],
+        token_address: &[u8],
     ) -> bool {
         if curr_encrypted_balance.len() != AVAILABLE_BALANCE_CHUNK_COUNT
             || new_encrypted_balance.len() != AVAILABLE_BALANCE_CHUNK_COUNT
@@ -230,6 +232,7 @@ impl ConfidentialKeyRotation {
             .collect();
         let mut parts: Vec<&[u8]> = vec![
             contract_address,
+            token_address,
             &g_b,
             &h_b,
             &curr_pk_b,
@@ -440,6 +443,7 @@ mod tests {
             7,
             &[1u8; 32],
             &[2u8; 32],
+            &[3u8; 32],
         );
         assert!(ok, "key-rotation sigma should verify");
 

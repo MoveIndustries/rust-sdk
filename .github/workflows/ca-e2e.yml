@@ -16,7 +16,11 @@ env:
   # Pinned to a commit on movementlabsxyz/aptos-core's confidential-asset-prod
   # branch so CI is reproducible and won't drift if the branch advances.
   # Bump when intentional changes to the localnet/module setup are needed.
-  APTOS_CORE_COMMIT: e3d61f62460eb1537fccd8157e51daafbbf8c867
+  #
+  # f496b6c1: bind token_address into the FS transcript for transfer/withdraw/
+  # rotation/normalization sigma proofs. Wire-format-breaking change; ships
+  # together with the corresponding SDK updates in this repo.
+  APTOS_CORE_COMMIT: f496b6c1679e5b1da5983569c909d9c9fccd5e9e
 
 jobs:
   ca-e2e:

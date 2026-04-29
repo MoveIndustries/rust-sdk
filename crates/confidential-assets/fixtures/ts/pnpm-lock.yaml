@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@moveindustries/confidential-assets':
-        specifier: file:../../../ts-sdk/confidential-assets
-        version: file:../../../ts-sdk/confidential-assets(got@11.8.6)
+        specifier: file:../../../../../ts-sdk/confidential-assets
+        version: file:../../../../../ts-sdk/confidential-assets(got@11.8.6)
     devDependencies:
       '@types/node':
         specifier: ^22.18.3
@@ -180,8 +180,8 @@ packages:
   '@moveindustries/confidential-asset-wasm-bindings@0.0.3':
     resolution: {integrity: sha512-u6rMRBv7xr3UkUVsXOZ24bdzVp0xqyuRgaPZYMYIyfdadV1XF6sQ2zML2xksGF5kun0C90f1vxTk3L16rR4YDg==}
 
-  '@moveindustries/confidential-assets@file:../../../ts-sdk/confidential-assets':
-    resolution: {directory: ../../../ts-sdk/confidential-assets, type: directory}
+  '@moveindustries/confidential-assets@file:../../../../../ts-sdk/confidential-assets':
+    resolution: {directory: ../../../../../ts-sdk/confidential-assets, type: directory}
     engines: {node: '>=20.0.0'}
 
   '@moveindustries/movement-cli@1.1.0':
@@ -443,7 +443,7 @@ snapshots:
 
   '@moveindustries/confidential-asset-wasm-bindings@0.0.3': {}
 
-  '@moveindustries/confidential-assets@file:../../../ts-sdk/confidential-assets(got@11.8.6)':
+  '@moveindustries/confidential-assets@file:../../../../../ts-sdk/confidential-assets(got@11.8.6)':
     dependencies:
       '@moveindustries/confidential-asset-wasm-bindings': 0.0.3
       '@moveindustries/ts-sdk': 5.1.7(got@11.8.6)
