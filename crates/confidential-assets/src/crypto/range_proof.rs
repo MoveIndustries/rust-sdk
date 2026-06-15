@@ -72,7 +72,7 @@ pub fn verify_range_batch(
         .iter()
         .map(|c| NgCompressed::from_slice(c.as_slice()))
         .collect();
-    let dst: &[u8] = b"AptosConfidentialAsset/BulletproofRangeProof";
+    let dst: &[u8] = b"MovementConfidentialAsset/BulletproofRangeProof";
     let ok = proof
         .verify_multiple(&gens, &pg, &mut Transcript::new(dst), &comms, num_bits)
         .is_ok();
@@ -159,5 +159,65 @@ mod tests {
         )
         .unwrap();
         assert!(ok);
+    }
+
+    /// Guards against the on-chain `ERANGE_PROOF_VERIFICATION_FAILED` regression: a proof
+    /// produced by the prover (`movement_rp_wasm`) MUST verify under the contract's DST
+    /// `MovementConfidentialAsset/BulletproofRangeProof` (confidential_proof.move:34) and MUST
+    /// NOT verify under the legacy `AptosConfidentialAsset/...` label. The Fiat–Shamir
+    /// challenges are bound to the transcript's initial DST, so the prover and the contract
+    /// must use byte-identical labels. If this fails under `Movement`, the prover DST has
+    /// drifted from the contract again (see wasm-bindings range-proofs/src/lib.rs).
+    #[test]
+    fn range_proof_dst_matches_contract() {
+        use bulletproofs::{BulletproofGens, PedersenGens, RangeProof};
+        use curve25519_dalek_ng::ristretto::CompressedRistretto as NgCompressed;
+        use merlin::Transcript;
+
+        let vals: Vec<u64> = vec![100, 1, 0, 65535, 7, 0, 0, 0];
+        let rs: Vec<Scalar> = (0..vals.len()).map(|_| ed25519_gen_random()).collect();
+        let (proof_bytes, comms) = prove_range_batch(
+            &vals,
+            &rs,
+            &RISTRETTO_BASEPOINT_POINT,
+            &h_ristretto(),
+            CHUNK_BITS as usize,
+        )
+        .unwrap();
+
+        let verify_under = |dst: &'static [u8]| -> bool {
+            let proof = RangeProof::from_bytes(&proof_bytes).unwrap();
+            let pg = PedersenGens {
+                B: NgCompressed(RISTRETTO_BASEPOINT_POINT.compress().to_bytes())
+                    .decompress()
+                    .unwrap(),
+                B_blinding: NgCompressed(h_ristretto().compress().to_bytes())
+                    .decompress()
+                    .unwrap(),
+            };
+            let gens = BulletproofGens::new(64, 16);
+            let c: Vec<NgCompressed> = comms
+                .iter()
+                .map(|c| NgCompressed::from_slice(c.as_slice()))
+                .collect();
+            proof
+                .verify_multiple(&gens, &pg, &mut Transcript::new(dst), &c, CHUNK_BITS as usize)
+                .is_ok()
+        };
+
+        let aptos = verify_under(b"AptosConfidentialAsset/BulletproofRangeProof");
+        let movement = verify_under(b"MovementConfidentialAsset/BulletproofRangeProof");
+
+        println!("verify under Aptos*    DST = {aptos}");
+        println!("verify under Movement* DST = {movement}");
+
+        assert!(
+            movement,
+            "prover DST must match the contract's MovementConfidentialAsset/... (confidential_proof.move:34)"
+        );
+        assert!(
+            !aptos,
+            "prover must NOT still use the legacy AptosConfidentialAsset/... DST"
+        );
     }
 }
