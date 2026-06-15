@@ -6,8 +6,9 @@ encryption, ZK proofs, and confidential transfers on MoveVM. Functional parity w
 TypeScript SDK; same on-chain wire format, validated end-to-end against a localnet.
 
 This crate is part of the [Movement Rust SDK workspace](../../README.md). It depends on
-`movement-sdk` for HTTP / transaction building and on the upstream Rust source that the TS SDK
-ships as WASM (`movement_rp_wasm`, `movement_pollard_kangaroo_wasm`) — same code path, no port.
+`movement-sdk` for HTTP / transaction building and on `movement_rp_wasm` — the upstream Rust
+range-proof source the TS SDK ships as WASM, consumed here as an `rlib` (same code path, no
+port). Kangaroo decryption uses the upstream `pollard-kangaroo` crate directly.
 
 ## Status
 
@@ -277,9 +278,10 @@ Cryptography:
 Movement-specific (shared with the TS SDK):
 
 - [`movement_rp_wasm`](https://github.com/moveindustries/confidential-asset-wasm-bindings) —
-  bulletproofs prover. Same Rust source the TS SDK builds as WASM; consumed here as an `rlib`.
-- [`movement_pollard_kangaroo_wasm`](https://github.com/moveindustries/confidential-asset-wasm-bindings) —
-  Pollard kangaroo DLP solver. Same source as the TS SDK's WASM, `Kangaroo32` preset.
+  bulletproofs prover and verifier (native `rp` module). Same Rust source the TS SDK builds as
+  WASM; consumed here as an `rlib`.
+- [`pollard-kangaroo`](https://github.com/distributed-lab/pollard-kangaroo) — Pollard kangaroo
+  DLP solver for decryption (`Kangaroo32` preset). Native Rust; the TS SDK uses a WASM solver.
 
 Movement-SDK plumbing:
 
