@@ -8,8 +8,9 @@
 //!
 
 use super::view_functions::{
-    get_balance, get_chain_id_byte_for_proofs, get_encryption_key,
-    get_global_auditor_encryption_key, is_balance_normalized, is_pending_balance_frozen,
+    get_asset_auditor_encryption_key, get_balance, get_chain_auditor_encryption_key,
+    get_chain_id_byte_for_proofs, get_encryption_key, is_balance_normalized,
+    is_pending_balance_frozen,
 };
 use crate::bcs::serialize_vector_u8;
 use crate::consts::{
@@ -17,15 +18,15 @@ use crate::consts::{
 };
 use crate::crypto::confidential_registration::gen_registration_proof;
 use crate::crypto::{
-    TwistedEd25519PrivateKey, TwistedEd25519PublicKey,
     confidential_key_rotation::ConfidentialKeyRotation,
     confidential_normalization::ConfidentialNormalization,
     confidential_transfer::ConfidentialTransfer, confidential_withdraw::ConfidentialWithdraw,
+    TwistedEd25519PrivateKey, TwistedEd25519PublicKey,
 };
 use movement_sdk::{
-    Movement, MovementError,
     transaction::{EntryFunction, TransactionPayload},
     types::{AccountAddress, Identifier, MoveModuleId},
+    Movement, MovementError,
 };
 
 /// Helper: BCS-encode an AccountAddress (fixed 32-byte serialization, infallible).
@@ -262,8 +263,15 @@ impl<'a> ConfidentialAssetTransactionBuilder<'a> {
 
         let chain_id = get_chain_id_byte_for_proofs(self.client).await?;
 
+        // Get global chain auditor public key for the token
+        let chain_auditor_pub_key = get_chain_auditor_encryption_key(
+            self.client,
+            Some(&self.confidential_asset_module_address),
+        )
+        .await?;
+
         // Get auditor public key for the token
-        let global_auditor_pub_key = get_global_auditor_encryption_key(
+        let asset_auditor_pub_key = get_asset_auditor_encryption_key(
             self.client,
             token_address,
             Some(&self.confidential_asset_module_address),
@@ -311,7 +319,10 @@ impl<'a> ConfidentialAssetTransactionBuilder<'a> {
 
         // Assemble auditor keys
         let mut auditor_keys: Vec<TwistedEd25519PublicKey> = vec![];
-        if let Some(auditor) = global_auditor_pub_key {
+        if let Some(auditor) = chain_auditor_pub_key {
+            auditor_keys.push(auditor);
+        }
+        if let Some(auditor) = asset_auditor_pub_key {
             auditor_keys.push(auditor);
         }
         auditor_keys.extend_from_slice(additional_auditor_encryption_keys);
@@ -458,12 +469,20 @@ impl<'a> ConfidentialAssetTransactionBuilder<'a> {
         .into())
     }
 
+    /// Get the global chain auditor encryption key for a token, if set.
+    pub async fn get_chain_auditor_encryption_key(
+        &self,
+    ) -> Result<Option<TwistedEd25519PublicKey>, MovementError> {
+        get_chain_auditor_encryption_key(self.client, Some(&self.confidential_asset_module_address))
+            .await
+    }
+
     /// Get the asset auditor encryption key for a token, if set.
     pub async fn get_asset_auditor_encryption_key(
         &self,
         token_address: &AccountAddress,
     ) -> Result<Option<TwistedEd25519PublicKey>, MovementError> {
-        get_global_auditor_encryption_key(
+        get_asset_auditor_encryption_key(
             self.client,
             token_address,
             Some(&self.confidential_asset_module_address),

@@ -9,9 +9,9 @@
 
 use crate::consts::{DEFAULT_CONFIDENTIAL_COIN_MODULE_ADDRESS, MODULE_NAME};
 use crate::crypto::{
-    TwistedEd25519PublicKey, TwistedElGamalCiphertext, encrypted_amount::EncryptedAmount,
+    encrypted_amount::EncryptedAmount, TwistedEd25519PublicKey, TwistedElGamalCiphertext,
 };
-use movement_sdk::{Movement, MovementError, types::AccountAddress};
+use movement_sdk::{types::AccountAddress, Movement, MovementError};
 
 /// Represents a confidential balance with both available and pending encrypted amounts.
 #[derive(Debug, Clone)]
@@ -171,8 +171,37 @@ pub async fn get_encryption_key(
     .map_err(|e| MovementError::Internal(format!("invalid encryption key: {}", e)))
 }
 
-/// Get the global auditor encryption key for a token, if set.
-pub async fn get_global_auditor_encryption_key(
+/// Get the global chain auditor encryption key for a token, if set.
+pub async fn get_chain_auditor_encryption_key(
+    client: &Movement,
+    module_address: Option<&str>,
+) -> Result<Option<TwistedEd25519PublicKey>, MovementError> {
+    let mod_addr = module_address.unwrap_or(DEFAULT_CONFIDENTIAL_COIN_MODULE_ADDRESS);
+
+    // `get_auditor` returns `Option<CompressedPubkey>` — BCS-encoded
+    let result: Option<Vec<u8>> = client
+        .view_bcs(&func_path(mod_addr, "get_chain_auditor"), vec![], vec![])
+        .await?;
+
+    match result {
+        Some(bytes) if !bytes.is_empty() => {
+            let res = {
+                let arr: [u8; 32] = bytes
+                    .try_into()
+                    .map_err(|_| MovementError::Internal("auditor key not 32 bytes".to_string()))?;
+                TwistedEd25519PublicKey::from_bytes(&arr)
+            };
+            match res {
+                Ok(key) => Ok(Some(key)),
+                Err(_) => Ok(None),
+            }
+        }
+        _ => Ok(None),
+    }
+}
+
+/// Get the asset auditor encryption key for a token, if set.
+pub async fn get_asset_auditor_encryption_key(
     client: &Movement,
     token_address: &AccountAddress,
     module_address: Option<&str>,
@@ -182,7 +211,7 @@ pub async fn get_global_auditor_encryption_key(
     // `get_auditor` returns `Option<CompressedPubkey>` — BCS-encoded
     let result: Option<Vec<u8>> = client
         .view_bcs(
-            &func_path(mod_addr, "get_auditor"),
+            &func_path(mod_addr, "get_asset_auditor"),
             vec![],
             vec![bcs_address(token_address)],
         )
