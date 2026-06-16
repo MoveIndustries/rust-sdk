@@ -178,26 +178,37 @@ async fn builder_withdraws_alices_balance() {
         .expect("withdraw tx");
 }
 
-/// Builder-level self-transfer: produces a transfer payload accepted by Move's
-/// `verify_transfer_sigma_proof` (basic positive case for the raw builder API).
+/// Builder-level transfer Alice → Bob: produces a transfer payload accepted by Move's
+/// `verify_transfer_sigma_proof` (basic positive case for the raw builder API). A distinct
+/// recipient is required — the contract rejects self-transfers with ESELF_TRANSFER.
 #[tokio::test]
 #[ignore = "requires localnet — see tests/README.md"]
-async fn builder_transfers_to_self() {
+async fn builder_transfers_to_bob() {
     let movement = make_movement().expect("movement client");
     let alice = get_test_account();
     let alice_dk = get_test_confidential_account(Some(&alice));
+    let bob = Ed25519Account::generate();
+    let bob_dk = get_test_confidential_account(Some(&bob));
     let module = module_address();
     let builder = ConfidentialAssetTransactionBuilder::new(&movement, Some(&module))
         .expect("valid module address");
 
-    fund_and_migrate(&movement, &alice).await.expect("fund");
-    let r = builder
-        .register_balance(&alice.address(), &token_address(), &alice_dk)
+    fund_and_migrate(&movement, &alice)
         .await
-        .expect("build register");
-    send_and_wait(&movement, &alice, r)
-        .await
-        .expect("register tx");
+        .expect("fund alice");
+    fund_and_migrate(&movement, &bob).await.expect("fund bob");
+
+    // Register both Alice (sender) and Bob (recipient) confidential balances.
+    for (acct, dk) in [(&alice, &alice_dk), (&bob, &bob_dk)] {
+        let r = builder
+            .register_balance(&acct.address(), &token_address(), dk)
+            .await
+            .expect("build register");
+        send_and_wait(&movement, acct, r)
+            .await
+            .expect("register tx");
+    }
+
     let dep = builder
         .deposit(&alice.address(), &token_address(), DEPOSIT_AMOUNT, None)
         .expect("build deposit");
@@ -215,7 +226,7 @@ async fn builder_transfers_to_self() {
     let transfer = builder
         .transfer(
             &alice.address(),
-            &alice.address(),
+            &bob.address(),
             &token_address(),
             TRANSFER_AMOUNT,
             &alice_dk,

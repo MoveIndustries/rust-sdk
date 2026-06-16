@@ -17,10 +17,12 @@ env:
   # branch so CI is reproducible and won't drift if the branch advances.
   # Bump when intentional changes to the localnet/module setup are needed.
   #
-  # f496b6c1: bind token_address into the FS transcript for transfer/withdraw/
-  # rotation/normalization sigma proofs. Wire-format-breaking change; ships
-  # together with the corresponding SDK updates in this repo.
-  APTOS_CORE_COMMIT: f496b6c1679e5b1da5983569c909d9c9fccd5e9e
+  # c9cc7d2a: confidential_asset on confidential-asset-prod with the Movement
+  # bulletproofs DST rename (MovementConfidentialAsset/...), the chain/asset
+  # auditor split, the self-transfer ban (ESELF_TRANSFER), and the updated
+  # start-localnet-confidential-assets.sh. Matches the SDK in this repo: native
+  # Movement-DST prover (movement_rp_wasm) and two-account transfer tests.
+  APTOS_CORE_COMMIT: c9cc7d2a47c464296bb40e5d7532907e95ae888f
 
 jobs:
   ca-e2e:
