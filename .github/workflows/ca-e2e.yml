@@ -136,15 +136,12 @@ jobs:
             cat "$LOG"
             exit 1
           fi
-          ADDR=$(grep -oE 'publish signer \(default profile\) 0x[0-9a-f]{64}' "$LOG" \
-                 | head -n1 | awk '{print $NF}')
-          if [[ -z "$ADDR" ]]; then
-            echo "Could not parse publish-signer address from script output." >&2
-            cat "$LOG"
-            exit 1
-          fi
-          echo "CONFIDENTIAL_MODULE_ADDRESS=$ADDR"
-          echo "CONFIDENTIAL_MODULE_ADDRESS=$ADDR" >> "$GITHUB_ENV"
+          # confidential_asset moved into the framework (aptos-core #366), so it's published at
+          # the framework address 0x1 — not the experimental publish-signer account this step
+          # used to parse out of the script log. We still wait for "Done" above so the feature
+          # flag and chain-auditor bootstrap have completed before the tests run.
+          echo "CONFIDENTIAL_MODULE_ADDRESS=0x1"
+          echo "CONFIDENTIAL_MODULE_ADDRESS=0x1" >> "$GITHUB_ENV"
 
       - name: Verify REST endpoint is up
         run: |
