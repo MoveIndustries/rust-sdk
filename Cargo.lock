@@ -424,13 +424,10 @@ name = "confidential-assets"
 version = "0.1.0"
 dependencies = [
  "aptos-bcs",
- "bulletproofs",
  "curve25519-dalek",
  "curve25519-dalek-ng",
  "hex",
- "merlin",
  "movement-sdk",
- "movement_pollard_kangaroo_wasm",
  "movement_rp_wasm",
  "num-bigint",
  "num-traits",
@@ -1580,20 +1577,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "movement_pollard_kangaroo_wasm"
-version = "0.0.0"
-source = "git+https://github.com/moveindustries/confidential-asset-wasm-bindings?branch=main#8dc068a8146def3dc53221e3267e0233119f99d3"
-dependencies = [
- "curve25519-dalek-ng",
- "getrandom 0.2.17",
- "pollard-kangaroo",
- "wasm-bindgen",
-]
-
-[[package]]
 name = "movement_rp_wasm"
 version = "0.0.0"
-source = "git+https://github.com/moveindustries/confidential-asset-wasm-bindings?branch=main#8dc068a8146def3dc53221e3267e0233119f99d3"
+source = "git+https://github.com/moveindustries/confidential-asset-wasm-bindings?branch=main#527d22312a71c10c53344bdd802ce1e1ce684d80"
 dependencies = [
  "bulletproofs",
  "curve25519-dalek-ng",

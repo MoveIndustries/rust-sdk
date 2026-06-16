@@ -11,12 +11,12 @@
 use crate::crypto::{TwistedEd25519PrivateKey, TwistedEd25519PublicKey};
 use crate::internal::transaction_builder::ConfidentialAssetTransactionBuilder;
 use crate::internal::view_functions::{
-    get_asset_auditor_encryption_key, get_balance, get_encryption_key, is_balance_normalized,
-    is_pending_balance_frozen, ConfidentialBalance,
+    ConfidentialBalance, get_asset_auditor_encryption_key, get_balance, get_encryption_key,
+    is_balance_normalized, is_pending_balance_frozen,
 };
 use movement_sdk::account::Account;
 use movement_sdk::{
-    transaction::payload::TransactionPayload, types::AccountAddress, Movement, MovementError,
+    Movement, MovementError, transaction::payload::TransactionPayload, types::AccountAddress,
 };
 
 /// High-level API for confidential asset operations.

@@ -18,15 +18,15 @@ use crate::consts::{
 };
 use crate::crypto::confidential_registration::gen_registration_proof;
 use crate::crypto::{
+    TwistedEd25519PrivateKey, TwistedEd25519PublicKey,
     confidential_key_rotation::ConfidentialKeyRotation,
     confidential_normalization::ConfidentialNormalization,
     confidential_transfer::ConfidentialTransfer, confidential_withdraw::ConfidentialWithdraw,
-    TwistedEd25519PrivateKey, TwistedEd25519PublicKey,
 };
 use movement_sdk::{
+    Movement, MovementError,
     transaction::{EntryFunction, TransactionPayload},
     types::{AccountAddress, Identifier, MoveModuleId},
-    Movement, MovementError,
 };
 
 /// Helper: BCS-encode an AccountAddress (fixed 32-byte serialization, infallible).

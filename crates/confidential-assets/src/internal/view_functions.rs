@@ -9,9 +9,9 @@
 
 use crate::consts::{DEFAULT_CONFIDENTIAL_COIN_MODULE_ADDRESS, MODULE_NAME};
 use crate::crypto::{
-    encrypted_amount::EncryptedAmount, TwistedEd25519PublicKey, TwistedElGamalCiphertext,
+    TwistedEd25519PublicKey, TwistedElGamalCiphertext, encrypted_amount::EncryptedAmount,
 };
-use movement_sdk::{types::AccountAddress, Movement, MovementError};
+use movement_sdk::{Movement, MovementError, types::AccountAddress};
 
 /// Represents a confidential balance with both available and pending encrypted amounts.
 #[derive(Debug, Clone)]
