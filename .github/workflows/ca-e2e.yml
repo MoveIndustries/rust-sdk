@@ -136,12 +136,14 @@ jobs:
             cat "$LOG"
             exit 1
           fi
-          # confidential_asset moved into the framework (aptos-core #366), so it's published at
-          # the framework address 0x1 — not the experimental publish-signer account this step
-          # used to parse out of the script log. We still wait for "Done" above so the feature
-          # flag and chain-auditor bootstrap have completed before the tests run.
-          echo "CONFIDENTIAL_MODULE_ADDRESS=0x1"
-          echo "CONFIDENTIAL_MODULE_ADDRESS=0x1" >> "$GITHUB_ENV"
+          # confidential_asset moved into the framework (aptos-core #366), so it's at the
+          # framework address 0x1 — not the experimental publish-signer account this step used to
+          # parse out of the script log. Use the full 32-byte form (the test helper requires a
+          # 64-hex-char address, matching TOKEN_ADDRESS). We still wait for "Done" above so the
+          # feature flag and chain-auditor bootstrap have completed before the tests run.
+          ADDR=0x0000000000000000000000000000000000000000000000000000000000000001
+          echo "CONFIDENTIAL_MODULE_ADDRESS=$ADDR"
+          echo "CONFIDENTIAL_MODULE_ADDRESS=$ADDR" >> "$GITHUB_ENV"
 
       - name: Verify REST endpoint is up
         run: |

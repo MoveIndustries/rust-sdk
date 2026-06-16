@@ -19,15 +19,18 @@ pub const FUND_AMOUNT: u64 = 1_000_000_000;
 
 pub fn module_address() -> String {
     let raw = env::var("CONFIDENTIAL_MODULE_ADDRESS").expect(
-        "CONFIDENTIAL_MODULE_ADDRESS env var is required for e2e tests \
-         (run scripts/start-localnet-confidential-assets.sh; confidential_asset now ships in the \
-         framework, so this is 0x1)",
+        "CONFIDENTIAL_MODULE_ADDRESS env var is required for e2e tests (run \
+         scripts/start-localnet-confidential-assets.sh). confidential_asset now ships in the \
+         framework, so this is 0x1 in full 32-byte form: \
+         0x0000000000000000000000000000000000000000000000000000000000000001",
     );
-    // confidential_asset moved into the framework (aptos-core #366) — the address is `0x1`, not
-    // the 32-byte experimental publish-signer account it used to be. Just validate it parses.
-    AccountAddress::from_hex(&raw).unwrap_or_else(|e| {
-        panic!("CONFIDENTIAL_MODULE_ADDRESS must be a valid hex address, got {raw:?}: {e}")
-    });
+    let hex = raw.trim_start_matches("0x");
+    assert_eq!(
+        hex.len(),
+        64,
+        "CONFIDENTIAL_MODULE_ADDRESS must be a 32-byte hex string (64 chars after 0x), got {} chars: {raw:?}",
+        hex.len()
+    );
     raw
 }
 
