@@ -16,6 +16,7 @@
 //   4. CONFIDENTIAL_MODULE_ADDRESS=0x<addr>  (optional, defaults to 0x1)
 //   To run wih all defaul:
 //   cargo run --example simple_ca_transfer --features e2e
+//   cargo run -p confidential-assets --example simple_ca_transfer --features confidential-assets/e2e
 
 use confidential_assets::api::ConfidentialAsset;
 use confidential_assets::crypto::twisted_ed25519::{
@@ -162,11 +163,11 @@ async fn main() -> MovementResult<()> {
     movement.sign_submit_and_wait(&alice, payload, None).await?;
     println!();
 
-    // ── 8. Verify final balances ─────────────────────────────────────────────
+    // ── 8. Verify balances after transfer ────────────────────────────────────
     let alice_bal = ca.get_balance(&alice.address(), &token, &alice_dk).await?;
     let bob_bal = ca.get_balance(&bob.address(), &token, &bob_dk).await?;
 
-    println!("=== Final balances ===");
+    println!("=== Balances after transfer ===");
     println!(
         "  Alice — available: {}, pending: {}",
         alice_bal.available_balance(),
@@ -179,7 +180,6 @@ async fn main() -> MovementResult<()> {
     );
     println!();
 
-    // The transfer amount leaves Alice's available and lands in Bob's pending.
     assert_eq!(
         alice_bal.available_balance(),
         (DEPOSIT_AMOUNT - TRANSFER_AMOUNT) as u128,
@@ -191,7 +191,73 @@ async fn main() -> MovementResult<()> {
         "Bob's pending balance should equal the transfer amount"
     );
 
-    println!("All assertions passed. Example complete!");
+    // ── 9. Normalize Alice's available balance ────────────────────────────────
+    println!("Normalizing Alice's balance …");
+    let payload = ca
+        .normalize_balance(&alice.address(), &alice_dk, &token)
+        .await?;
+    movement.sign_submit_and_wait(&alice, payload, None).await?;
+
+    let alice_bal = ca.get_balance(&alice.address(), &token, &alice_dk).await?;
+    println!(
+        "  Alice after normalize — available: {}, pending: {}",
+        alice_bal.available_balance(),
+        alice_bal.pending_balance()
+    );
+    assert_eq!(
+        alice_bal.available_balance(),
+        (DEPOSIT_AMOUNT - TRANSFER_AMOUNT) as u128,
+        "Alice's available balance should be unchanged after normalize"
+    );
+    println!();
+
+    // ── 10. Rollover Bob's pending balance → available ────────────────────────
+    println!("Rolling over Bob's pending balance …");
+    let payloads = ca
+        .rollover_pending_balance(&bob.address(), &token, Some(&bob_dk), false)
+        .await?;
+    for p in payloads {
+        movement.sign_submit_and_wait(&bob, p, None).await?;
+    }
+
+    let bob_bal = ca.get_balance(&bob.address(), &token, &bob_dk).await?;
+    println!(
+        "  Bob after rollover — available: {}, pending: {}",
+        bob_bal.available_balance(),
+        bob_bal.pending_balance()
+    );
+    assert_eq!(
+        bob_bal.available_balance(),
+        TRANSFER_AMOUNT as u128,
+        "Bob's available balance should equal the transfer amount after rollover"
+    );
+    assert_eq!(
+        bob_bal.pending_balance(),
+        0,
+        "Bob's pending balance should be zero after rollover"
+    );
+    println!();
+
+    // ── 11. Normalize Bob's available balance ─────────────────────────────────
+    println!("Normalizing Bob's balance …");
+    let payload = ca
+        .normalize_balance(&bob.address(), &bob_dk, &token)
+        .await?;
+    movement.sign_submit_and_wait(&bob, payload, None).await?;
+
+    let bob_bal = ca.get_balance(&bob.address(), &token, &bob_dk).await?;
+    println!(
+        "  Bob after normalize — available: {}, pending: {}",
+        bob_bal.available_balance(),
+        bob_bal.pending_balance()
+    );
+    assert_eq!(
+        bob_bal.available_balance(),
+        TRANSFER_AMOUNT as u128,
+        "Bob's available balance should be unchanged after normalize"
+    );
+
+    println!("\nAll assertions passed. Example complete!");
     Ok(())
 }
 
