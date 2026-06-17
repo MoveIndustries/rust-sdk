@@ -19,15 +19,7 @@ async fn register_alice(
     alice: &Ed25519Account,
     alice_dk: &TwistedEd25519PrivateKey,
 ) {
-    let ca = make_confidential_asset(movement);
-    let token = token_address();
-    let payload = ca
-        .register_balance(&alice.address(), &token, alice_dk)
-        .await
-        .expect("build register_balance");
-    send_and_wait(movement, alice, payload)
-        .await
-        .expect("register_balance tx");
+    register_account(movement, alice, alice_dk).await;
 }
 
 async fn deposit(movement: &movement_sdk::Movement, alice: &Ed25519Account, amount: u64) {
@@ -39,6 +31,36 @@ async fn deposit(movement: &movement_sdk::Movement, alice: &Ed25519Account, amou
     send_and_wait(movement, alice, payload)
         .await
         .expect("deposit tx");
+}
+
+/// Register a confidential balance for any account (Alice, Bob, …).
+async fn register_account(
+    movement: &movement_sdk::Movement,
+    account: &Ed25519Account,
+    dk: &TwistedEd25519PrivateKey,
+) {
+    let ca = make_confidential_asset(movement);
+    let token = token_address();
+    let payload = ca
+        .register_balance(&account.address(), &token, dk)
+        .await
+        .expect("build register_balance");
+    send_and_wait(movement, account, payload)
+        .await
+        .expect("register_balance tx");
+}
+
+/// Create + fund + register a recipient account (e.g. Bob) so it can receive confidential
+/// transfers. The contract rejects self-transfers (ESELF_TRANSFER), so transfer tests send to a
+/// distinct registered account. Returns the account and its decryption key.
+async fn setup_recipient(
+    movement: &movement_sdk::Movement,
+) -> (Ed25519Account, TwistedEd25519PrivateKey) {
+    let bob = Ed25519Account::generate();
+    let bob_dk = get_test_confidential_account(Some(&bob));
+    fund_and_migrate(movement, &bob).await.expect("fund bob");
+    register_account(movement, &bob, &bob_dk).await;
+    (bob, bob_dk)
 }
 
 /// Deposits a public-FA amount and checks it lands in `pending` (not `available`).
@@ -302,11 +324,13 @@ async fn it_throws_when_transferring_more_than_available() {
     );
 }
 
-/// Self-transfer with no auditor: amount moves out of `available` and lands in the
-/// sender's own `pending`. Smoke test for the basic transfer-σ + range-proof path.
+/// The contract rejects confidential transfers where sender == recipient, aborting on-chain
+/// with `ESELF_TRANSFER`. The SDK builds the payload fine (it special-cases the recipient key);
+/// the abort happens at execution and leaves balances untouched. Mirrors the TS e2e test
+/// "it should reject a self-transfer with ESELF_TRANSFER".
 #[tokio::test]
 #[ignore = "requires localnet — see tests/README.md"]
-async fn it_transfers_alice_to_alice_pending_no_auditor() {
+async fn it_rejects_self_transfer() {
     let movement = make_movement().expect("movement client");
     let alice = get_test_account();
     let alice_dk = get_test_confidential_account(Some(&alice));
@@ -324,15 +348,65 @@ async fn it_transfers_alice_to_alice_pending_no_auditor() {
         send_and_wait(&movement, &alice, p).await.expect("rollover");
     }
 
-    let pre = ca
-        .get_balance(&alice.address(), &token_address(), &alice_dk)
-        .await
-        .expect("get_balance");
-
+    // A valid amount, so the build's balance/range checks pass — the only reason this fails is
+    // the self-transfer ban, not insufficient funds.
     let payload = ca
         .transfer(
             &alice.address(),
             &alice.address(),
+            &token_address(),
+            TRANSFER_AMOUNT,
+            &alice_dk,
+            &[],
+            &[],
+        )
+        .await
+        .expect("self-transfer builds; the ban is enforced on-chain");
+    let res = send_and_wait(&movement, &alice, payload).await;
+    assert!(
+        res.is_err(),
+        "self-transfer must be rejected on-chain with ESELF_TRANSFER"
+    );
+}
+
+/// Transfer Alice → Bob with no auditor: the amount leaves Alice's `available` and lands in
+/// Bob's `pending`. Smoke test for the basic transfer-σ + range-proof path. (Self-transfers are
+/// rejected on-chain with ESELF_TRANSFER, so the recipient is a distinct registered account.)
+#[tokio::test]
+#[ignore = "requires localnet — see tests/README.md"]
+async fn it_transfers_alice_to_bob_pending_no_auditor() {
+    let movement = make_movement().expect("movement client");
+    let alice = get_test_account();
+    let alice_dk = get_test_confidential_account(Some(&alice));
+
+    fund_and_migrate(&movement, &alice).await.expect("fund");
+    register_alice(&movement, &alice, &alice_dk).await;
+    deposit(&movement, &alice, DEPOSIT_AMOUNT).await;
+
+    let (bob, bob_dk) = setup_recipient(&movement).await;
+
+    let ca = make_confidential_asset(&movement);
+    let rollovers = ca
+        .rollover_pending_balance(&alice.address(), &token_address(), None, false)
+        .await
+        .expect("rollover build");
+    for p in rollovers {
+        send_and_wait(&movement, &alice, p).await.expect("rollover");
+    }
+
+    let alice_pre = ca
+        .get_balance(&alice.address(), &token_address(), &alice_dk)
+        .await
+        .expect("get_balance alice");
+    let bob_pre = ca
+        .get_balance(&bob.address(), &token_address(), &bob_dk)
+        .await
+        .expect("get_balance bob");
+
+    let payload = ca
+        .transfer(
+            &alice.address(),
+            &bob.address(),
             &token_address(),
             TRANSFER_AMOUNT,
             &alice_dk,
@@ -345,17 +419,22 @@ async fn it_transfers_alice_to_alice_pending_no_auditor() {
         .await
         .expect("transfer tx");
 
-    let post = ca
+    let alice_post = ca
         .get_balance(&alice.address(), &token_address(), &alice_dk)
         .await
-        .expect("get_balance");
+        .expect("get_balance alice");
+    let bob_post = ca
+        .get_balance(&bob.address(), &token_address(), &bob_dk)
+        .await
+        .expect("get_balance bob");
+    // Amount leaves Alice's available and lands in Bob's pending.
     assert_eq!(
-        post.available_balance(),
-        pre.available_balance() - TRANSFER_AMOUNT as u128
+        alice_post.available_balance(),
+        alice_pre.available_balance() - TRANSFER_AMOUNT as u128
     );
     assert_eq!(
-        post.pending_balance(),
-        pre.pending_balance() + TRANSFER_AMOUNT as u128
+        bob_post.pending_balance(),
+        bob_pre.pending_balance() + TRANSFER_AMOUNT as u128
     );
 }
 
@@ -377,6 +456,8 @@ async fn it_transfers_twice_without_intervening_rollover() {
     register_alice(&movement, &alice, &alice_dk).await;
     deposit(&movement, &alice, DEPOSIT_AMOUNT).await;
 
+    let (bob, bob_dk) = setup_recipient(&movement).await;
+
     let ca = make_confidential_asset(&movement);
     let rollovers = ca
         .rollover_pending_balance(&alice.address(), &token_address(), None, false)
@@ -386,15 +467,19 @@ async fn it_transfers_twice_without_intervening_rollover() {
         send_and_wait(&movement, &alice, p).await.expect("rollover");
     }
 
-    let pre = ca
+    let alice_pre = ca
         .get_balance(&alice.address(), &token_address(), &alice_dk)
         .await
-        .expect("get_balance");
+        .expect("get_balance alice");
+    let bob_pre = ca
+        .get_balance(&bob.address(), &token_address(), &bob_dk)
+        .await
+        .expect("get_balance bob");
 
     let payload1 = ca
         .transfer(
             &alice.address(),
-            &alice.address(),
+            &bob.address(),
             &token_address(),
             TRANSFER_AMOUNT,
             &alice_dk,
@@ -411,7 +496,7 @@ async fn it_transfers_twice_without_intervening_rollover() {
     let payload2 = ca
         .transfer(
             &alice.address(),
-            &alice.address(),
+            &bob.address(),
             &token_address(),
             TRANSFER_AMOUNT,
             &alice_dk,
@@ -424,25 +509,29 @@ async fn it_transfers_twice_without_intervening_rollover() {
         .await
         .expect("transfer 2 tx");
 
-    let post = ca
+    let alice_post = ca
         .get_balance(&alice.address(), &token_address(), &alice_dk)
         .await
-        .expect("get_balance");
+        .expect("get_balance alice");
+    let bob_post = ca
+        .get_balance(&bob.address(), &token_address(), &bob_dk)
+        .await
+        .expect("get_balance bob");
     assert_eq!(
-        post.available_balance(),
-        pre.available_balance() - 2 * TRANSFER_AMOUNT as u128
+        alice_post.available_balance(),
+        alice_pre.available_balance() - 2 * TRANSFER_AMOUNT as u128
     );
     assert_eq!(
-        post.pending_balance(),
-        pre.pending_balance() + 2 * TRANSFER_AMOUNT as u128
+        bob_post.pending_balance(),
+        bob_pre.pending_balance() + 2 * TRANSFER_AMOUNT as u128
     );
 }
 
-/// Transfer with one extra auditor key: the σ-proof's `x7` rows and the auditor-amount
-/// ciphertexts must verify in the same MSM Move's verifier runs.
+/// Transfer Alice → Bob with one extra auditor key: the σ-proof's `x7` rows and the
+/// auditor-amount ciphertexts must verify in the same MSM Move's verifier runs.
 #[tokio::test]
 #[ignore = "requires localnet — see tests/README.md"]
-async fn it_transfers_alice_to_alice_with_auditor() {
+async fn it_transfers_alice_to_bob_with_auditor() {
     let movement = make_movement().expect("movement client");
     let alice = get_test_account();
     let alice_dk = get_test_confidential_account(Some(&alice));
@@ -451,6 +540,8 @@ async fn it_transfers_alice_to_alice_with_auditor() {
     fund_and_migrate(&movement, &alice).await.expect("fund");
     register_alice(&movement, &alice, &alice_dk).await;
     deposit(&movement, &alice, DEPOSIT_AMOUNT).await;
+
+    let (bob, bob_dk) = setup_recipient(&movement).await;
 
     let ca = make_confidential_asset(&movement);
     let rollovers = ca
@@ -461,10 +552,15 @@ async fn it_transfers_alice_to_alice_with_auditor() {
         send_and_wait(&movement, &alice, p).await.expect("rollover");
     }
 
+    let bob_pre = ca
+        .get_balance(&bob.address(), &token_address(), &bob_dk)
+        .await
+        .expect("get_balance bob");
+
     let payload = ca
         .transfer(
             &alice.address(),
-            &alice.address(),
+            &bob.address(),
             &token_address(),
             TRANSFER_AMOUNT,
             &alice_dk,
@@ -476,6 +572,15 @@ async fn it_transfers_alice_to_alice_with_auditor() {
     send_and_wait(&movement, &alice, payload)
         .await
         .expect("transfer tx");
+
+    let bob_post = ca
+        .get_balance(&bob.address(), &token_address(), &bob_dk)
+        .await
+        .expect("get_balance bob");
+    assert_eq!(
+        bob_post.pending_balance(),
+        bob_pre.pending_balance() + TRANSFER_AMOUNT as u128
+    );
 }
 
 /// A freshly-registered account's pending balance is not frozen.
@@ -726,17 +831,24 @@ async fn it_transfers_with_total_balance_after_deposit() {
     register_alice(&movement, &alice, &alice_dk).await;
     deposit(&movement, &alice, DEPOSIT_AMOUNT).await;
 
+    let (bob, bob_dk) = setup_recipient(&movement).await;
+
     let ca = make_confidential_asset(&movement);
-    let pre = ca
+    let alice_pre = ca
         .get_balance(&alice.address(), &token_address(), &alice_dk)
         .await
-        .expect("get_balance");
-    let transfer_amount = pre.available_balance() as u64 + 1;
+        .expect("get_balance alice");
+    let bob_pre = ca
+        .get_balance(&bob.address(), &token_address(), &bob_dk)
+        .await
+        .expect("get_balance bob");
+    // Force the auto-rollover path: spend more than `available`, drawing from pending too.
+    let transfer_amount = alice_pre.available_balance() as u64 + 1;
 
     let transfer_payload = ca
         .transfer_with_total_balance(
             &alice,
-            &alice.address(),
+            &bob.address(),
             &token_address(),
             transfer_amount,
             &alice_dk,
@@ -749,10 +861,22 @@ async fn it_transfers_with_total_balance_after_deposit() {
         .await
         .expect("transfer-with-total tx");
 
-    let post = ca
+    let alice_post = ca
         .get_balance(&alice.address(), &token_address(), &alice_dk)
         .await
-        .expect("get_balance");
-    let pre_total = pre.available_balance() + pre.pending_balance();
-    assert_eq!(post.available_balance() + post.pending_balance(), pre_total);
+        .expect("get_balance alice");
+    let bob_post = ca
+        .get_balance(&bob.address(), &token_address(), &bob_dk)
+        .await
+        .expect("get_balance bob");
+    // Alice's total (available + pending) drops by the transfer amount; it lands in Bob's pending.
+    let alice_pre_total = alice_pre.available_balance() + alice_pre.pending_balance();
+    assert_eq!(
+        alice_post.available_balance() + alice_post.pending_balance(),
+        alice_pre_total - transfer_amount as u128
+    );
+    assert_eq!(
+        bob_post.pending_balance(),
+        bob_pre.pending_balance() + transfer_amount as u128
+    );
 }

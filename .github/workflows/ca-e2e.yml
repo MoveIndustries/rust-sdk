@@ -17,10 +17,12 @@ env:
   # branch so CI is reproducible and won't drift if the branch advances.
   # Bump when intentional changes to the localnet/module setup are needed.
   #
-  # f496b6c1: bind token_address into the FS transcript for transfer/withdraw/
-  # rotation/normalization sigma proofs. Wire-format-breaking change; ships
-  # together with the corresponding SDK updates in this repo.
-  APTOS_CORE_COMMIT: f496b6c1679e5b1da5983569c909d9c9fccd5e9e
+  # c9cc7d2a: confidential_asset on confidential-asset-prod with the Movement
+  # bulletproofs DST rename (MovementConfidentialAsset/...), the chain/asset
+  # auditor split, the self-transfer ban (ESELF_TRANSFER), and the updated
+  # start-localnet-confidential-assets.sh. Matches the SDK in this repo: native
+  # Movement-DST prover (movement_rp_wasm) and two-account transfer tests.
+  APTOS_CORE_COMMIT: c9cc7d2a47c464296bb40e5d7532907e95ae888f
 
 jobs:
   ca-e2e:
@@ -134,13 +136,12 @@ jobs:
             cat "$LOG"
             exit 1
           fi
-          ADDR=$(grep -oE 'publish signer \(default profile\) 0x[0-9a-f]{64}' "$LOG" \
-                 | head -n1 | awk '{print $NF}')
-          if [[ -z "$ADDR" ]]; then
-            echo "Could not parse publish-signer address from script output." >&2
-            cat "$LOG"
-            exit 1
-          fi
+          # confidential_asset moved into the framework (aptos-core #366), so it's at the
+          # framework address 0x1 — not the experimental publish-signer account this step used to
+          # parse out of the script log. Use the full 32-byte form (the test helper requires a
+          # 64-hex-char address, matching TOKEN_ADDRESS). We still wait for "Done" above so the
+          # feature flag and chain-auditor bootstrap have completed before the tests run.
+          ADDR=0x0000000000000000000000000000000000000000000000000000000000000001
           echo "CONFIDENTIAL_MODULE_ADDRESS=$ADDR"
           echo "CONFIDENTIAL_MODULE_ADDRESS=$ADDR" >> "$GITHUB_ENV"
 

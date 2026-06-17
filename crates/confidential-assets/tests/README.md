@@ -87,7 +87,7 @@ accepted by the on-chain Move verifier, which is the same code path the TS SDK u
 exercises.
 
 Range proofs are delegated to the upstream `movement_rp_wasm` (same prover the TS SDK builds
-as WASM); the verify path uses `bulletproofs::RangeProof::verify_multiple` against the
-canonical DST `AptosConfidentialAsset/BulletproofRangeProof`. Pollard kangaroo decryption uses
-the upstream `pollard-kangaroo` crate with the `Kangaroo32` preset, matching the TS WASM
-module's secret-size assumption.
+as WASM); both prove and verify go through its native `rp` module, so the Bulletproofs
+transcript DST (`MovementConfidentialAsset/BulletproofRangeProof`) lives only in that crate.
+Pollard kangaroo decryption uses the upstream `pollard-kangaroo` crate with the `Kangaroo32`
+preset, matching the TS WASM module's secret-size assumption.

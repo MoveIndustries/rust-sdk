@@ -14,8 +14,12 @@ readme = "README.md"
 [features]
 e2e = []
 
+[[example]]
+name = "simple_ca_transfer"
+required-features = ["e2e"]
+
 [dependencies]
-movement-sdk = { workspace = true, features = ["twisted_ed25519"] }
+movement-sdk = { workspace = true, features = ["twisted_ed25519", "ed25519", "faucet"] }
 aptos-bcs = { workspace = true }
 tokio = { workspace = true }
 
@@ -32,13 +36,11 @@ hex = "0.4"
 num-bigint = "0.4"
 num-traits = "0.2"
 
-# Upstream crypto shared with the TS SDK (built as WASM there, linked as rlib here).
+# Upstream range-proof prover/verifier shared with the TS SDK (built as WASM there, linked as
+# rlib here). Both prove and verify go through this crate's native `rp` module.
 movement_rp_wasm = { git = "https://github.com/moveindustries/confidential-asset-wasm-bindings", branch = "main" }
-movement_pollard_kangaroo_wasm = { git = "https://github.com/moveindustries/confidential-asset-wasm-bindings", branch = "main" }
-# Same versions the upstream wrappers pin to; needed for the verify path
-# (the upstream `_batch_range_proof` only exposes the prover natively).
-bulletproofs = "4.0.0"
-merlin = "3"
+# curve25519-dalek-ng: kangaroo-decryption point conversion in `twisted_el_gamal`.
+# (Range-proof prove + verify both go through `movement_rp_wasm`'s native `rp` module.)
 curve25519-dalek-ng = "4"
 pollard-kangaroo = { git = "https://github.com/distributed-lab/pollard-kangaroo.git", branch = "main", features = ["table48", "table32", "presets"] }
 

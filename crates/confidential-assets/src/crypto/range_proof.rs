@@ -41,7 +41,11 @@ pub fn prove_range_batch(
     Ok((out.proof(), out.comms()))
 }
 
-/// Verify a batch range proof.
+/// Verify a batch range proof. Delegates to the prover crate (`movement_rp_wasm`) so the
+/// Bulletproofs transcript DST lives in exactly one place — `BULLETPROOF_DST` in the
+/// wasm-bindings `range-proofs` crate — and the Rust verifier is byte-identical to the prover
+/// by construction (no DST is re-declared here). This mirrors how the TS SDK verifies via the
+/// same crate's wasm build.
 pub fn verify_range_batch(
     proof: &[u8],
     commitments: &[Vec<u8>],
@@ -49,34 +53,17 @@ pub fn verify_range_batch(
     rand_base: &RistrettoPoint,
     num_bits: usize,
 ) -> Result<bool, String> {
-    use bulletproofs::{BulletproofGens, PedersenGens, RangeProof};
-    use curve25519_dalek_ng::ristretto::CompressedRistretto as NgCompressed;
-    use merlin::Transcript;
-
     if commitments.is_empty() {
         return Err("empty commitments".into());
     }
-    let proof = RangeProof::from_bytes(proof).map_err(|e| format!("rp deser: {:?}", e))?;
-    let val_base_b: [u8; 32] = val_base.compress().to_bytes();
-    let rand_base_b: [u8; 32] = rand_base.compress().to_bytes();
-    let pg = PedersenGens {
-        B: NgCompressed(val_base_b)
-            .decompress()
-            .ok_or("val_base decompress")?,
-        B_blinding: NgCompressed(rand_base_b)
-            .decompress()
-            .ok_or("rand_base decompress")?,
-    };
-    let gens = BulletproofGens::new(64, 16);
-    let comms: Vec<NgCompressed> = commitments
-        .iter()
-        .map(|c| NgCompressed::from_slice(c.as_slice()))
-        .collect();
-    let dst: &[u8] = b"AptosConfidentialAsset/BulletproofRangeProof";
-    let ok = proof
-        .verify_multiple(&gens, &pg, &mut Transcript::new(dst), &comms, num_bits)
-        .is_ok();
-    Ok(ok)
+    movement_rp_wasm::rp::_batch_verify_proof(
+        proof.to_vec(),
+        commitments.to_vec(),
+        val_base.compress().to_bytes().to_vec(),
+        rand_base.compress().to_bytes().to_vec(),
+        num_bits,
+    )
+    .map_err(|e| format!("batch verify: {}", e))
 }
 
 /// Convenience for sigma-protocol callers: prove the chunked plaintext values

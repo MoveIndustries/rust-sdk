@@ -19,8 +19,10 @@ pub const FUND_AMOUNT: u64 = 1_000_000_000;
 
 pub fn module_address() -> String {
     let raw = env::var("CONFIDENTIAL_MODULE_ADDRESS").expect(
-        "CONFIDENTIAL_MODULE_ADDRESS env var is required for e2e tests \
-         (run scripts/start-localnet-confidential-assets.sh and export the printed module address)",
+        "CONFIDENTIAL_MODULE_ADDRESS env var is required for e2e tests (run \
+         scripts/start-localnet-confidential-assets.sh). confidential_asset now ships in the \
+         framework, so this is 0x1 in full 32-byte form: \
+         0x0000000000000000000000000000000000000000000000000000000000000001",
     );
     let hex = raw.trim_start_matches("0x");
     assert_eq!(

@@ -11,7 +11,7 @@
 use crate::crypto::{TwistedEd25519PrivateKey, TwistedEd25519PublicKey};
 use crate::internal::transaction_builder::ConfidentialAssetTransactionBuilder;
 use crate::internal::view_functions::{
-    ConfidentialBalance, get_balance, get_encryption_key, get_global_auditor_encryption_key,
+    ConfidentialBalance, get_asset_auditor_encryption_key, get_balance, get_encryption_key,
     is_balance_normalized, is_pending_balance_frozen,
 };
 use movement_sdk::account::Account;
@@ -394,7 +394,7 @@ impl<'a> ConfidentialAsset<'a> {
         &self,
         token_address: &AccountAddress,
     ) -> Result<Option<TwistedEd25519PublicKey>, MovementError> {
-        get_global_auditor_encryption_key(
+        get_asset_auditor_encryption_key(
             self.transaction.client,
             token_address,
             Some(&self.transaction.confidential_asset_module_address),
