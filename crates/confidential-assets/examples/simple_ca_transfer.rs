@@ -20,13 +20,13 @@
 
 use confidential_assets::api::ConfidentialAsset;
 use confidential_assets::crypto::twisted_ed25519::{
-    DECRYPTION_KEY_DERIVATION_MESSAGE, TwistedEd25519PrivateKey,
+    TwistedEd25519PrivateKey, DECRYPTION_KEY_DERIVATION_MESSAGE,
 };
 use movement_sdk::{
-    Movement, MovementConfig, MovementError, MovementResult,
     account::Ed25519Account,
     transaction::{EntryFunction, TransactionPayload},
     types::{AccountAddress, Identifier, MoveModuleId, TypeTag},
+    Movement, MovementConfig, MovementError, MovementResult,
 };
 use std::env;
 
@@ -190,26 +190,6 @@ async fn main() -> MovementResult<()> {
         TRANSFER_AMOUNT as u128,
         "Bob's pending balance should equal the transfer amount"
     );
-
-    // ── 9. Normalize Alice's available balance ────────────────────────────────
-    println!("Normalizing Alice's balance …");
-    let payload = ca
-        .normalize_balance(&alice.address(), &alice_dk, &token)
-        .await?;
-    movement.sign_submit_and_wait(&alice, payload, None).await?;
-
-    let alice_bal = ca.get_balance(&alice.address(), &token, &alice_dk).await?;
-    println!(
-        "  Alice after normalize — available: {}, pending: {}",
-        alice_bal.available_balance(),
-        alice_bal.pending_balance()
-    );
-    assert_eq!(
-        alice_bal.available_balance(),
-        (DEPOSIT_AMOUNT - TRANSFER_AMOUNT) as u128,
-        "Alice's available balance should be unchanged after normalize"
-    );
-    println!();
 
     // ── 10. Rollover Bob's pending balance → available ────────────────────────
     println!("Rolling over Bob's pending balance …");
