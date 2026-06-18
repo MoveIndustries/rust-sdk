@@ -389,6 +389,36 @@ impl<'a> ConfidentialAsset<'a> {
         .await
     }
 
+    /// Build a `set_chain_auditor` transaction.
+    ///
+    /// Must be signed by the chain auditor admin assigned via `set_chain_auditor_admin`.
+    /// Pass `None` to clear the chain auditor (disables all confidential transfers).
+    pub fn set_chain_auditor(
+        &self,
+        new_chain_auditor_ek: Option<&TwistedEd25519PublicKey>,
+    ) -> Result<TransactionPayload, MovementError> {
+        self.transaction.set_chain_auditor(new_chain_auditor_ek)
+    }
+
+    /// Get the global chain auditor encryption key, if set.
+    pub async fn get_chain_auditor_encryption_key(
+        &self,
+    ) -> Result<Option<TwistedEd25519PublicKey>, MovementError> {
+        self.transaction.get_chain_auditor_encryption_key().await
+    }
+
+    /// Build a `set_asset_auditor` transaction.
+    ///
+    /// Must be signed by the FA metadata object's root owner (the issuer).
+    /// Pass `None` for `new_auditor_ek` to clear the per-asset auditor.
+    pub fn set_asset_auditor(
+        &self,
+        token_address: &AccountAddress,
+        new_auditor_ek: Option<&TwistedEd25519PublicKey>,
+    ) -> Result<TransactionPayload, MovementError> {
+        self.transaction.set_asset_auditor(token_address, new_auditor_ek)
+    }
+
     /// Get the asset auditor encryption key for a token.
     pub async fn get_asset_auditor_encryption_key(
         &self,
