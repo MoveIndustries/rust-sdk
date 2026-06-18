@@ -22,6 +22,8 @@
 //   CHAIN_AUDITOR_ADMIN_PRIVATE_KEY  — hex Ed25519 private key of the chain auditor admin (required for A)
 //   TOKEN_ADDRESS                    — hex address of the FA metadata object (required for B)
 //   ISSUER_PRIVATE_KEY               — hex Ed25519 private key of the FA root owner (required for B)
+//   ISSUER_ADDRESS                   — on-chain address of the issuer when it differs from the key-derived
+//                                      address (e.g. 0xa550c18 for the CoreResources account on localnet)
 //   MOVEMENT_NETWORK                 — TESTNET | MAINNET | LOCAL (optional, default LOCAL)
 //   MOVEMENT_RPC_URL                 — custom RPC endpoint, used when MOVEMENT_NETWORK is not set
 //   CONFIDENTIAL_MODULE_ADDRESS      — defaults to 0x1
@@ -139,8 +141,13 @@ async fn main() -> MovementResult<()> {
             "ISSUER_PRIVATE_KEY is required (hex Ed25519 key of the FA root owner)".to_string(),
         )
     })?;
-    let issuer = Ed25519Account::from_private_key_hex(&issuer_key_hex)
+    let mut issuer = Ed25519Account::from_private_key_hex(&issuer_key_hex)
         .map_err(|e| MovementError::Internal(format!("invalid ISSUER_PRIVATE_KEY: {e}")))?;
+    if let Ok(addr_hex) = env::var("ISSUER_ADDRESS") {
+        let addr = AccountAddress::from_hex(&addr_hex)
+            .map_err(|e| MovementError::Internal(format!("invalid ISSUER_ADDRESS: {e}")))?;
+        issuer = issuer.with_address(addr);
+    }
 
     println!("── B. Asset auditor ─────────────────────────────────────────────");
     println!("Issuer  : {}", issuer.address());

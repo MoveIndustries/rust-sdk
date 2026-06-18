@@ -82,6 +82,16 @@ impl Ed25519Account {
         Ok(Self::from_private_key(private_key))
     }
 
+    /// Overrides the account address while keeping the same signing key.
+    ///
+    /// Use this when the on-chain account address differs from the address derived
+    /// from the public key — for example, framework accounts like `@core_resources`
+    /// whose address is fixed at genesis regardless of the authentication key.
+    pub fn with_address(mut self, address: AccountAddress) -> Self {
+        self.address = address;
+        self
+    }
+
     /// Creates an account from a BIP-39 mnemonic phrase.
     ///
     /// Uses the standard Movement derivation path: `m/44'/637'/0'/0'/index'`
