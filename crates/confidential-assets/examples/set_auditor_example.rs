@@ -7,28 +7,38 @@
 //       2. Read it back from chain to verify
 //       3. Clear it (signed by the chain auditor admin)
 //
-//  B. Asset auditor — applies only to transfers of a specific FA token:
+//  B. Asset auditor — applies only to transfers of a specific FA token (optional):
 //       1. Set the asset auditor EK (signed by the FA root owner / issuer)
 //       2. Read it back from chain to verify
 //       3. Clear it (signed by the issuer)
+//
+//       Section B is skipped when TOKEN_ADDRESS is not set. It requires a user-created
+//       FA token whose root owner you control — the built-in MOVE FA at 0xa is owned
+//       by 0x1 (@aptos_framework) and cannot be used here.
+//       To create your own FA, deploy a Move module that calls
+//       `fungible_asset::add_fungibility`, then pass its metadata address as TOKEN_ADDRESS.
 //
 // Prerequisites:
 //   - A. The chain auditor admin must already be assigned via the governance Move script
 //        (see deploy/scripts/setup_chain_auditor.move). Provide that admin's private key
 //        in CHAIN_AUDITOR_ADMIN_PRIVATE_KEY.
-//   - B. A fungible asset token whose root owner you control.
+//   - B. (optional) A user-created FA token whose root owner you control.
 //
 // Environment variables:
 //   CHAIN_AUDITOR_ADMIN_PRIVATE_KEY  — hex Ed25519 private key of the chain auditor admin (required for A)
-//   TOKEN_ADDRESS                    — hex address of the FA metadata object (required for B)
-//   ISSUER_PRIVATE_KEY               — hex Ed25519 private key of the FA root owner (required for B)
+//   TOKEN_ADDRESS                    — hex address of your FA metadata object (optional, enables B)
+//   ISSUER_PRIVATE_KEY               — hex Ed25519 private key of the FA root owner (required when TOKEN_ADDRESS is set)
 //   ISSUER_ADDRESS                   — on-chain address of the issuer when it differs from the key-derived
-//                                      address (e.g. 0xa550c18 for the CoreResources account on localnet)
+//                                      address (e.g. a genesis account whose address is fixed at node init)
 //   MOVEMENT_NETWORK                 — TESTNET | MAINNET | LOCAL (optional, default LOCAL)
 //   MOVEMENT_RPC_URL                 — custom RPC endpoint, used when MOVEMENT_NETWORK is not set
 //   CONFIDENTIAL_MODULE_ADDRESS      — defaults to 0x1
 //
-// Run:
+// Run (section A only):
+//   CHAIN_AUDITOR_ADMIN_PRIVATE_KEY=<hex> \
+//     cargo run -p confidential-assets --example set_auditor_example --features confidential-assets/e2e
+//
+// Run (sections A + B):
 //   CHAIN_AUDITOR_ADMIN_PRIVATE_KEY=<hex> TOKEN_ADDRESS=0x<addr> ISSUER_PRIVATE_KEY=<hex> \
 //     cargo run -p confidential-assets --example set_auditor_example --features confidential-assets/e2e
 
@@ -125,20 +135,28 @@ async fn main() -> MovementResult<()> {
     println!();
 
     // ════════════════════════════════════════════════════════════════════════
-    // B. Asset auditor
+    // B. Asset auditor (optional — skipped when TOKEN_ADDRESS is not set)
     // ════════════════════════════════════════════════════════════════════════
 
-    let token_raw = env::var("TOKEN_ADDRESS").map_err(|_| {
-        MovementError::Internal(
-            "TOKEN_ADDRESS is required (hex address of the FA metadata object)".to_string(),
-        )
-    })?;
+    let token_raw = match env::var("TOKEN_ADDRESS") {
+        Ok(v) => v,
+        Err(_) => {
+            println!("── B. Asset auditor ─────────────────────────────────────────────");
+            println!("  Skipped — TOKEN_ADDRESS not set.");
+            println!("  To run this section, deploy a Move module that creates a fungible asset,");
+            println!("  then re-run with TOKEN_ADDRESS=0x<metadata_addr> ISSUER_PRIVATE_KEY=<hex>.");
+            println!();
+            println!("Section A complete!");
+            return Ok(());
+        }
+    };
+
     let token = AccountAddress::from_hex(&token_raw)
         .map_err(|e| MovementError::Internal(format!("invalid TOKEN_ADDRESS: {e}")))?;
 
     let issuer_key_hex = env::var("ISSUER_PRIVATE_KEY").map_err(|_| {
         MovementError::Internal(
-            "ISSUER_PRIVATE_KEY is required (hex Ed25519 key of the FA root owner)".to_string(),
+            "ISSUER_PRIVATE_KEY is required when TOKEN_ADDRESS is set (hex Ed25519 key of the FA root owner)".to_string(),
         )
     })?;
     let mut issuer = Ed25519Account::from_private_key_hex(&issuer_key_hex)
@@ -150,8 +168,8 @@ async fn main() -> MovementResult<()> {
     }
 
     println!("── B. Asset auditor ─────────────────────────────────────────────");
-    println!("Issuer  : {}", issuer.address());
-    println!("Token   : {token}");
+    println!("Issuer : {}", issuer.address());
+    println!("Token  : {token}");
 
     let current_asset = ca.get_asset_auditor_encryption_key(&token).await?;
     println!(
