@@ -11,12 +11,12 @@
 //! **Note**: The two account types produce DIFFERENT addresses for the same private key
 //! because they use different authentication key derivation schemes.
 
+use crate::account::account::{Account, AuthenticationKey};
 #[cfg(feature = "mnemonic")]
 use crate::account::Mnemonic;
-use crate::account::account::{Account, AuthenticationKey};
 use crate::crypto::{
-    ED25519_SCHEME, Ed25519PrivateKey, Ed25519PublicKey, SINGLE_KEY_SCHEME,
-    derive_authentication_key,
+    derive_authentication_key, Ed25519PrivateKey, Ed25519PublicKey, ED25519_SCHEME,
+    SINGLE_KEY_SCHEME,
 };
 use crate::error::MovementResult;
 use crate::types::AccountAddress;
@@ -87,6 +87,7 @@ impl Ed25519Account {
     /// Use this when the on-chain account address differs from the address derived
     /// from the public key — for example, framework accounts like `@core_resources`
     /// whose address is fixed at genesis regardless of the authentication key.
+    #[must_use]
     pub fn with_address(mut self, address: AccountAddress) -> Self {
         self.address = address;
         self
