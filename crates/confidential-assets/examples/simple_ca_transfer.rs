@@ -217,7 +217,7 @@ async fn main() -> MovementResult<()> {
         "Bob's pending balance should equal the transfer amount"
     );
 
-    // ── 11. Rollover Bob's pending balance → available ───────────────────────
+    // ── 10. Rollover Bob's pending balance → available ────────────────────────
     println!("Rolling over Bob's pending balance …");
     let payloads = ca
         .rollover_pending_balance(&bob.address(), &token, Some(&bob_dk), false)
