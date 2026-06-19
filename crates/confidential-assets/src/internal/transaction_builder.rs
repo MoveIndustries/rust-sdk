@@ -507,10 +507,7 @@ impl<'a> ConfidentialAssetTransactionBuilder<'a> {
             module_id(self.contract_address),
             "set_asset_auditor",
             vec![],
-            vec![
-                bcs_addr(token_address),
-                serialize_vector_u8(&ek_bytes),
-            ],
+            vec![bcs_addr(token_address), serialize_vector_u8(&ek_bytes)],
         )
         .into())
     }

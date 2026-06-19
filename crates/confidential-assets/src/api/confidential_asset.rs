@@ -416,7 +416,8 @@ impl<'a> ConfidentialAsset<'a> {
         token_address: &AccountAddress,
         new_auditor_ek: Option<&TwistedEd25519PublicKey>,
     ) -> Result<TransactionPayload, MovementError> {
-        self.transaction.set_asset_auditor(token_address, new_auditor_ek)
+        self.transaction
+            .set_asset_auditor(token_address, new_auditor_ek)
     }
 
     /// Get the asset auditor encryption key for a token.

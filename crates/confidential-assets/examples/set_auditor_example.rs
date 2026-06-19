@@ -45,8 +45,7 @@
 use confidential_assets::api::ConfidentialAsset;
 use confidential_assets::crypto::twisted_ed25519::TwistedEd25519PrivateKey;
 use movement_sdk::{
-    Movement, MovementConfig, MovementError, MovementResult,
-    account::Ed25519Account,
+    Movement, MovementConfig, MovementError, MovementResult, account::Ed25519Account,
     types::AccountAddress,
 };
 use std::env;
@@ -78,8 +77,14 @@ async fn main() -> MovementResult<()> {
     // The same dk/ek pair is reused for both the chain and asset auditor sections.
     let auditor_dk = TwistedEd25519PrivateKey::generate();
     let auditor_ek = auditor_dk.public_key();
-    println!("Generated auditor decryption key (dk): {}", hex::encode(auditor_dk.to_bytes()));
-    println!("Generated auditor encryption key (ek): {}", hex::encode(auditor_ek.to_bytes()));
+    println!(
+        "Generated auditor decryption key (dk): {}",
+        hex::encode(auditor_dk.to_bytes())
+    );
+    println!(
+        "Generated auditor encryption key (ek): {}",
+        hex::encode(auditor_ek.to_bytes())
+    );
     println!();
 
     // ════════════════════════════════════════════════════════════════════════
@@ -91,8 +96,9 @@ async fn main() -> MovementResult<()> {
             "CHAIN_AUDITOR_ADMIN_PRIVATE_KEY is required (hex Ed25519 key of the chain auditor admin)".to_string(),
         )
     })?;
-    let chain_admin = Ed25519Account::from_private_key_hex(&chain_admin_key_hex)
-        .map_err(|e| MovementError::Internal(format!("invalid CHAIN_AUDITOR_ADMIN_PRIVATE_KEY: {e}")))?;
+    let chain_admin = Ed25519Account::from_private_key_hex(&chain_admin_key_hex).map_err(|e| {
+        MovementError::Internal(format!("invalid CHAIN_AUDITOR_ADMIN_PRIVATE_KEY: {e}"))
+    })?;
 
     println!("── A. Chain auditor ─────────────────────────────────────────────");
     println!("Chain auditor admin: {}", chain_admin.address());
@@ -109,23 +115,32 @@ async fn main() -> MovementResult<()> {
     // Set
     println!("Setting chain auditor EK …");
     let payload = ca.set_chain_auditor(Some(&auditor_ek))?;
-    movement.sign_submit_and_wait(&chain_admin, payload, None).await?;
+    movement
+        .sign_submit_and_wait(&chain_admin, payload, None)
+        .await?;
 
     let stored_chain = ca
         .get_chain_auditor_encryption_key()
         .await?
-        .ok_or_else(|| MovementError::Internal("Chain auditor EK not found after set".to_string()))?;
+        .ok_or_else(|| {
+            MovementError::Internal("Chain auditor EK not found after set".to_string())
+        })?;
     assert_eq!(
         stored_chain.to_bytes(),
         auditor_ek.to_bytes(),
         "Stored chain auditor EK does not match"
     );
-    println!("  Verified — stored EK: {}", hex::encode(stored_chain.to_bytes()));
+    println!(
+        "  Verified — stored EK: {}",
+        hex::encode(stored_chain.to_bytes())
+    );
 
     // Clear
     println!("Clearing chain auditor EK …");
     let payload = ca.set_chain_auditor(None)?;
-    movement.sign_submit_and_wait(&chain_admin, payload, None).await?;
+    movement
+        .sign_submit_and_wait(&chain_admin, payload, None)
+        .await?;
 
     assert!(
         ca.get_chain_auditor_encryption_key().await?.is_none(),
@@ -144,7 +159,9 @@ async fn main() -> MovementResult<()> {
             println!("── B. Asset auditor ─────────────────────────────────────────────");
             println!("  Skipped — TOKEN_ADDRESS not set.");
             println!("  To run this section, deploy a Move module that creates a fungible asset,");
-            println!("  then re-run with TOKEN_ADDRESS=0x<metadata_addr> ISSUER_PRIVATE_KEY=<hex>.");
+            println!(
+                "  then re-run with TOKEN_ADDRESS=0x<metadata_addr> ISSUER_PRIVATE_KEY=<hex>."
+            );
             println!();
             println!("Section A complete!");
             return Ok(());
@@ -183,23 +200,32 @@ async fn main() -> MovementResult<()> {
     // Set
     println!("Setting asset auditor EK …");
     let payload = ca.set_asset_auditor(&token, Some(&auditor_ek))?;
-    movement.sign_submit_and_wait(&issuer, payload, None).await?;
+    movement
+        .sign_submit_and_wait(&issuer, payload, None)
+        .await?;
 
     let stored_asset = ca
         .get_asset_auditor_encryption_key(&token)
         .await?
-        .ok_or_else(|| MovementError::Internal("Asset auditor EK not found after set".to_string()))?;
+        .ok_or_else(|| {
+            MovementError::Internal("Asset auditor EK not found after set".to_string())
+        })?;
     assert_eq!(
         stored_asset.to_bytes(),
         auditor_ek.to_bytes(),
         "Stored asset auditor EK does not match"
     );
-    println!("  Verified — stored EK: {}", hex::encode(stored_asset.to_bytes()));
+    println!(
+        "  Verified — stored EK: {}",
+        hex::encode(stored_asset.to_bytes())
+    );
 
     // Clear
     println!("Clearing asset auditor EK …");
     let payload = ca.set_asset_auditor(&token, None)?;
-    movement.sign_submit_and_wait(&issuer, payload, None).await?;
+    movement
+        .sign_submit_and_wait(&issuer, payload, None)
+        .await?;
 
     assert!(
         ca.get_asset_auditor_encryption_key(&token).await?.is_none(),

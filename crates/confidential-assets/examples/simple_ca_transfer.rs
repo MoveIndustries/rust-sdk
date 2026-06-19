@@ -20,13 +20,13 @@
 
 use confidential_assets::api::ConfidentialAsset;
 use confidential_assets::crypto::twisted_ed25519::{
-    TwistedEd25519PrivateKey, DECRYPTION_KEY_DERIVATION_MESSAGE,
+    DECRYPTION_KEY_DERIVATION_MESSAGE, TwistedEd25519PrivateKey,
 };
 use movement_sdk::{
+    Movement, MovementConfig, MovementError, MovementResult,
     account::Ed25519Account,
     transaction::{EntryFunction, TransactionPayload},
     types::{AccountAddress, Identifier, MoveModuleId, TypeTag},
-    Movement, MovementConfig, MovementError, MovementResult,
 };
 use std::env;
 
@@ -164,7 +164,7 @@ async fn main() -> MovementResult<()> {
                  Confidential transfers require a chain auditor — \
                  run the set_auditor_example to configure one first."
                     .to_string(),
-            ))
+            ));
         }
     }
     match &asset_auditor_ek {

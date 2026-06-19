@@ -11,12 +11,12 @@
 //! **Note**: The two account types produce DIFFERENT addresses for the same private key
 //! because they use different authentication key derivation schemes.
 
-use crate::account::account::{Account, AuthenticationKey};
 #[cfg(feature = "mnemonic")]
 use crate::account::Mnemonic;
+use crate::account::account::{Account, AuthenticationKey};
 use crate::crypto::{
-    derive_authentication_key, Ed25519PrivateKey, Ed25519PublicKey, ED25519_SCHEME,
-    SINGLE_KEY_SCHEME,
+    ED25519_SCHEME, Ed25519PrivateKey, Ed25519PublicKey, SINGLE_KEY_SCHEME,
+    derive_authentication_key,
 };
 use crate::error::MovementResult;
 use crate::types::AccountAddress;
