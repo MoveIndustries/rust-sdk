@@ -147,7 +147,33 @@ async fn main() -> MovementResult<()> {
     );
     println!();
 
-    // ── 7. Confidential transfer: Alice → Bob ────────────────────────────────
+    // ── 7. Check active auditors ─────────────────────────────────────────────
+    // The SDK fetches chain and asset auditors from chain and includes them in
+    // the ZK proof automatically — they do not need to be passed explicitly.
+    // We read them here to give a clear error before attempting the transfer if
+    // the chain auditor (required by the Move contract) is not configured.
+    let chain_auditor_ek = ca.get_chain_auditor_encryption_key().await?;
+    let asset_auditor_ek = ca.get_asset_auditor_encryption_key(&token).await?;
+
+    println!("Active auditors:");
+    match &chain_auditor_ek {
+        Some(_) => println!("  Chain auditor : set (included in transfer proof automatically)"),
+        None => {
+            return Err(MovementError::Internal(
+                "No chain auditor is configured on this network. \
+                 Confidential transfers require a chain auditor — \
+                 run the set_auditor_example to configure one first."
+                    .to_string(),
+            ));
+        }
+    }
+    match &asset_auditor_ek {
+        Some(_) => println!("  Asset auditor : set (included in transfer proof automatically)"),
+        None => println!("  Asset auditor : not set"),
+    }
+    println!();
+
+    // ── 8. Confidential transfer: Alice → Bob ────────────────────────────────
     println!("Transferring {TRANSFER_AMOUNT} tokens from Alice to Bob (confidential) …");
     let payload = ca
         .transfer(
@@ -156,14 +182,14 @@ async fn main() -> MovementResult<()> {
             &token,
             TRANSFER_AMOUNT,
             &alice_dk,
-            &[], // no additional auditors
-            &[], // no auditor hint
+            &[], // chain and asset auditors above are included automatically
+            &[], // no sender auditor hint
         )
         .await?;
     movement.sign_submit_and_wait(&alice, payload, None).await?;
     println!();
 
-    // ── 8. Verify balances after transfer ────────────────────────────────────
+    // ── 9. Verify balances after transfer ────────────────────────────────────
     let alice_bal = ca.get_balance(&alice.address(), &token, &alice_dk).await?;
     let bob_bal = ca.get_balance(&bob.address(), &token, &bob_dk).await?;
 
@@ -218,7 +244,7 @@ async fn main() -> MovementResult<()> {
     );
     println!();
 
-    // ── 11. Normalize Bob's available balance ─────────────────────────────────
+    // ── 12. Normalize Bob's available balance ────────────────────────────────
     println!("Normalizing Bob's balance …");
     let payload = ca
         .normalize_balance(&bob.address(), &bob_dk, &token)

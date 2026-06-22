@@ -18,6 +18,10 @@ e2e = []
 name = "simple_ca_transfer"
 required-features = ["e2e"]
 
+[[example]]
+name = "set_auditor_example"
+required-features = ["e2e"]
+
 [dependencies]
 movement-sdk = { workspace = true, features = ["twisted_ed25519", "ed25519", "faucet"] }
 aptos-bcs = { workspace = true }

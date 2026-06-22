@@ -469,6 +469,49 @@ impl<'a> ConfidentialAssetTransactionBuilder<'a> {
         .into())
     }
 
+    /// Build a `set_chain_auditor` entry function payload.
+    ///
+    /// Must be signed by the account previously assigned via `set_chain_auditor_admin`.
+    /// Pass `None` to clear the chain auditor (disables all confidential transfers).
+    pub fn set_chain_auditor(
+        &self,
+        new_chain_auditor_ek: Option<&TwistedEd25519PublicKey>,
+    ) -> Result<TransactionPayload, MovementError> {
+        let ek_bytes: Vec<u8> = match new_chain_auditor_ek {
+            Some(ek) => ek.to_bytes().to_vec(),
+            None => vec![],
+        };
+        Ok(EntryFunction::new(
+            module_id(self.contract_address),
+            "set_chain_auditor",
+            vec![],
+            vec![serialize_vector_u8(&ek_bytes)],
+        )
+        .into())
+    }
+
+    /// Build a `set_asset_auditor` entry function payload.
+    ///
+    /// The issuer (FA metadata object root owner) sets or clears the per-asset auditor EK.
+    /// Pass `None` to clear the auditor (empty `vector<u8>` on-chain).
+    pub fn set_asset_auditor(
+        &self,
+        token_address: &AccountAddress,
+        new_auditor_ek: Option<&TwistedEd25519PublicKey>,
+    ) -> Result<TransactionPayload, MovementError> {
+        let ek_bytes: Vec<u8> = match new_auditor_ek {
+            Some(ek) => ek.to_bytes().to_vec(),
+            None => vec![],
+        };
+        Ok(EntryFunction::new(
+            module_id(self.contract_address),
+            "set_asset_auditor",
+            vec![],
+            vec![bcs_addr(token_address), serialize_vector_u8(&ek_bytes)],
+        )
+        .into())
+    }
+
     /// Get the global chain auditor encryption key for a token, if set.
     pub async fn get_chain_auditor_encryption_key(
         &self,
